@@ -42,7 +42,7 @@ function M.check()
   if vim.fs and type(vim.fs.dir) == "function" then
     ok("vim.fs.dir is available")
   else
-    warn("vim.fs.dir is unavailable; NextFile / PreviousFile will not work")
+    warn("vim.fs.dir is unavailable; :File next / :File prev will not work")
   end
 
   -- guard flag
