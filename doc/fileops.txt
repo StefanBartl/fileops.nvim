@@ -1,0 +1,323 @@
+*fileops.txt*  File operations for Neovim                           *fileops.nvim*
+
+Author:   Stefan Bartl
+License:  MIT
+Version:  0.1.0
+
+==============================================================================
+CONTENTS                                                    *fileops-contents*
+
+  1. Introduction .............. |fileops-intro|
+  2. Requirements .............. |fileops-requirements|
+  3. Installation .............. |fileops-installation|
+  4. Configuration ............. |fileops-config|
+  5. Commands .................. |fileops-commands|
+     5.1 File management ........ |fileops-cmd-file|
+     5.2 File navigation ........ |fileops-cmd-cycle|
+  6. Keymaps ................... |fileops-keymaps|
+  7. Lua API ................... |fileops-api|
+  8. Health check .............. |fileops-health|
+  9. Architecture .............. |fileops-architecture|
+
+==============================================================================
+1. INTRODUCTION                                                *fileops-intro*
+
+fileops.nvim provides unified file-management operations: create, navigate,
+rename, duplicate, and delete files — all accessible through user commands,
+keymaps, and a Lua API.
+
+It consolidates three previously separate modules:
+
+  - `newfile`              Create files with automatic parent-dir creation
+  - `filecycle`            Navigate prev/next file in a directory
+  - `delete_current_file`  Delete file from disk and close the buffer
+
+Additional features added beyond the originals:
+  - `:RenameFile` — rename/move on disk and update the buffer
+  - `:DuplicateFile` — copy to a new path and open the duplicate
+
+All file I/O uses `vim.uv` (libuv) directly — no shell commands, no
+injection risk, fully cross-platform.
+
+==============================================================================
+2. REQUIREMENTS                                         *fileops-requirements*
+
+  - Neovim 0.9 or later
+  - No external plugins required
+
+==============================================================================
+3. INSTALLATION                                         *fileops-installation*
+
+Using lazy.nvim (local checkout): >lua
+  {
+    dir   = vim.env.REPOS_DIR .. "/fileops.nvim",
+    event = "VeryLazy",
+    opts  = {},
+  }
+<
+
+==============================================================================
+4. CONFIGURATION                                             *fileops-config*
+
+Pass a table to `setup()`.  All keys are optional; unset keys use defaults.
+
+>lua
+  require("fileops_nvim").setup({
+    cycle = {
+      open_target         = "replace",
+      keep_focus          = true,
+      include_hidden      = false,
+      wrap                = true,
+      follow_symlinks     = true,
+      root                = "buffer_dir",
+      confirm_on_modified = true,
+      case_insensitive    = true,
+    },
+    keymaps = {
+      cycle  = true,
+      delete = true,
+    },
+    commands = true,
+  })
+<
+
+------------------------------------------------------------------------------
+cycle.open_target                              *fileops-config-cycle-open_target*
+  Type: `"replace"|"current"|"split"|"vsplit"|"tab"|"background"`
+  Default: `"replace"`
+
+  Controls how the next/previous file is opened:
+    - `replace`    Replace current window (old buffer may be closed)
+    - `current`    Edit in-place, keep old buffer listed
+    - `split`      Horizontal split
+    - `vsplit`     Vertical split
+    - `tab`        New tab page
+    - `background` Load into buffer list without switching
+
+cycle.keep_focus                                *fileops-config-cycle-keep_focus*
+  Type: `boolean`, Default: `true`
+  Return cursor to the origin window after `split` / `vsplit`.
+
+cycle.include_hidden                        *fileops-config-cycle-include_hidden*
+  Type: `boolean`, Default: `false`
+  Include dot-files (e.g. `.gitignore`) in the directory listing.
+
+cycle.wrap                                          *fileops-config-cycle-wrap*
+  Type: `boolean`, Default: `true`
+  Wrap around at directory boundary (first ↔ last file).
+
+cycle.follow_symlinks                      *fileops-config-cycle-follow_symlinks*
+  Type: `boolean`, Default: `true`
+  Use `uv.fs_realpath` to canonicalise paths (symlink-aware deduplication).
+
+cycle.root                                          *fileops-config-cycle-root*
+  Type: `"buffer_dir"|"cwd"`, Default: `"buffer_dir"`
+  Directory to scan.  `buffer_dir` uses the current buffer's parent; `cwd`
+  uses `:pwd`.
+
+cycle.confirm_on_modified                *fileops-config-cycle-confirm_on_modified*
+  Type: `boolean`, Default: `true`
+  Show a `vim.ui.select` prompt when the current buffer has unsaved changes
+  and `open_target` is `replace`.
+
+cycle.case_insensitive                    *fileops-config-cycle-case_insensitive*
+  Type: `boolean`, Default: `true`
+  Sort and compare filenames case-insensitively.
+
+keymaps.cycle                                    *fileops-config-keymaps-cycle*
+  Type: `boolean`, Default: `true`
+  Register `<leader>nf` / `<leader>pf` and variant keymaps.
+
+keymaps.delete                                  *fileops-config-keymaps-delete*
+  Type: `boolean`, Default: `true`
+  Register the `<leader>dcf` keymap.
+
+commands                                              *fileops-config-commands*
+  Type: `boolean`, Default: `true`
+  Register all user commands.  Set `false` to use only the Lua API.
+
+==============================================================================
+5. COMMANDS                                                 *fileops-commands*
+
+------------------------------------------------------------------------------
+5.1 File Management                                         *fileops-cmd-file*
+
+:NewFile {path}                                              *:NewFile*
+  Set the current buffer's file name to `{path}`.  Creates parent
+  directories automatically.  Does NOT write the buffer to disk.
+
+:NewFileWrite {path}                                    *:NewFileWrite*
+  Like `:NewFile` but also writes the buffer to disk immediately.
+
+:SaveAsR[!] {path}                                          *:SaveAsR*
+  Save the buffer under `{path}` (like `:saveas`).  Creates parent
+  directories.  Use `!` to overwrite an existing file.
+
+:WriteToR[!] {path}                                        *:WriteToR*
+  Write a copy of the buffer to `{path}` without changing the buffer's
+  name (like `:write {file}`).  Creates parent directories.
+  Use `!` to overwrite.
+
+:MkParent                                                   *:MkParent*
+  Create the parent directory hierarchy for the current buffer's file.
+
+:RenameFile[!] {path}                                    *:RenameFile*
+  Rename (or move) the current file on disk to `{path}`.  Creates parent
+  directories.  Writes unsaved changes before renaming.  Use `!` to
+  overwrite an existing destination.
+
+:DuplicateFile[!] {path}                              *:DuplicateFile*
+  Copy the current file to `{path}` and open the copy.  Creates parent
+  directories.  Use `!` to overwrite.
+
+:DeleteCurrentFile                                  *:DeleteCurrentFile*
+  Delete the current file from disk using libuv and close the buffer.
+
+------------------------------------------------------------------------------
+5.2 File Navigation                                        *fileops-cmd-cycle*
+
+:NextFile[!] [target]                                       *:NextFile*
+:[count]NextFile[!] [target]
+
+  Open the next file in the current directory.
+
+  [count]   Skip N files at once (wraps if `cycle.wrap = true`).
+  [target]  Override `cycle.open_target` for this invocation.
+            See |fileops-cycle-targets| for valid values.
+  [!]       Bypass modified-buffer confirmation.
+
+  Examples: >
+    :NextFile
+    :2NextFile
+    :NextFile vsplit
+    :NextFile! bg
+<
+
+:PreviousFile[!] [target]                               *:PreviousFile*
+:[count]PreviousFile[!] [target]
+
+  Open the previous file in the current directory.  Same options as
+  |:NextFile|.
+
+                                                    *fileops-cycle-targets*
+Target argument values:
+
+  `%`  or  `replace`     Open in current window (may close old buffer)
+  `stay`  or  `current`  Edit in-place, keep old buffer listed
+  `new`  or  `split`     Horizontal split
+  `vsplit`               Vertical split
+  `tab`                  New tab page
+  `bg`  or  `background` Load into buffer list without switching focus
+
+==============================================================================
+6. KEYMAPS                                                   *fileops-keymaps*
+
+Registered only when `setup()` is called.
+
+Cycle keymaps (`keymaps.cycle = true`):
+
+  `<leader>nf`   Next file  (replace)
+  `<leader>pf`   Previous file  (replace)
+  `<leader>nfn`  Next file  (current / stay)
+  `<leader>pfn`  Previous file  (current / stay)
+  `<leader>nF`   Next file  (background)
+  `<leader>pF`   Previous file  (background)
+  `<leader>NF`   Next file  (vsplit)
+  `<leader>PF`   Previous file  (vsplit)
+
+All cycle keymaps respect `v:count1` — prefix with `3<leader>nf` to skip 3.
+
+Delete keymap (`keymaps.delete = true`):
+
+  `<leader>dcf`  Delete current file + close buffer
+
+==============================================================================
+7. LUA API                                                      *fileops-api*
+
+All public functions are on the module table returned by
+`require("fileops_nvim")`.
+
+                                                           *fileops.setup()*
+setup({opts})
+  Configure and activate the plugin.  Must be called once.  Subsequent
+  calls are no-ops.
+
+  Parameters:
+    {opts}  (FileOps.Config|nil)  See |fileops-config|.
+
+                                                            *fileops.next()*
+next({opts}, {count})
+  Open the next file.
+  Parameters:
+    {opts}   (FileOps.CycleConfig|nil)  Overrides for this call only.
+    {count}  (integer|nil)              Number of files to skip (default 1).
+
+                                                            *fileops.prev()*
+prev({opts}, {count})
+  Open the previous file.  Same parameters as |fileops.next()|.
+
+                                                        *fileops.new_file()*
+new_file({path}, {opts})
+  Set buffer name to `{path}` (creates parents).
+  Parameters:
+    {path}  (string)
+    {opts}  ({ write?: boolean, bang?: boolean }|nil)
+
+                                                          *fileops.rename()*
+rename({new_path}, {opts})
+  Rename/move current file on disk.
+  Parameters:
+    {new_path}  (string)
+    {opts}      ({ bang?: boolean }|nil)
+
+                                                       *fileops.duplicate()*
+duplicate({new_path}, {opts})
+  Copy current file to `{new_path}` and optionally open it.
+  Parameters:
+    {new_path}  (string)
+    {opts}      ({ bang?: boolean, open?: boolean }|nil)
+                `open` defaults to `true`.
+
+                                                   *fileops.delete_current()*
+delete_current({opts})
+  Delete current file from disk and close the buffer.
+  Parameters:
+    {opts}  ({ force?: boolean }|nil)
+            `force = true` skips the "unsaved changes" check.
+
+==============================================================================
+8. HEALTH CHECK                                              *fileops-health*
+
+>
+  :checkhealth fileops_nvim
+<
+
+Checks:
+  - Neovim version >= 0.9
+  - `vim.uv` / `vim.loop` available
+  - `vim.ui.select` available
+  - `vim.fs.dir` available
+  - Plugin load guard set
+
+==============================================================================
+9. ARCHITECTURE                                         *fileops-architecture*
+
+  plugin/fileops_nvim.lua    Load guard
+  lua/fileops_nvim/
+    init.lua                 Public API, setup()
+    config.lua               DEFAULTS + active config store
+    @types.lua               LuaLS annotations
+    commands.lua             User command registrations
+    keymaps.lua              Keymap registrations
+    health.lua               checkhealth provider
+    util/
+      notify.lua             "[fileops] " prefixed vim.notify wrapper
+      platform.lua           libuv file ops (no shell, cross-platform)
+    ops/
+      cycle.lua              directory listing, navigate, open_path
+      file.lua               create, rename, duplicate, delete
+
+Module load order: util → ops → commands/keymaps → init
+
+==============================================================================
+vim:tw=78:ts=8:noet:ft=help:norl:

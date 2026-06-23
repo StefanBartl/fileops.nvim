@@ -1,0 +1,64 @@
+---@module 'fileops_nvim.health'
+local M = {}
+
+local function ok(msg)
+  vim.health.ok(msg)
+end
+
+local function warn(msg)
+  vim.health.warn(msg)
+end
+
+local function start(msg)
+  vim.health.start(msg)
+end
+
+function M.check()
+  start("fileops_nvim")
+
+  -- Neovim version
+  if vim.fn.has("nvim-0.9") == 1 then
+    ok("Neovim >= 0.9")
+  else
+    warn("Neovim 0.9+ recommended (vim.uv may not be available)")
+  end
+
+  -- libuv (vim.uv or vim.loop)
+  local uv = vim.uv or vim.loop
+  if uv then
+    ok("libuv available (" .. (vim.uv and "vim.uv" or "vim.loop") .. ")")
+  else
+    warn("libuv not found; file I/O will fail")
+  end
+
+  -- vim.ui.select (used for confirm_on_modified dialog)
+  if type(vim.ui) == "table" and type(vim.ui.select) == "function" then
+    ok("vim.ui.select is available")
+  else
+    warn("vim.ui.select is unavailable; confirm_on_modified dialogs will not work")
+  end
+
+  -- vim.fs.dir (used for directory listing)
+  if vim.fs and type(vim.fs.dir) == "function" then
+    ok("vim.fs.dir is available")
+  else
+    warn("vim.fs.dir is unavailable; NextFile / PreviousFile will not work")
+  end
+
+  -- guard flag
+  if vim.g.loaded_fileops_nvim then
+    ok("plugin loaded (vim.g.loaded_fileops_nvim = " .. tostring(vim.g.loaded_fileops_nvim) .. ")")
+  else
+    warn("plugin guard not set — call require('fileops_nvim').setup() in your config")
+  end
+
+  -- treesitter (optional, not required)
+  local has_ts = pcall(require, "nvim-treesitter")
+  if has_ts then
+    ok("nvim-treesitter present (optional)")
+  else
+    ok("nvim-treesitter not installed (not required)")
+  end
+end
+
+return M
