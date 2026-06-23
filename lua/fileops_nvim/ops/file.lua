@@ -247,6 +247,13 @@ function M.delete_current(opts)
     return false
   end
 
+  -- Guard unsaved changes BEFORE touching the disk: abort unless forced, so a
+  -- follow-up `:File! delete` still has a file to delete and can force-close.
+  if vim.bo[b].modified and not opts.force then
+    notify.error("buffer has unsaved changes — use :File! delete to delete and force-close")
+    return false
+  end
+
   local ok, err = platform.delete_file(path)
   if not ok then
     notify.error("delete failed: " .. tostring(err))
@@ -255,7 +262,7 @@ function M.delete_current(opts)
 
   notify.info("deleted " .. fn.fnamemodify(path, ":t"))
 
-  -- Close the buffer (force=false so Neovim prompts for unsaved changes)
+  -- Close the buffer (force already implied by the guard above for modified ones).
   if api.nvim_buf_is_valid(b) then
     pcall(api.nvim_buf_delete, b, { force = opts.force or false })
   end

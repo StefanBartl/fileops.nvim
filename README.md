@@ -18,13 +18,13 @@ libuv directly.
 | Subcommand | Args | Description |
 |---|---|---|
 | `new` | `{path}` | Set buffer name (creates parent dirs, no write) |
-| `write` | `{path}` | Set buffer name and write to disk |
+| `write` | `{path}` | Set buffer name and write to disk (`!` overwrites existing) |
 | `saveas` | `{path}` | Save-as, buffer name changes (creates parents) |
 | `writeto` | `{path}` | Write a copy, buffer name stays (creates parents) |
 | `mkdir` | — | Create parent dirs for current buffer |
 | `rename` | `[%] {dest}` | Rename/move file on disk + update buffer |
 | `duplicate` | `[%] {dest}` | Copy file to new path and open the copy |
-| `delete` | `[%]` | Delete file from disk and close buffer |
+| `delete` | `[%]` | Delete file from disk and close buffer (`!` force-closes if modified) |
 | `next` | `[target]` | Next file in directory |
 | `prev` | `[target]` | Previous file in directory |
 
@@ -91,9 +91,10 @@ Does **not** write the buffer to disk.
 :File new lua/mymodule/init.lua
 ```
 
-### `:File write {path}`
+### `:File[!] write {path}`
 
-Like `new` but also writes the buffer to disk immediately.
+Like `new` but also writes the buffer to disk immediately. `!` overwrites an
+existing file (`:write!`).
 
 ### `:File[!] saveas {path}`
 
@@ -130,13 +131,16 @@ Copy the current file to `{dest}` and open the copy. `!` overwrites.
 :File! duplicate % backup.lua
 ```
 
-### `:File delete [%]`
+### `:File[!] delete [%]`
 
-Delete the current file from disk using libuv and close the buffer.
+Delete the current file from disk using libuv and close the buffer. If the
+buffer has unsaved changes, plain `:File delete` refuses (nothing is deleted);
+`!` deletes the file and force-closes the buffer.
 
 ```
 :File delete
 :File delete %    (same)
+:File! delete     (delete + force-close a modified buffer)
 ```
 
 ### `:[count]File[!] next [target]` / `:[count]File[!] prev [target]`
