@@ -1,5 +1,5 @@
 ---@module 'fileops_nvim.commands'
----Registers all user commands for fileops_nvim.
+---Registers the single :File[!] unified user command.
 local M = {}
 
 local notify = require("fileops_nvim.util.notify")
@@ -7,9 +7,19 @@ local file   = require("fileops_nvim.ops.file")
 local cycle  = require("fileops_nvim.ops.cycle")
 local config = require("fileops_nvim.config")
 
--- ─── Cycle helpers ────────────────────────────────────────────────────────────
+-- ─── Subcommand catalogue ─────────────────────────────────────────────────────
 
-local VALID_TARGETS = {
+local SUBCMDS = {
+  "new", "write", "saveas", "writeto", "mkdir",
+  "rename", "duplicate", "delete",
+  "next", "prev",
+}
+
+local CYCLE_TARGETS = {
+  "%", "replace", "stay", "current", "new", "split", "vsplit", "tab", "bg", "background",
+}
+
+local CYCLE_TARGET_MAP = {
   ["%"]          = "replace",
   ["replace"]    = "replace",
   ["stay"]       = "current",
@@ -22,37 +32,73 @@ local VALID_TARGETS = {
   ["background"] = "background",
 }
 
----@param args string[]
----@return integer
-local function parse_count(args)
-  for _, a in ipairs(args) do
-    local n = tonumber(a)
-    if n and n >= 1 then return math.floor(n) end
+-- ─── Completion ───────────────────────────────────────────────────────────────
+
+---@param ArgLead string
+---@param CmdLine string
+---@return string[]
+local function complete(ArgLead, CmdLine, _)
+  local tokens = vim.split(CmdLine:match("^%s*(.-)%s*$"), "%s+", { trimempty = true })
+  local trailing = CmdLine:match("%s$") ~= nil
+
+  -- Number of args fully committed before ArgLead
+  -- tokens[1] = command name, everything after = args
+  local committed = #tokens - (trailing and 0 or 1) - 1
+
+  -- Position 0 → completing subcommand
+  if committed == 0 then
+    return vim.tbl_filter(function(s)
+      return s:sub(1, #ArgLead) == ArgLead
+    end, SUBCMDS)
   end
-  return 1
+
+  local subcmd = tokens[2]
+
+  if subcmd == "next" or subcmd == "prev" then
+    -- 1st arg: open target
+    if committed == 1 then
+      return vim.tbl_filter(function(s)
+        return s:sub(1, #ArgLead) == ArgLead
+      end, CYCLE_TARGETS)
+    end
+    return {}
+  end
+
+  if subcmd == "delete" then
+    if committed == 1 then return { "%" } end
+    return {}
+  end
+
+  if subcmd == "rename" or subcmd == "duplicate" then
+    if committed == 1 then
+      -- First arg: "%" (current) or direct dest path
+      local fc = vim.fn.getcompletion(ArgLead, "file")
+      if ("%"):sub(1, #ArgLead) == ArgLead then
+        table.insert(fc, 1, "%")
+      end
+      return fc
+    end
+    -- Second arg onwards: file path
+    return vim.fn.getcompletion(ArgLead, "file")
+  end
+
+  -- new / write / saveas / writeto / mkdir → file path completion
+  return vim.fn.getcompletion(ArgLead, "file")
 end
 
----@param arg string|nil
----@return FileOps.OpenTarget|nil
-local function parse_target(arg)
-  if not arg or arg == "" then return nil end
-  return VALID_TARGETS[arg:lower()]
-end
+-- ─── Dispatch ─────────────────────────────────────────────────────────────────
 
-local function completions()
-  return { "%", "replace", "stay", "current", "new", "split", "vsplit", "tab", "bg", "background" }
-end
-
-local function cycle_cmd(direction, count_arg, args_raw, bang)
+---Run the file-cycle navigate with opts from config + per-call overrides.
+---@param direction FileOps.Direction
+---@param target_arg string|nil
+---@param count integer
+---@param bang boolean
+local function do_cycle(direction, target_arg, count, bang)
   local cfg   = config.get()
   local copts = vim.deepcopy(cfg.cycle or {})
 
-  local parts = type(args_raw) == "string" and vim.split(args_raw, "%s+", { trimempty = true }) or {}
-
-  local target = parse_target(parts[1])
+  local target = target_arg and CYCLE_TARGET_MAP[target_arg:lower()]
   if target then copts.open_target = target end
-
-  local cnt = (count_arg and count_arg > 0) and count_arg or parse_count(parts)
 
   if bang then copts.confirm_on_modified = false end
 
@@ -62,112 +108,89 @@ local function cycle_cmd(direction, count_arg, args_raw, bang)
     return
   end
 
-  cycle.navigate(dir, direction, copts, cnt)
+  cycle.navigate(dir, direction, copts, count)
+end
+
+---Resolve destination from fargs, handling optional "%" scope prefix.
+---Returns the destination path, or nil if missing.
+---@param fargs string[]  Args after the subcommand.
+---@return string|nil dest
+local function resolve_dest(fargs)
+  if #fargs == 0 then return nil end
+  if fargs[1] == "%" then
+    return fargs[2]  -- :File rename % dest
+  end
+  return fargs[1]    -- :File rename dest  (% implied)
+end
+
+---Dispatch a parsed command to the appropriate operation.
+---@param subcmd string
+---@param fargs string[]  Arguments after the subcommand.
+---@param bang boolean
+---@param count integer   v:count1 equivalent from :N File
+local function dispatch(subcmd, fargs, bang, count)
+  if subcmd == "new" then
+    if not fargs[1] then notify.warn("usage: File new {path}"); return end
+    file.edit_new(fargs[1], {})
+
+  elseif subcmd == "write" then
+    if not fargs[1] then notify.warn("usage: File write {path}"); return end
+    file.edit_new(fargs[1], { write = true })
+
+  elseif subcmd == "saveas" then
+    if not fargs[1] then notify.warn("usage: File[!] saveas {path}"); return end
+    file.save_as(fargs[1], { bang = bang })
+
+  elseif subcmd == "writeto" then
+    if not fargs[1] then notify.warn("usage: File[!] writeto {path}"); return end
+    file.write_to(fargs[1], { bang = bang })
+
+  elseif subcmd == "mkdir" then
+    file.mk_parent()
+
+  elseif subcmd == "rename" then
+    local dest = resolve_dest(fargs)
+    if not dest then notify.warn("usage: File[!] rename [%] {dest}"); return end
+    file.rename(dest, { bang = bang })
+
+  elseif subcmd == "duplicate" then
+    local dest = resolve_dest(fargs)
+    if not dest then notify.warn("usage: File[!] duplicate [%] {dest}"); return end
+    file.duplicate(dest, { bang = bang })
+
+  elseif subcmd == "delete" then
+    file.delete_current({})
+
+  elseif subcmd == "next" then
+    do_cycle("next", fargs[1], count, bang)
+
+  elseif subcmd == "prev" then
+    do_cycle("prev", fargs[1], count, bang)
+
+  else
+    notify.warn(("unknown subcommand %q — try: %s"):format(subcmd, table.concat(SUBCMDS, ", ")))
+  end
 end
 
 -- ─── Register ────────────────────────────────────────────────────────────────
 
 function M.register()
-  -- NextFile[!] [target]
-  vim.api.nvim_create_user_command("NextFile", function(a)
-    cycle_cmd("next", a.count > 0 and a.count or nil, a.args, a.bang)
-  end, {
-    nargs = "?",
-    bang  = true,
-    count = 0,
-    complete = completions,
-    desc  = "Open the next file in the current directory",
-  })
+  vim.api.nvim_create_user_command("File", function(a)
+    local fargs = a.fargs  -- properly-parsed argument list (handles quoted paths)
+    if #fargs == 0 then
+      notify.warn("usage: File[!] {subcommand} [args…] — subcommands: " .. table.concat(SUBCMDS, ", "))
+      return
+    end
 
-  -- PreviousFile[!] [target]
-  vim.api.nvim_create_user_command("PreviousFile", function(a)
-    cycle_cmd("prev", a.count > 0 and a.count or nil, a.args, a.bang)
+    local subcmd = table.remove(fargs, 1):lower()
+    local count  = (a.count and a.count > 0) and a.count or 1
+    dispatch(subcmd, fargs, a.bang, count)
   end, {
-    nargs = "?",
-    bang  = true,
-    count = 0,
-    complete = completions,
-    desc  = "Open the previous file in the current directory",
-  })
-
-  -- NewFile {path}
-  vim.api.nvim_create_user_command("NewFile", function(a)
-    if a.args == "" then notify.warn("usage: NewFile {path}"); return end
-    file.edit_new(a.args, {})
-  end, {
-    nargs = 1,
-    complete = "file",
-    desc  = "Set buffer name to a new path (creates parent dirs)",
-  })
-
-  -- NewFileWrite {path}
-  vim.api.nvim_create_user_command("NewFileWrite", function(a)
-    if a.args == "" then notify.warn("usage: NewFileWrite {path}"); return end
-    file.edit_new(a.args, { write = true })
-  end, {
-    nargs = 1,
-    complete = "file",
-    desc  = "Set buffer name and write immediately (creates parent dirs)",
-  })
-
-  -- SaveAsR[!] {path}
-  vim.api.nvim_create_user_command("SaveAsR", function(a)
-    if a.args == "" then notify.warn("usage: SaveAsR[!] {path}"); return end
-    file.save_as(a.args, { bang = a.bang })
-  end, {
-    nargs = 1,
-    bang  = true,
-    complete = "file",
-    desc  = "Save buffer under a new path (creates parent dirs)",
-  })
-
-  -- WriteToR[!] {path}
-  vim.api.nvim_create_user_command("WriteToR", function(a)
-    if a.args == "" then notify.warn("usage: WriteToR[!] {path}"); return end
-    file.write_to(a.args, { bang = a.bang })
-  end, {
-    nargs = 1,
-    bang  = true,
-    complete = "file",
-    desc  = "Write a copy of the buffer without changing its name",
-  })
-
-  -- MkParent
-  vim.api.nvim_create_user_command("MkParent", function(_)
-    file.mk_parent()
-  end, {
-    nargs = 0,
-    desc  = "Create parent directories for the current buffer's file",
-  })
-
-  -- RenameFile[!] {newpath}
-  vim.api.nvim_create_user_command("RenameFile", function(a)
-    if a.args == "" then notify.warn("usage: RenameFile[!] {newpath}"); return end
-    file.rename(a.args, { bang = a.bang })
-  end, {
-    nargs = 1,
-    bang  = true,
-    complete = "file",
-    desc  = "Rename (move) the current file on disk and update the buffer",
-  })
-
-  -- DuplicateFile[!] {newpath}
-  vim.api.nvim_create_user_command("DuplicateFile", function(a)
-    if a.args == "" then notify.warn("usage: DuplicateFile[!] {newpath}"); return end
-    file.duplicate(a.args, { bang = a.bang })
-  end, {
-    nargs = 1,
-    bang  = true,
-    complete = "file",
-    desc  = "Copy the current file to a new path and open the copy",
-  })
-
-  -- DeleteCurrentFile
-  vim.api.nvim_create_user_command("DeleteCurrentFile", function(_)
-    file.delete_current({})
-  end, {
-    nargs = 0,
-    desc  = "Delete the current file from disk and close the buffer",
+    nargs    = "+",
+    bang     = true,
+    count    = 0,
+    complete = complete,
+    desc     = "Unified file operations (new/write/saveas/writeto/mkdir/rename/duplicate/delete/next/prev)",
   })
 end
 
