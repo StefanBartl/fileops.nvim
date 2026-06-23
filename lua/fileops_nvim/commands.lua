@@ -134,8 +134,8 @@ local function dispatch(subcmd, fargs, bang, count)
     file.edit_new(fargs[1], {})
 
   elseif subcmd == "write" then
-    if not fargs[1] then notify.warn("usage: File write {path}"); return end
-    file.edit_new(fargs[1], { write = true })
+    if not fargs[1] then notify.warn("usage: File[!] write {path}"); return end
+    file.edit_new(fargs[1], { write = true, bang = bang })
 
   elseif subcmd == "saveas" then
     if not fargs[1] then notify.warn("usage: File[!] saveas {path}"); return end
@@ -159,7 +159,7 @@ local function dispatch(subcmd, fargs, bang, count)
     file.duplicate(dest, { bang = bang })
 
   elseif subcmd == "delete" then
-    file.delete_current({})
+    file.delete_current({ force = bang })
 
   elseif subcmd == "next" then
     do_cycle("next", fargs[1], count, bang)

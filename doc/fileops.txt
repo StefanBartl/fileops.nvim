@@ -134,8 +134,9 @@ it is always implied when omitted.
     :File new ~/projects/foo/bar.lua
 <
 
-:File write {path}                                        *:File-write*
-  Like |:File-new| but also writes the buffer to disk immediately.
+:File[!] write {path}                                     *:File-write*
+  Like |:File-new| but also writes the buffer to disk immediately. `!`
+  overwrites an existing file (`:write!`).
 
 :File[!] saveas {path}                                    *:File-saveas*
   Save the buffer under `{path}` (equivalent to `:saveas`). Buffer name
@@ -166,11 +167,13 @@ it is always implied when omitted.
     :File! duplicate % backup.lua
 <
 
-:File delete [%]                                          *:File-delete*
+:File[!] delete [%]                                       *:File-delete*
   Delete the current file from disk and close the buffer. Uses `uv.fs_unlink`
-  (no shell command). >
+  (no shell command). If the buffer has unsaved changes, plain `:File delete`
+  refuses (nothing is deleted); `!` deletes and force-closes. >
     :File delete
     :File delete %     → identical
+    :File! delete      → delete + force-close a modified buffer
 <
 
 :[count]File[!] next [target]                             *:File-next*
