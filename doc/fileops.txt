@@ -62,6 +62,10 @@ lazy.nvim (local checkout): >lua
       confirm_on_modified = true,
       case_insensitive    = true,
     },
+    cd = {
+      scope             = "window",
+      refresh_explorers = true,
+    },
     keymaps  = { cycle = true, delete = true },
     commands = true,
   })
@@ -95,6 +99,14 @@ cycle.confirm_on_modified ~
 
 cycle.case_insensitive ~
   Sort and compare filenames case-insensitively. Default: `true`.
+
+cd.scope ~
+  `"window"` (`:lcd`), `"tab"` (`:tcd`) or `"global"` (`:cd`) — scope of the
+  directory change for `:File cd`. Default: `"window"`.
+
+cd.refresh_explorers ~
+  After changing directory, refresh an open neo-tree, nvim-tree or netrw so it
+  tracks the new root. Default: `true`.
 
 keymaps.cycle ~
   Register the `<leader>nf` / `<leader>pf` family. Default: `true`.
@@ -188,6 +200,20 @@ it is always implied when omitted.
   Open the previous file in the current directory. Same options as
   |:File-next|.
 
+:File cd [scope]                                          *:File-cd*
+  Change the working directory to the directory of the current buffer's file,
+  then refresh any open file explorer (neo-tree, nvim-tree, netrw) so it tracks
+  the new root. Optional `[scope]` overrides `cd.scope` for this call:
+
+    `window`   `:lcd`  — window-local (default)
+    `tab`      `:tcd`  — tab-local
+    `global`   `:cd`   — global
+
+  Examples: >
+    :File cd
+    :File cd global
+<
+
 ------------------------------------------------------------------------------
 5.2 Navigation targets                                       *fileops-targets*
 
@@ -249,6 +275,10 @@ duplicate({path}, {opts})                            *fileops.duplicate()*
 delete_current({opts})                          *fileops.delete_current()*
   Delete current file. {opts}: `{ force?: boolean }`.
 
+cd_here({opts})                                      *fileops.cd_here()*
+  Change directory to the buffer's directory and refresh open explorers.
+  {opts}: `{ scope?: "lcd"|"cd"|"tcd", refresh?: boolean }`.
+
 ==============================================================================
 8. TAB COMPLETION                                         *fileops-completion*
 
@@ -256,6 +286,7 @@ delete_current({opts})                          *fileops.delete_current()*
 
   `:File <Tab>`           → lists all subcommands
   `:File next <Tab>`      → lists navigation targets
+  `:File cd <Tab>`        → lists cd scopes (window/tab/global)
   `:File rename <Tab>`    → lists "%" and file paths
   `:File new <Tab>`       → file path completion
   (all path-taking subcmds use native file completion)

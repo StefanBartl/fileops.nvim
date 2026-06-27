@@ -5,8 +5,10 @@
 - `:File new / write / saveas / writeto / mkdir` — Dateierstellung
 - `:File rename / duplicate / delete` — Dateioperationen
 - `:File next / prev [target]` — Verzeichnis-Navigation
+- `:File cd [scope]` — cwd auf Buffer-Verzeichnis setzen + Datei-Explorer refreshen
+- `:File delete` schließt den Buffer ohne leeren Ersatz-Buffer (nutzt alternativen Buffer)
 - Keymaps: `<leader>nf/pf` Familie + `<leader>dcf`
-- Lua API: `next()`, `prev()`, `new_file()`, `rename()`, `duplicate()`, `delete_current()`
+- Lua API: `next()`, `prev()`, `new_file()`, `rename()`, `duplicate()`, `delete_current()`, `cd_here()`
 - Alles via `vim.uv` (libuv), kein Shell-Aufruf
 - `:checkhealth fileops_nvim`
 - Tab-Completion für alle Subcommands
@@ -73,6 +75,7 @@
 
 - **neo-tree / nvim-tree Integration** — Event-Emission nach jeder Datei-Op
   damit Dateibaum-Plugins automatisch refreshen (`vim.api.nvim_exec_autocmds`)
+  (teilweise erledigt: `:File cd` refresht neo-tree/nvim-tree/netrw bereits)
 
 ### DX / UX
 

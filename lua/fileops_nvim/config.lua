@@ -13,6 +13,10 @@ M.DEFAULTS = {
     confirm_on_modified = true,
     case_insensitive    = true,
   },
+  cd = {
+    scope             = "window",  -- "window" (lcd) | "tab" (tcd) | "global" (cd)
+    refresh_explorers = true,      -- refresh neo-tree/nvim-tree/netrw after cd
+  },
   keymaps = {
     cycle  = true,
     delete = true,
