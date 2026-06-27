@@ -231,6 +231,42 @@ end
 
 -- ─── Delete ───────────────────────────────────────────────────────────────────
 
+---Move every window currently displaying `bufnr` onto an alternate listed
+---buffer, so that deleting `bufnr` does not spawn a throwaway empty buffer when
+---other buffers still exist. Prefers the alternate file (`#`) for a natural
+---"return to where I was" feel.
+---@param bufnr integer
+---@return boolean switched  True if an alternate was found and applied.
+local function switch_windows_off(bufnr)
+  local alt = nil
+
+  local altfile = fn.bufnr("#")
+  if altfile ~= -1 and altfile ~= bufnr
+     and api.nvim_buf_is_valid(altfile)
+     and vim.bo[altfile].buflisted then
+    alt = altfile
+  end
+
+  if not alt then
+    for _, b in ipairs(api.nvim_list_bufs()) do
+      if b ~= bufnr and api.nvim_buf_is_valid(b)
+         and vim.bo[b].buflisted and vim.bo[b].buftype == "" then
+        alt = b
+        break
+      end
+    end
+  end
+
+  if not alt then return false end
+
+  for _, win in ipairs(api.nvim_list_wins()) do
+    if api.nvim_win_is_valid(win) and api.nvim_win_get_buf(win) == bufnr then
+      pcall(api.nvim_win_set_buf, win, alt)
+    end
+  end
+  return true
+end
+
 ---Delete the file of the current buffer from disk and close the buffer.
 ---@param opts? { force?: boolean }
 ---@return boolean ok
@@ -264,9 +300,78 @@ function M.delete_current(opts)
 
   -- Close the buffer (force already implied by the guard above for modified ones).
   if api.nvim_buf_is_valid(b) then
+    -- Steer any window off this buffer first, so closing it reuses an existing
+    -- buffer instead of spawning an empty one when other buffers exist.
+    switch_windows_off(b)
     pcall(api.nvim_buf_delete, b, { force = opts.force or false })
   end
 
+  return true
+end
+
+-- ─── Change directory ──────────────────────────────────────────────────────────
+
+---Refresh known file-explorer plugins so they reflect `dir` as the new root.
+---All calls are guarded; plugins that are not loaded are silently skipped.
+---@param dir string  Absolute directory.
+local function refresh_explorers(dir)
+  -- nvim-tree: change root then reload to repaint.
+  if package.loaded["nvim-tree"] then
+    pcall(function()
+      local nt = require("nvim-tree.api")
+      nt.tree.change_root(dir)
+      nt.tree.reload()
+    end)
+  end
+
+  -- neo-tree: refresh the filesystem source (picks up the new cwd).
+  if package.loaded["neo-tree"] then
+    pcall(function()
+      require("neo-tree.sources.manager").refresh("filesystem")
+    end)
+  end
+
+  -- netrw: reload any visible netrw listing in place.
+  for _, win in ipairs(api.nvim_list_wins()) do
+    if api.nvim_win_is_valid(win) then
+      local buf = api.nvim_win_get_buf(win)
+      if api.nvim_buf_is_valid(buf) and vim.bo[buf].filetype == "netrw" then
+        pcall(api.nvim_win_call, win, function()
+          pcall(vim.cmd, "edit " .. fn.fnameescape(dir))
+        end)
+      end
+    end
+  end
+end
+
+---Change the working directory to the directory of the current buffer's file,
+---then refresh any open file explorer so it tracks the new root.
+---@param opts? { scope?: "lcd"|"cd"|"tcd", refresh?: boolean }
+---@return boolean ok
+function M.cd_here(opts)
+  opts = opts or {}
+  local b = cur_buf()
+  if not b then notify.error("no valid buffer"); return false end
+
+  local p = buf_path(b)
+  if not p then notify.error("current buffer has no file name"); return false end
+
+  local dir = fn.fnamemodify(p, ":p:h")
+  if dir == "" or fn.isdirectory(dir) ~= 1 then
+    notify.error("cannot resolve buffer directory")
+    return false
+  end
+
+  local scope = opts.scope
+  local cmd = (scope == "cd" or scope == "tcd") and scope or "lcd"
+  local ok, err = pcall(vim.cmd, cmd .. " " .. fn.fnameescape(dir))
+  if not ok then notify.error("cd failed: " .. tostring(err)); return false end
+
+  if opts.refresh ~= false then
+    refresh_explorers(dir)
+  end
+
+  notify.info("cwd → " .. dir)
   return true
 end
 

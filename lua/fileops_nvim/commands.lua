@@ -12,7 +12,15 @@ local config = require("fileops_nvim.config")
 local SUBCMDS = {
   "new", "write", "saveas", "writeto", "mkdir",
   "rename", "duplicate", "delete",
-  "next", "prev",
+  "next", "prev", "cd",
+}
+
+local CD_SCOPES = { "window", "tab", "global" }
+
+local CD_SCOPE_MAP = {
+  ["window"] = "lcd",
+  ["tab"]    = "tcd",
+  ["global"] = "cd",
 }
 
 local CYCLE_TARGETS = {
@@ -66,6 +74,15 @@ local function complete(ArgLead, CmdLine, _)
 
   if subcmd == "delete" then
     if committed == 1 then return { "%" } end
+    return {}
+  end
+
+  if subcmd == "cd" then
+    if committed == 1 then
+      return vim.tbl_filter(function(s)
+        return s:sub(1, #ArgLead) == ArgLead
+      end, CD_SCOPES)
+    end
     return {}
   end
 
@@ -161,6 +178,13 @@ local function dispatch(subcmd, fargs, bang, count)
   elseif subcmd == "delete" then
     file.delete_current({ force = bang })
 
+  elseif subcmd == "cd" then
+    local cfg   = config.get()
+    local arg   = fargs[1] and CD_SCOPE_MAP[fargs[1]:lower()]
+    local scope = arg or (cfg.cd and CD_SCOPE_MAP[cfg.cd.scope]) or "lcd"
+    local refresh = not (cfg.cd and cfg.cd.refresh_explorers == false)
+    file.cd_here({ scope = scope, refresh = refresh })
+
   elseif subcmd == "next" then
     do_cycle("next", fargs[1], count, bang)
 
@@ -190,7 +214,7 @@ function M.register()
     bang     = true,
     count    = 0,
     complete = complete,
-    desc     = "Unified file operations (new/write/saveas/writeto/mkdir/rename/duplicate/delete/next/prev)",
+    desc     = "Unified file operations (new/write/saveas/writeto/mkdir/rename/duplicate/delete/next/prev/cd)",
   })
 end
 

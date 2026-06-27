@@ -82,4 +82,11 @@ function M.delete_current(opts)
   require("fileops_nvim.ops.file").delete_current(opts)
 end
 
+---Change the working directory to the current buffer's directory and refresh
+---any open file explorer (neo-tree/nvim-tree/netrw).
+---@param opts? { scope?: "lcd"|"cd"|"tcd", refresh?: boolean }
+function M.cd_here(opts)
+  require("fileops_nvim.ops.file").cd_here(opts)
+end
+
 return M

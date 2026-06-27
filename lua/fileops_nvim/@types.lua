@@ -4,6 +4,7 @@
 ---@alias FileOps.OpenTarget "replace"|"current"|"split"|"vsplit"|"tab"|"background"
 ---@alias FileOps.CycleRoot  "buffer_dir"|"cwd"
 ---@alias FileOps.Direction  "next"|"prev"
+---@alias FileOps.CdScope    "window"|"tab"|"global"
 
 ---@class FileOps.CycleConfig
 ---@field open_target?         FileOps.OpenTarget   How to open the target file.
@@ -15,12 +16,17 @@
 ---@field confirm_on_modified? boolean              Prompt when current buffer is modified.
 ---@field case_insensitive?    boolean              Sort and compare paths case-insensitively.
 
+---@class FileOps.CdConfig
+---@field scope?             FileOps.CdScope  cd scope: window (lcd), tab (tcd), global (cd).
+---@field refresh_explorers? boolean          Refresh neo-tree/nvim-tree/netrw after cd.
+
 ---@class FileOps.KeymapConfig
 ---@field cycle?  boolean   Register cycle (next/prev) keymaps.
 ---@field delete? boolean   Register delete-current-file keymap.
 
 ---@class FileOps.Config
 ---@field cycle?    FileOps.CycleConfig   File-cycle options.
+---@field cd?       FileOps.CdConfig      Change-directory options.
 ---@field keymaps?  FileOps.KeymapConfig  Keymap registration flags.
 ---@field commands? boolean               Register all user commands (default: true).
 

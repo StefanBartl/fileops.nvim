@@ -27,6 +27,7 @@ libuv directly.
 | `delete` | `[%]` | Delete file from disk and close buffer (`!` force-closes if modified) |
 | `next` | `[target]` | Next file in directory |
 | `prev` | `[target]` | Previous file in directory |
+| `cd` | `[scope]` | Set cwd to buffer's dir + refresh file explorer |
 
 `!` overrides safety checks (existing-file guard, modified-buffer confirm).
 `%` is an optional explicit "current file" scope — always implied when omitted.
@@ -69,6 +70,11 @@ require("fileops_nvim").setup({
     root                = "buffer_dir", -- "buffer_dir"|"cwd"
     confirm_on_modified = true,         -- vim.ui.select prompt when buffer is modified
     case_insensitive    = true,         -- Case-insensitive sort and comparison
+  },
+  -- Options for :File cd
+  cd = {
+    scope             = "window", -- "window" (:lcd) | "tab" (:tcd) | "global" (:cd)
+    refresh_explorers = true,     -- Refresh neo-tree/nvim-tree/netrw after cd
   },
   keymaps = {
     cycle  = true,   -- <leader>nf/pf and variants
@@ -165,6 +171,24 @@ Navigate to the next / previous file in the current directory.
 | `tab` | New tab |
 | `bg` or `background` | Load into buffer list without switching |
 
+### `:File cd [scope]`
+
+Change the working directory to the directory of the current buffer's file,
+then refresh any open file explorer (neo-tree, nvim-tree, netrw) so it tracks
+the new root. Optional `[scope]` overrides `cd.scope` for this call.
+
+```
+:File cd            → :lcd to buffer's dir (window-local, default)
+:File cd tab        → :tcd (tab-local)
+:File cd global     → :cd (global)
+```
+
+| Scope | Command | Effect |
+|---|---|---|
+| `window` | `:lcd` | Window-local working directory (default) |
+| `tab` | `:tcd` | Tab-local working directory |
+| `global` | `:cd` | Global working directory |
+
 ---
 
 ## Keymaps
@@ -205,6 +229,7 @@ fileops.new_file(path, opts?)        -- :File new
 fileops.rename(path, opts?)          -- :File rename
 fileops.duplicate(path, opts?)       -- :File duplicate
 fileops.delete_current(opts?)        -- :File delete
+fileops.cd_here(opts?)               -- :File cd
 ```
 
 ---
