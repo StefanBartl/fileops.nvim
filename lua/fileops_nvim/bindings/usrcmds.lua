@@ -1,4 +1,4 @@
----@module 'fileops_nvim.commands'
+---@module 'fileops_nvim.bindings.usrcmds'
 ---Registers the single :File[!] unified user command.
 local M = {}
 

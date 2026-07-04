@@ -20,9 +20,21 @@
 ---@field scope?             FileOps.CdScope  cd scope: window (lcd), tab (tcd), global (cd).
 ---@field refresh_explorers? boolean          Refresh neo-tree/nvim-tree/netrw after cd.
 
+---@class FileOps.KeymapLhs
+---@field next_replace?    string|false  Next file, replace buffer.
+---@field prev_replace?    string|false  Previous file, replace buffer.
+---@field next_current?    string|false  Next file, edit in-place.
+---@field prev_current?    string|false  Previous file, edit in-place.
+---@field next_background? string|false  Next file, load into buffer list only.
+---@field prev_background? string|false  Previous file, load into buffer list only.
+---@field next_vsplit?     string|false  Next file, vertical split.
+---@field prev_vsplit?     string|false  Previous file, vertical split.
+---@field delete?          string|false  Delete current file + close buffer.
+
 ---@class FileOps.KeymapConfig
----@field cycle?  boolean   Register cycle (next/prev) keymaps.
----@field delete? boolean   Register delete-current-file keymap.
+---@field cycle?  boolean          Master switch: register cycle (next/prev) keymaps.
+---@field delete? boolean          Master switch: register delete-current-file keymap.
+---@field lhs?    FileOps.KeymapLhs  Per-key lhs overrides; `false` disables a single key.
 
 ---@class FileOps.Config
 ---@field cycle?    FileOps.CycleConfig   File-cycle options.

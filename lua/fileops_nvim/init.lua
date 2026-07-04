@@ -11,20 +11,7 @@ function M.setup(user_opts)
   _setup_done = true
 
   local cfg = require("fileops_nvim.config").setup(user_opts)
-
-  if cfg.commands ~= false then
-    require("fileops_nvim.commands").register()
-  end
-
-  local km_cfg = cfg.keymaps or {}
-
-  if km_cfg.cycle ~= false then
-    require("fileops_nvim.keymaps").attach_cycle()
-  end
-
-  if km_cfg.delete ~= false then
-    require("fileops_nvim.keymaps").attach_delete()
-  end
+  require("fileops_nvim.bindings").setup(cfg)
 
   vim.g.loaded_fileops_nvim = 1
 end

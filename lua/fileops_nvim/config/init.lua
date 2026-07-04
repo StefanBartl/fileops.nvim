@@ -1,28 +1,9 @@
 ---@module 'fileops_nvim.config'
+---Runtime config store: merge user options over DEFAULTS, expose get().
 local M = {}
 
 ---@type FileOps.Config
-M.DEFAULTS = {
-  cycle = {
-    open_target         = "replace",
-    keep_focus          = true,
-    include_hidden      = false,
-    wrap                = true,
-    follow_symlinks     = true,
-    root                = "buffer_dir",
-    confirm_on_modified = true,
-    case_insensitive    = true,
-  },
-  cd = {
-    scope             = "window",  -- "window" (lcd) | "tab" (tcd) | "global" (cd)
-    refresh_explorers = true,      -- refresh neo-tree/nvim-tree/netrw after cd
-  },
-  keymaps = {
-    cycle  = true,
-    delete = true,
-  },
-  commands = true,
-}
+M.DEFAULTS = require("fileops_nvim.config.DEFAULTS")
 
 ---@type FileOps.Config
 local _active = vim.deepcopy(M.DEFAULTS)

@@ -59,6 +59,20 @@ function M.check()
   else
     ok("nvim-treesitter not installed (not required)")
   end
+
+  -- lib.nvim (optional, soft dependency for notify/map)
+  if require("fileops_nvim.util.notify").using_lib() then
+    ok("lib.nvim detected (using lib.nvim.notify)")
+  else
+    ok("lib.nvim not found — using native vim.notify (standalone mode)")
+  end
+
+  -- which-key (optional, groups the <leader>n / <leader>p prefixes)
+  if require("fileops_nvim.bindings.which_key").available() then
+    ok('which-key detected (<leader>n / <leader>p grouped)')
+  else
+    ok("which-key not found — mappings still carry their own descriptions")
+  end
 end
 
 return M

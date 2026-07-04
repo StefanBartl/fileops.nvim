@@ -1,5 +1,20 @@
 # fileops.nvim — Roadmap
 
+## Implemented (v0.3)
+
+- `config/init.lua` + `config/DEFAULTS.lua` — Config in eigenem Ordner statt Einzeldatei
+- `bindings/` Ordner (`usrcmds.lua`, `keymaps.lua`, `which_key.lua`, `init.lua`) statt
+  `commands.lua` + `keymaps.lua` auf Modul-Root-Ebene
+- Jeder einzelne Keymap ist per `keymaps.lhs.*` individuell deaktivierbar (`false`)
+  oder umbindbar (eigener String) — nicht mehr nur Familie-weise per Boolean
+- `which-key` Soft-Dependency: gruppiert `<leader>n` / `<leader>p`, wenn installiert
+  (kein Hard-Dependency, kein Verhalten ohne which-key)
+- `lib.nvim` Soft-Dependency für Notifications (`lib.nvim.notify`), mit Fallback auf
+  `vim.notify` — Plugin bleibt ohne lib.nvim voll funktionsfähig
+- `docs/BINDINGS.md` — Cheatsheet aller Keymaps/Usrcmds/Autocmds
+- `docs/TESTS/` — Headless Spec-Suite (config, platform, cycle)
+- README/Doc: mehrere Package-Manager dokumentiert, keine Lizenzverweise mehr
+
 ## Implemented (v0.2)
 
 - `:File new / write / saveas / writeto / mkdir` — Dateierstellung
