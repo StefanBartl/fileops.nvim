@@ -1,8 +1,7 @@
 *fileops.txt*  File operations for Neovim                           *fileops.nvim*
 
 Author:   Stefan Bartl
-License:  MIT
-Version:  0.2.0
+Version:  0.3.0
 
 ==============================================================================
 CONTENTS                                                    *fileops-contents*
@@ -15,10 +14,11 @@ CONTENTS                                                    *fileops-contents*
      5.1 Subcommands ............ |fileops-subcmds|
      5.2 Navigation targets ...... |fileops-targets|
   6. Keymaps ................... |fileops-keymaps|
-  7. Lua API ................... |fileops-api|
-  8. Tab completion ............ |fileops-completion|
-  9. Health check .............. |fileops-health|
- 10. Architecture .............. |fileops-architecture|
+  7. Which-key .................. |fileops-whichkey|
+  8. Lua API ................... |fileops-api|
+  9. Tab completion ............ |fileops-completion|
+ 10. Health check .............. |fileops-health|
+ 11. Architecture .............. |fileops-architecture|
 
 ==============================================================================
 1. INTRODUCTION                                                *fileops-intro*
@@ -34,17 +34,29 @@ injection risk, fully cross-platform (Windows and Unix).
 2. REQUIREMENTS                                         *fileops-requirements*
 
   - Neovim 0.9 or later
-  - No external plugins required
+  - (optional) lib.nvim (https://github.com/StefanBartl/lib.nvim) — used for
+    notifications when present; fileops.nvim runs fully standalone without it
 
 ==============================================================================
 3. INSTALLATION                                         *fileops-installation*
 
-lazy.nvim (local checkout): >lua
+lazy.nvim: >lua
   {
-    dir   = vim.env.REPOS_DIR .. "/fileops.nvim",
+    "StefanBartl/fileops.nvim",
+    dependencies = { "StefanBartl/lib.nvim" }, -- optional
     event = "VeryLazy",
     opts  = {},
   }
+<
+
+packer.nvim / pckr.nvim: >lua
+  use({
+    "StefanBartl/fileops.nvim",
+    requires = { "StefanBartl/lib.nvim" }, -- optional
+    config = function()
+      require("fileops_nvim").setup()
+    end,
+  })
 <
 
 ==============================================================================
@@ -66,13 +78,24 @@ lazy.nvim (local checkout): >lua
       scope             = "window",
       refresh_explorers = true,
     },
-    keymaps  = { cycle = true, delete = true },
+    keymaps = {
+      cycle  = true,
+      delete = true,
+      lhs = {
+        next_replace    = "<leader>nf",
+        prev_replace    = "<leader>pf",
+        next_current    = "<leader>nfn",
+        prev_current    = "<leader>pfn",
+        next_background = "<leader>nF",
+        prev_background = "<leader>pF",
+        next_vsplit     = "<leader>NF",
+        prev_vsplit     = "<leader>PF",
+        delete          = "<leader>dcf",
+      },
+    },
     commands = true,
   })
 <
-
-Configuration keys are identical to the previous release. See |fileops-intro|
-for full descriptions.
 
 cycle.open_target ~
   `"replace"|"current"|"split"|"vsplit"|"tab"|"background"` — default
@@ -109,10 +132,16 @@ cd.refresh_explorers ~
   tracks the new root. Default: `true`.
 
 keymaps.cycle ~
-  Register the `<leader>nf` / `<leader>pf` family. Default: `true`.
+  Master switch: register the `<leader>nf` / `<leader>pf` family.
+  Default: `true`.
 
 keymaps.delete ~
-  Register `<leader>dcf`. Default: `true`.
+  Master switch: register `<leader>dcf`. Default: `true`.
+
+keymaps.lhs ~
+  Per-key `lhs` overrides. Set an entry to `false` to disable just that one
+  keymap, or to a different string to remap it. The master switches above
+  still gate the whole family. See |fileops-keymaps|.
 
 commands ~
   Register `:File`. Default: `true`.
@@ -230,7 +259,8 @@ configured `cycle.open_target` for that single invocation.
 ==============================================================================
 6. KEYMAPS                                                   *fileops-keymaps*
 
-Registered only when `setup()` is called.
+Registered only when `setup()` is called, and only for keys whose `lhs`
+resolves to a string (see |fileops-config|).
 
 Cycle keymaps (`keymaps.cycle = true`): ~
 
@@ -249,8 +279,28 @@ Delete keymap (`keymaps.delete = true`): ~
 
   `<leader>dcf`  `:File delete`
 
+Disable or remap a single key without touching the rest of the family: >lua
+  require("fileops_nvim").setup({
+    keymaps = {
+      lhs = {
+        next_replace = false,       -- disable just <leader>nf
+        delete       = "<leader>X", -- remap delete to <leader>X
+      },
+    },
+  })
+<
+
 ==============================================================================
-7. LUA API                                                      *fileops-api*
+7. WHICH-KEY                                                *fileops-whichkey*
+
+which-key.nvim (https://github.com/folke/which-key.nvim) is an OPTIONAL soft
+dependency. When installed, fileops.nvim groups the `<leader>n` and
+`<leader>p` prefixes so the cycle family reads as a menu; when absent, this
+is a no-op and every key still carries its own `desc`. Supports both
+which-key v2 (`register`) and v3 (`add`).
+
+==============================================================================
+8. LUA API                                                      *fileops-api*
 
 All functions are on the module table: `require("fileops_nvim")`.
 
@@ -280,7 +330,7 @@ cd_here({opts})                                      *fileops.cd_here()*
   {opts}: `{ scope?: "lcd"|"cd"|"tcd", refresh?: boolean }`.
 
 ==============================================================================
-8. TAB COMPLETION                                         *fileops-completion*
+9. TAB COMPLETION                                         *fileops-completion*
 
 `:File` provides context-aware tab completion:
 
@@ -292,7 +342,7 @@ cd_here({opts})                                      *fileops.cd_here()*
   (all path-taking subcmds use native file completion)
 
 ==============================================================================
-9. HEALTH CHECK                                              *fileops-health*
+10. HEALTH CHECK                                              *fileops-health*
 
 >
   :checkhealth fileops_nvim
@@ -304,26 +354,39 @@ Checks:
   - `vim.ui.select` available
   - `vim.fs.dir` available
   - Plugin loaded (guard flag set)
+  - `lib.nvim` integration status (optional)
+  - `which-key` integration status (optional)
 
 ==============================================================================
-10. ARCHITECTURE                                        *fileops-architecture*
+11. ARCHITECTURE                                        *fileops-architecture*
 
   plugin/fileops_nvim.lua    Load guard
   lua/fileops_nvim/
     init.lua                 Public API, setup()
-    config.lua               DEFAULTS + active config store
-    @types.lua               LuaLS annotations
-    commands.lua             :File command with subcommand dispatch
-    keymaps.lua              Keymap registrations
+    config/init.lua          Merge user opts over DEFAULTS, expose get()
+    config/DEFAULTS.lua      Immutable default configuration
+    @types/init.lua          LuaLS annotations
+    bindings/init.lua        Orchestrates usrcmds + keymaps + which-key
+    bindings/usrcmds.lua     :File command with subcommand dispatch
+    bindings/keymaps.lua     Per-key configurable keymap registrations
+    bindings/which_key.lua   Optional which-key group labels
     health.lua               checkhealth provider
     util/
-      notify.lua             "[fileops] " prefixed vim.notify wrapper
+      notify.lua             "[fileops] " notifier; soft lib.nvim.notify use
       platform.lua           libuv file ops (no shell, cross-platform)
     ops/
       cycle.lua              directory listing, navigate, open_path
       file.lua               create, rename, duplicate, delete
 
-Module load order: util → ops → commands/keymaps → init
+  docs/BINDINGS.md           Cheatsheet of every keymap/usrcmd/autocmd
+  docs/ROADMAP.md            Planned features
+  docs/TESTS/                Headless spec suite
+
+Module load order: util → ops → config → bindings → init
+
+`lib.nvim` is a soft, guarded dependency: if present, `lib.nvim.notify` is
+used for notifications; otherwise fileops.nvim falls back to plain
+`vim.notify` and runs fully standalone.
 
 ==============================================================================
 vim:tw=78:ts=8:noet:ft=help:norl:

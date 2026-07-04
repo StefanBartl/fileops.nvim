@@ -1,11 +1,41 @@
-# fileops.nvim
+```
+  ██████╗██╗██╗     ███████╗ ██████╗ ██████╗ ███████╗
+ ██╔════╝██║██║     ██╔════╝██╔═══██╗██╔══██╗██╔════╝
+ ██║     ██║██║     █████╗  ██║   ██║██████╔╝███████╗
+ ██║     ██║██║     ██╔══╝  ██║   ██║██╔═══╝ ╚════██║
+ ╚██████╗██║███████╗███████╗╚██████╔╝██║     ███████║
+  ╚═════╝╚═╝╚══════╝╚══════╝ ╚═════╝ ╚═╝     ╚══════╝
+                                               .nvim
+```
+
+![Neovim](https://img.shields.io/badge/Neovim-0.9+-57A143?logo=neovim&logoColor=white)
+![Lua](https://img.shields.io/badge/Made%20with-Lua-2C2D72?logo=lua&logoColor=white)
+
+> Pairs well with [sessions.nvim](https://github.com/StefanBartl/sessions.nvim):
+> fileops handles the lifecycle of a single file (create, rename, duplicate,
+> delete, cycle), sessions handles the lifecycle of the whole workspace
+> (save/restore) — same "no mandatory dependency, direct libuv/mksession" style.
 
 File operations for Neovim — one command, all operations.
 
 `:File` is a single unified command for creating, navigating, renaming,
-duplicating, and deleting files. Designed as a standalone plugin (no lib.nvim
-dependency), cross-platform (Windows + Unix), with all I/O going through
-libuv directly.
+duplicating, and deleting files. Cross-platform (Windows + Unix), with all
+I/O going through libuv directly.
+
+---
+
+## Table of contents
+
+- [Quick reference](#quick-reference)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Command reference](#command-reference)
+- [Keymaps](#keymaps)
+- [Which-key](#which-key)
+- [Lua API](#lua-api)
+- [Architecture](#architecture)
+- [Health check](#health-check)
 
 ---
 
@@ -36,22 +66,52 @@ libuv directly.
 
 ## Requirements
 
-- Neovim 0.9+
-- No external plugins required
+- Neovim **0.9+**
+- *(optional)* [lib.nvim](https://github.com/StefanBartl/lib.nvim) — used for
+  notifications when present; fileops.nvim runs fully standalone without it
 
 ---
 
 ## Installation
 
+**When to use which:**
+
+| Variant | Startup impact | When to use |
+|---|---|---|
+| `event = "VeryLazy"` | Minimal, after UI init | **Recommended** |
+| `lazy = false` | Loads immediately | Small config, want it available instantly |
+
 ### lazy.nvim
 
 ```lua
 {
-  dir = vim.env.REPOS_DIR .. "/fileops.nvim",  -- local checkout
-  -- or: "your-gh-user/fileops.nvim" for remote
+  "StefanBartl/fileops.nvim",
+  dependencies = { "StefanBartl/lib.nvim" }, -- optional
   event = "VeryLazy",
   opts = {},
 }
+```
+
+### packer.nvim / pckr.nvim
+
+```lua
+use({
+  "StefanBartl/fileops.nvim",
+  requires = { "StefanBartl/lib.nvim" }, -- optional
+  config = function()
+    require("fileops_nvim").setup()
+  end,
+})
+```
+
+### vim-plug
+
+```vim
+Plug 'StefanBartl/lib.nvim'  " optional
+Plug 'StefanBartl/fileops.nvim'
+```
+```lua
+require("fileops_nvim").setup()
 ```
 
 ---
@@ -77,8 +137,22 @@ require("fileops_nvim").setup({
     refresh_explorers = true,     -- Refresh neo-tree/nvim-tree/netrw after cd
   },
   keymaps = {
-    cycle  = true,   -- <leader>nf/pf and variants
-    delete = true,   -- <leader>dcf
+    cycle  = true,   -- master switch: <leader>nf/pf family
+    delete = true,   -- master switch: <leader>dcf
+    -- Per-key overrides: set an entry to `false` to disable just that one
+    -- keymap, or to a different string to remap it. Master switches above
+    -- still gate the whole family.
+    lhs = {
+      next_replace    = "<leader>nf",
+      prev_replace    = "<leader>pf",
+      next_current    = "<leader>nfn",
+      prev_current    = "<leader>pfn",
+      next_background = "<leader>nF",
+      prev_background = "<leader>pF",
+      next_vsplit     = "<leader>NF",
+      prev_vsplit     = "<leader>PF",
+      delete          = "<leader>dcf",
+    },
   },
   commands = true,   -- Register :File
 })
@@ -193,7 +267,8 @@ the new root. Optional `[scope]` overrides `cd.scope` for this call.
 
 ## Keymaps
 
-Registered only when `setup()` is called.
+Registered only when `setup()` is called, and only for keys whose `lhs` entry
+resolves to a string (see [Configuration](#configuration)).
 
 **Cycle** (`keymaps.cycle = true`):
 
@@ -215,6 +290,29 @@ All cycle keymaps respect `v:count1`.
 | Key | Action |
 |---|---|
 | `<leader>dcf` | Delete current file + close buffer |
+
+Disable or remap a single key without touching the rest of the family:
+
+```lua
+require("fileops_nvim").setup({
+  keymaps = {
+    lhs = {
+      next_replace = false,       -- disable just <leader>nf
+      delete       = "<leader>X", -- remap delete to <leader>X
+    },
+  },
+})
+```
+
+---
+
+## Which-key
+
+[which-key.nvim](https://github.com/folke/which-key.nvim) is an **optional**
+soft dependency. When installed, fileops.nvim groups the `<leader>n` and
+`<leader>p` prefixes so the cycle family reads as a menu; when absent, this is
+a no-op and every key still carries its own `desc`. Supports both which-key v2
+(`register`) and v3 (`add`).
 
 ---
 
@@ -238,24 +336,37 @@ fileops.cd_here(opts?)               -- :File cd
 
 ```
 lua/fileops_nvim/
-  init.lua           Public API + setup()
-  config.lua         Defaults and active-config store
-  @types.lua         LuaLS type annotations
-  commands.lua       Single :File command with subcommand dispatch
-  keymaps.lua        vim.keymap.set registrations
-  health.lua         :checkhealth fileops_nvim
+  init.lua              Public API + setup()
+  config/
+    init.lua             Merge user opts over DEFAULTS, expose get()
+    DEFAULTS.lua          Immutable default configuration
+  @types/init.lua        LuaLS type annotations
+  bindings/
+    init.lua              Orchestrates usrcmds + keymaps + which-key
+    usrcmds.lua           Single :File command with subcommand dispatch
+    keymaps.lua           Per-key configurable vim.keymap.set registrations
+    which_key.lua         Optional which-key group labels (soft dependency)
+  health.lua             :checkhealth fileops_nvim
   util/
-    notify.lua       "[fileops] " prefixed vim.notify wrapper
-    platform.lua     libuv delete/copy/rename/mkdir_p (no shell)
+    notify.lua            "[fileops] " prefixed notifier; upgrades to
+                           lib.nvim.notify when lib.nvim is installed
+    platform.lua           libuv delete/copy/rename/mkdir_p (no shell)
   ops/
-    cycle.lua        Directory listing, indexing, navigation, open_path
-    file.lua         Create, rename, duplicate, delete operations
+    cycle.lua              Directory listing, indexing, navigation, open_path
+    file.lua               Create, rename, duplicate, delete operations
 plugin/
-  fileops_nvim.lua   Load guard
+  fileops_nvim.lua        Load guard
+docs/
+  BINDINGS.md             Cheatsheet of every keymap, user command, autocmd
+  ROADMAP.md              Planned features
+  TESTS/                  Headless spec suite (see docs/TESTS/README.md)
 ```
 
 All file I/O uses `vim.uv` (libuv) — no shell, no injection risk, fully
-cross-platform.
+cross-platform. `lib.nvim` is a **soft, guarded** dependency (see
+[Requirements](#requirements)): if present, `lib.nvim.notify` is used for
+notifications; otherwise fileops.nvim falls back to plain `vim.notify` and
+runs fully standalone.
 
 ---
 
@@ -264,9 +375,3 @@ cross-platform.
 ```
 :checkhealth fileops_nvim
 ```
-
----
-
-## License
-
-MIT

@@ -22,6 +22,7 @@ fileops-keymaps	fileops.txt	/*fileops-keymaps*
 fileops-requirements	fileops.txt	/*fileops-requirements*
 fileops-subcmds	fileops.txt	/*fileops-subcmds*
 fileops-targets	fileops.txt	/*fileops-targets*
+fileops-whichkey	fileops.txt	/*fileops-whichkey*
 fileops.cd_here()	fileops.txt	/*fileops.cd_here()*
 fileops.delete_current()	fileops.txt	/*fileops.delete_current()*
 fileops.duplicate()	fileops.txt	/*fileops.duplicate()*
