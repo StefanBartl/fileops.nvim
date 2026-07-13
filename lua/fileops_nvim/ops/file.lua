@@ -234,7 +234,8 @@ end
 ---Move every window currently displaying `bufnr` onto an alternate listed
 ---buffer, so that deleting `bufnr` does not spawn a throwaway empty buffer when
 ---other buffers still exist. Prefers the alternate file (`#`) for a natural
----"return to where I was" feel.
+---"return to where I was" feel. Candidates must have a real file name, so
+---Neovim's original empty no-name scratch buffer is never picked as the alt.
 ---@param bufnr integer
 ---@return boolean switched  True if an alternate was found and applied.
 local function switch_windows_off(bufnr)
@@ -243,14 +244,16 @@ local function switch_windows_off(bufnr)
   local altfile = fn.bufnr("#")
   if altfile ~= -1 and altfile ~= bufnr
      and api.nvim_buf_is_valid(altfile)
-     and vim.bo[altfile].buflisted then
+     and vim.bo[altfile].buflisted
+     and buf_path(altfile) then
     alt = altfile
   end
 
   if not alt then
     for _, b in ipairs(api.nvim_list_bufs()) do
       if b ~= bufnr and api.nvim_buf_is_valid(b)
-         and vim.bo[b].buflisted and vim.bo[b].buftype == "" then
+         and vim.bo[b].buflisted and vim.bo[b].buftype == ""
+         and buf_path(b) then
         alt = b
         break
       end
