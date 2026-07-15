@@ -41,12 +41,47 @@
 ---@field skip_remote?           boolean  Skip remote/URL-style buffers (e.g. scheme://). Default: true.
 ---@field detect_remote_pattern? string   Lua pattern to detect remote buffers. Default: "^%w%w+:[\\/][\\/]".
 
+---@alias FileOps.OnHoldMode
+---| '"n"'  # Normal mode
+---| '"v"'  # Visual mode
+---| '"i"'  # Insert mode
+
+---@class FileOps.OnHoldConfig
+--- Ambient, mode-aware line-diff preview on CursorHold/CursorHoldI. Prefers
+--- gitsigns' `preview_hunk_inline()`; falls back to rendering the previous
+--- committed content of the current line as EOL/right-aligned virtual text.
+---@field enable?               boolean  Master switch for this feature. Default: true.
+---@field modes?                (FileOps.OnHoldMode|string)[]|string|nil  Mode filter (any combination, e.g. "nv") or array. Default: nil (Normal+Visual).
+---@field events_override?      string[]|nil  Fully replace the auto-mapped events, e.g. { "CursorHold", "CursorHoldI" }.
+---@field delay?                integer|nil  Extra debounce (ms) beyond 'updatetime'. Default: 3000.
+---@field throttle_ms?          integer|nil  Min time (ms) between triggers per window. Default: 1200.
+---@field git_cmd?              string|nil  Git executable to use. Default: "git".
+---@field ignore_buftypes?      string[]|nil  Skip these buftypes. Default: { "nofile", "prompt", "terminal" }.
+---@field only_tracked?         boolean|nil  Skip files not tracked by git. Default: true.
+---@field require_clean_buffer? boolean|nil  Skip if buffer has unsaved changes. Default: false.
+---@field prefix?               string|nil  Prefix before the fallback EOL preview. Default: "previous: ".
+---@field right_align?          boolean|nil  Place virt_text right-aligned instead of eol. Default: false.
+---@field max_len?              integer|nil  Truncate fallback preview to this many characters. Default: 160.
+---@field hl_prev?              string|nil  Highlight group for fallback preview text. Default: "Comment".
+---@field virt_priority?        integer|nil  Extmark virt_text priority. Default: 1000.
+---@field prefer_inline?        boolean|nil  Prefer gitsigns.preview_hunk_inline() when available. Default: true.
+---@field restore_view?         boolean|nil  Save/restore winsaveview()+cursor around the inline preview. Default: true.
+
+---@class FileOps.ConflictMarksConfig
+--- Highlight Git conflict markers (<<<<<<< / ======= / >>>>>>>) per-window.
+---@field enable? boolean     Master switch for this feature. Default: true.
+---@field hl_a?   string|nil  Highlight group for "<<<<<<<" lines. Default: "DiffDelete".
+---@field hl_b?   string|nil  Highlight group for "=======" separator. Default: "DiffChange".
+---@field hl_c?   string|nil  Highlight group for ">>>>>>>" lines. Default: "DiffAdd".
+
 ---@class FileOps.Config
----@field cycle?      FileOps.CycleConfig      File-cycle options.
----@field cd?         FileOps.CdConfig         Change-directory options.
----@field keymaps?    FileOps.KeymapConfig     Keymap registration flags.
----@field commands?   boolean                  Register all user commands (default: true).
----@field auto_mkdir? FileOps.AutoMkdirConfig  Auto-create parent dirs before writing (default: enabled).
+---@field cycle?          FileOps.CycleConfig          File-cycle options.
+---@field cd?             FileOps.CdConfig             Change-directory options.
+---@field keymaps?        FileOps.KeymapConfig         Keymap registration flags.
+---@field commands?       boolean                      Register all user commands (default: true).
+---@field auto_mkdir?     FileOps.AutoMkdirConfig      Auto-create parent dirs before writing (default: enabled).
+---@field on_hold?        FileOps.OnHoldConfig         Ambient CursorHold line-diff preview (default: enabled).
+---@field conflict_marks? FileOps.ConflictMarksConfig  Conflict-marker highlighting (default: enabled).
 
 ---@class FileOps.CycleState
 ---@field config FileOps.CycleConfig

@@ -31,4 +31,16 @@ function M.attach_auto_mkdir(cfg)
   })
 end
 
+---Register the ambient CursorHold/CursorHoldI line-diff preview autocmds if `cfg.enable`.
+---@param cfg FileOps.OnHoldConfig
+function M.attach_on_hold(cfg)
+  require("fileops_nvim.features.on_hold").setup(cfg)
+end
+
+---Register the BufWinEnter/BufWinLeave conflict-marker highlight autocmds if `cfg.enable`.
+---@param cfg FileOps.ConflictMarksConfig
+function M.attach_conflict_marks(cfg)
+  require("fileops_nvim.features.conflict_marks").setup(cfg)
+end
+
 return M

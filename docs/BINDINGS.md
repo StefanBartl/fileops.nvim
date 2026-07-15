@@ -50,11 +50,17 @@ or `:h fileops-command`.
 ## Autocommands
 
 Registered by [`bindings/autocmds.lua`](../lua/fileops_nvim/bindings/autocmds.lua),
-gated by `config.auto_mkdir.enable`.
+gated by `config.auto_mkdir.enable` / `config.on_hold.enable` /
+`config.conflict_marks.enable`.
 
-| Event | augroup | Action |
-|---|---|---|
-| `BufWritePre` | `fileops_nvim_auto_mkdir` | Create parent directories for the file about to be written (same logic as `:File mkdir`) |
+| Event | augroup | Action | gated by |
+|---|---|---|---|
+| `BufWritePre` | `fileops_nvim_auto_mkdir` | Create parent directories for the file about to be written (same logic as `:File mkdir`) | `auto_mkdir.enable` |
+| `CursorHold`/`CursorHoldI` | `fileops_nvim_on_hold_preview` | Preview what changed on the current line (gitsigns inline preview, or previous-content fallback) | `on_hold.enable` |
+| `ModeChanged` | `fileops_nvim_on_hold_modeclear` | Clear/abort the line-diff preview when leaving an allowed mode | `on_hold.enable` |
+| `CursorMoved`/`BufHidden`/`InsertEnter` (once, buffer-local) | `fileops_nvim_on_hold_cleanup` | Clear the line-diff preview on next move | `on_hold.enable` |
+| `BufWinEnter` | `fileops_nvim_conflict_marks_on` | Highlight Git conflict markers (`<<<<<<<`/`=======`/`>>>>>>>`) | `conflict_marks.enable` |
+| `BufWinLeave` | `fileops_nvim_conflict_marks_off` | Clear conflict marker highlights | `conflict_marks.enable` |
 
 `config.auto_mkdir.skip_remote` (default `true`) skips buffers whose name
 matches `config.auto_mkdir.detect_remote_pattern` (e.g. `ssh://`, `http://`).

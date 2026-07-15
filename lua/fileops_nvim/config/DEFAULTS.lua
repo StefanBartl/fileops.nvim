@@ -41,4 +41,28 @@ return {
     skip_remote            = true,
     detect_remote_pattern  = "^%w%w+:[\\/][\\/]", -- e.g. "ssh://", "http://", "file://" (both slash styles)
   },
+  on_hold = {
+    enable = true, -- master switch for this feature
+    modes = "n", -- "n"|"v"|"i" (any combination) or array; nil = n+v
+    delay = 3000, -- extra debounce (ms) beyond 'updatetime'
+    throttle_ms = 1200, -- min time (ms) between triggers per window
+    git_cmd = "git", -- git executable to use
+    ignore_buftypes = { "nofile", "prompt", "terminal" },
+    only_tracked = true, -- skip files not tracked by git
+    require_clean_buffer = false, -- skip if buffer has unsaved changes
+    prefix = "previous: ", -- prefix before fallback EOL preview text
+    right_align = false, -- place virt_text right-aligned instead of eol
+    max_len = 160, -- truncate fallback preview to this many characters
+    hl_prev = "Comment", -- highlight group for fallback preview text
+    virt_priority = 1000, -- extmark virt_text priority
+    prefer_inline = true, -- prefer gitsigns.preview_hunk_inline() when available
+    restore_view = true, -- save/restore winsaveview()+cursor to avoid scroll jumps
+    events_override = nil, -- fully override auto-mapped events
+  },
+  conflict_marks = {
+    enable = true,
+    hl_a = "DiffDelete", -- "<<<<<<<" lines
+    hl_b = "DiffChange", -- "=======" separator
+    hl_c = "DiffAdd",    -- ">>>>>>>" lines
+  },
 }
