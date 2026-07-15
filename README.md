@@ -32,6 +32,7 @@ I/O going through libuv directly.
 - [Configuration](#configuration)
 - [Command reference](#command-reference)
 - [Keymaps](#keymaps)
+- [Autocommands](#autocommands)
 - [Which-key](#which-key)
 - [Lua API](#lua-api)
 - [Architecture](#architecture)
@@ -155,6 +156,12 @@ require("fileops_nvim").setup({
     },
   },
   commands = true,   -- Register :File
+  -- Auto-create parent dirs on save (BufWritePre) — automatic counterpart to :File mkdir
+  auto_mkdir = {
+    enable                = true,
+    skip_remote           = true,
+    detect_remote_pattern = "^%w%w+:[\\/][\\/]", -- e.g. "ssh://", "http://"
+  },
 })
 ```
 
@@ -188,7 +195,8 @@ Write a copy of the buffer to `{path}` without changing the buffer's name.
 
 ### `:File mkdir`
 
-Create the parent directory hierarchy for the current buffer's file.
+Create the parent directory hierarchy for the current buffer's file. This
+runs automatically before every save too — see [Autocommands](#autocommands).
 
 ### `:File[!] rename [%] {dest}`
 
@@ -306,6 +314,25 @@ require("fileops_nvim").setup({
 
 ---
 
+## Autocommands
+
+| Event | augroup | Action |
+|---|---|---|
+| `BufWritePre` | `fileops_nvim_auto_mkdir` | Create parent directories for the file about to be written — the automatic-on-save counterpart to [`:File mkdir`](#file-mkdir) |
+
+Gated by `config.auto_mkdir.enable` (default `true`). Disable it entirely:
+
+```lua
+require("fileops_nvim").setup({
+  auto_mkdir = { enable = false },
+})
+```
+
+`auto_mkdir.skip_remote` (default `true`) skips buffers whose name matches
+`auto_mkdir.detect_remote_pattern` (e.g. `ssh://`, `http://`).
+
+---
+
 ## Which-key
 
 [which-key.nvim](https://github.com/folke/which-key.nvim) is an **optional**
@@ -342,9 +369,10 @@ lua/fileops_nvim/
     DEFAULTS.lua          Immutable default configuration
   @types/init.lua        LuaLS type annotations
   bindings/
-    init.lua              Orchestrates usrcmds + keymaps + which-key
+    init.lua              Orchestrates usrcmds + keymaps + autocmds + which-key
     usrcmds.lua           Single :File command with subcommand dispatch
     keymaps.lua           Per-key configurable vim.keymap.set registrations
+    autocmds.lua           auto_mkdir BufWritePre autocmd
     which_key.lua         Optional which-key group labels (soft dependency)
   health.lua             :checkhealth fileops_nvim
   util/

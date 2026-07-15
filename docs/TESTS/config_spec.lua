@@ -12,6 +12,8 @@ return function(H)
   eq(d.keymaps.cycle, true, "default keymaps.cycle")
   eq(d.keymaps.lhs.next_replace, "<leader>nf", "default keymaps.lhs.next_replace")
   ok(type(d.keymaps.lhs) == "table", "keymaps.lhs is a table")
+  eq(d.auto_mkdir.enable, true, "default auto_mkdir.enable")
+  eq(d.auto_mkdir.skip_remote, true, "default auto_mkdir.skip_remote")
 
   -- shallow override
   config.setup({ commands = false, cd = { scope = "global" } })
