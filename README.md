@@ -162,6 +162,32 @@ require("fileops_nvim").setup({
     skip_remote           = true,
     detect_remote_pattern = "^%w%w+:[\\/][\\/]", -- e.g. "ssh://", "http://"
   },
+  -- Ambient CursorHold line-diff preview
+  on_hold = {
+    enable = true,
+    modes = "n", -- "n"|"v"|"i" (any combination) or array; nil = n+v
+    delay = 3000, -- extra debounce (ms) beyond 'updatetime'
+    throttle_ms = 1200, -- min time (ms) between triggers per window
+    git_cmd = "git",
+    ignore_buftypes = { "nofile", "prompt", "terminal" },
+    only_tracked = true, -- skip files not tracked by git
+    require_clean_buffer = false, -- skip if buffer has unsaved changes
+    prefix = "previous: ", -- prefix before fallback EOL preview text
+    right_align = false, -- place virt_text right-aligned instead of eol
+    max_len = 160, -- truncate fallback preview to this many characters
+    hl_prev = "Comment",
+    virt_priority = 1000,
+    prefer_inline = true, -- prefer gitsigns.preview_hunk_inline() when available
+    restore_view = true, -- save/restore winsaveview()+cursor to avoid scroll jumps
+    events_override = nil, -- fully override auto-mapped events
+  },
+  -- Highlight Git conflict markers (<<<<<<< / ======= / >>>>>>>)
+  conflict_marks = {
+    enable = true,
+    hl_a = "DiffDelete",
+    hl_b = "DiffChange",
+    hl_c = "DiffAdd",
+  },
 })
 ```
 
@@ -331,6 +357,38 @@ require("fileops_nvim").setup({
 `auto_mkdir.skip_remote` (default `true`) skips buffers whose name matches
 `auto_mkdir.detect_remote_pattern` (e.g. `ssh://`, `http://`).
 
+### `on_hold`
+
+On `CursorHold`/`CursorHoldI`, previews what changed on the current line:
+prefers gitsigns' inline hunk preview when available, otherwise falls back to
+showing the previous committed content of the line as virtual text (via
+`git blame`/`git show`, argv-only — no shell). Per-window throttled, mode-aware
+(`on_hold.modes`), and cleared on the next cursor move. Sets
+`vim.o.updatetime = 100` when enabled, matching the responsiveness the
+fallback preview needs.
+
+Gated by `config.on_hold.enable` (default `true`). Disable it entirely:
+
+```lua
+require("fileops_nvim").setup({
+  on_hold = { enable = false },
+})
+```
+
+### `conflict_marks`
+
+On `BufWinEnter`/`BufWinLeave`, highlights unresolved Git conflict markers
+(`<<<<<<<`, `=======`, `>>>>>>>`) using `matchadd`/`matchdelete`, scoped
+per-window.
+
+Gated by `config.conflict_marks.enable` (default `true`). Disable it entirely:
+
+```lua
+require("fileops_nvim").setup({
+  conflict_marks = { enable = false },
+})
+```
+
 ---
 
 ## Which-key
@@ -372,7 +430,7 @@ lua/fileops_nvim/
     init.lua              Orchestrates usrcmds + keymaps + autocmds + which-key
     usrcmds.lua           Single :File command with subcommand dispatch
     keymaps.lua           Per-key configurable vim.keymap.set registrations
-    autocmds.lua           auto_mkdir BufWritePre autocmd
+    autocmds.lua           auto_mkdir/on_hold/conflict_marks registration
     which_key.lua         Optional which-key group labels (soft dependency)
   health.lua             :checkhealth fileops_nvim
   util/
@@ -382,6 +440,9 @@ lua/fileops_nvim/
   ops/
     cycle.lua              Directory listing, indexing, navigation, open_path
     file.lua               Create, rename, duplicate, delete operations
+  features/
+    on_hold.lua             Ambient CursorHold line-diff preview
+    conflict_marks.lua      Conflict-marker highlighting
 plugin/
   fileops_nvim.lua        Load guard
 docs/

@@ -100,6 +100,30 @@ packer.nvim / pckr.nvim: >lua
       skip_remote            = true,
       detect_remote_pattern  = "^%w%w+:[\\/][\\/]",
     },
+    on_hold = {
+      enable                = true,
+      modes                 = "n",             -- "n"|"v"|"i" (any combination) or array; nil = n+v
+      delay                 = 3000,             -- extra debounce (ms) beyond 'updatetime'
+      throttle_ms           = 1200,             -- min time (ms) between triggers per window
+      git_cmd               = "git",
+      ignore_buftypes       = { "nofile", "prompt", "terminal" },
+      only_tracked          = true,             -- skip files not tracked by git
+      require_clean_buffer  = false,            -- skip if buffer has unsaved changes
+      prefix                = "previous: ",     -- prefix before fallback EOL preview text
+      right_align           = false,            -- place virt_text right-aligned instead of eol
+      max_len               = 160,              -- truncate fallback preview to this many chars
+      hl_prev               = "Comment",
+      virt_priority         = 1000,
+      prefer_inline         = true,             -- prefer gitsigns.preview_hunk_inline()
+      restore_view          = true,             -- save/restore winsaveview()+cursor
+      events_override       = nil,              -- fully override auto-mapped events
+    },
+    conflict_marks = {
+      enable = true,
+      hl_a = "DiffDelete",  -- "<<<<<<<" lines
+      hl_b = "DiffChange",  -- "=======" separator
+      hl_c = "DiffAdd",     -- ">>>>>>>" lines
+    },
   })
 <
 
@@ -163,6 +187,72 @@ auto_mkdir.skip_remote ~
 auto_mkdir.detect_remote_pattern ~
   Lua pattern used to detect remote buffer names.
   Default: `"^%w%w+:[\\/][\\/]"`.
+
+on_hold.enable ~
+  Master switch for the ambient line-diff preview. Default: `true`.
+  See |fileops-autocmds|.
+
+on_hold.modes ~
+  Mode filter for the preview: `"n"`, `"v"`, `"i"` (any combination as a
+  string, e.g. `"nv"`) or an array. Default: `nil` (Normal+Visual).
+
+on_hold.events_override ~
+  If set, fully replaces the auto-mapped events, e.g.
+  `{ "CursorHold", "CursorHoldI" }`.
+
+on_hold.delay ~
+  Extra debounce (ms) beyond `'updatetime'` before running. Default: `3000`.
+
+on_hold.throttle_ms ~
+  Minimum time (ms) between triggers per window. Default: `1200`.
+
+on_hold.git_cmd ~
+  Git executable to use. Default: `"git"`.
+
+on_hold.ignore_buftypes ~
+  Skip these buftypes. Default: `{ "nofile", "prompt", "terminal" }`.
+
+on_hold.only_tracked ~
+  Skip files not tracked by git. Default: `true`.
+
+on_hold.require_clean_buffer ~
+  Skip the preview if the buffer has unsaved changes. Default: `false`.
+
+on_hold.prefix ~
+  Prefix before the fallback EOL preview text. Default: `"previous: "`.
+
+on_hold.right_align ~
+  Place the fallback preview's virt_text right-aligned instead of at EOL.
+  Default: `false`.
+
+on_hold.max_len ~
+  Truncate the fallback preview to this many characters. Default: `160`.
+
+on_hold.hl_prev ~
+  Highlight group for the fallback preview text. Default: `"Comment"`.
+
+on_hold.virt_priority ~
+  Extmark virt_text priority for the fallback preview. Default: `1000`.
+
+on_hold.prefer_inline ~
+  Prefer `gitsigns.preview_hunk_inline()` when available. Default: `true`.
+
+on_hold.restore_view ~
+  Save/restore `winsaveview()` + cursor around the inline preview to avoid
+  scroll jumps. Default: `true`.
+
+conflict_marks.enable ~
+  Master switch for conflict-marker highlighting. Default: `true`.
+  See |fileops-autocmds|.
+
+conflict_marks.hl_a ~
+  Highlight group for `<<<<<<<` lines. Default: `"DiffDelete"`.
+
+conflict_marks.hl_b ~
+  Highlight group for `=======` separator lines. Default: `"DiffChange"`.
+
+conflict_marks.hl_c ~
+  Highlight group for `>>>>>>>` lines. Default: `"DiffAdd"`.
 
 ==============================================================================
 5. THE :File COMMAND                                        *fileops-command*
@@ -337,6 +427,30 @@ auto_mkdir (`BufWritePre`) ~
     Lua pattern used to detect remote buffer names.
     Default: `"^%w%w+:[\\/][\\/]"`.
 
+on_hold (`CursorHold`/`CursorHoldI`) ~
+  Ambient, mode-aware line-diff preview. Prefers gitsigns'
+  `preview_hunk_inline()` when available, otherwise falls back to showing the
+  previous committed content of the current line as EOL/right-aligned virtual
+  text (via `git blame`/`git show`, argv-only — no shell). Per-window
+  throttled (`on_hold.throttle_ms`), mode-aware (`on_hold.modes`), and cleared
+  on the next cursor move. Sets `vim.o.updatetime = 100` when enabled.
+  Enabled by default.
+
+  Disable with: >lua
+    require("fileops_nvim").setup({ on_hold = { enable = false } })
+  <
+  See |fileops-config| for the full `on_hold.*` option list.
+
+conflict_marks (`BufWinEnter`/`BufWinLeave`) ~
+  Highlights unresolved Git conflict markers (`<<<<<<<`, `=======`,
+  `>>>>>>>`) using `matchadd`/`matchdelete`, scoped per-window. Enabled by
+  default.
+
+  Disable with: >lua
+    require("fileops_nvim").setup({ conflict_marks = { enable = false } })
+  <
+  See |fileops-config| for the `conflict_marks.*` option list.
+
 ==============================================================================
 8. WHICH-KEY                                                *fileops-whichkey*
 
@@ -403,6 +517,8 @@ Checks:
   - Plugin loaded (guard flag set)
   - `lib.nvim` integration status (optional)
   - `which-key` integration status (optional)
+  - `git` executable found (required for on_hold)
+  - `gitsigns.nvim` found (optional; on_hold prefers its inline preview)
 
 ==============================================================================
 12. ARCHITECTURE                                        *fileops-architecture*
@@ -416,7 +532,7 @@ Checks:
     bindings/init.lua        Orchestrates usrcmds + keymaps + autocmds + which-key
     bindings/usrcmds.lua     :File command with subcommand dispatch
     bindings/keymaps.lua     Per-key configurable keymap registrations
-    bindings/autocmds.lua    auto_mkdir BufWritePre autocmd
+    bindings/autocmds.lua    auto_mkdir/on_hold/conflict_marks registration
     bindings/which_key.lua   Optional which-key group labels
     health.lua               checkhealth provider
     util/
@@ -425,6 +541,9 @@ Checks:
     ops/
       cycle.lua              directory listing, navigate, open_path
       file.lua               create, rename, duplicate, delete
+    features/
+      on_hold.lua            ambient CursorHold line-diff preview
+      conflict_marks.lua     conflict-marker highlighting
 
   docs/BINDINGS.md           Cheatsheet of every keymap/usrcmd/autocmd
   docs/ROADMAP.md            Planned features

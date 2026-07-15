@@ -20,6 +20,8 @@ function M.setup(cfg)
   end
 
   require("fileops_nvim.bindings.autocmds").attach_auto_mkdir(cfg.auto_mkdir)
+  require("fileops_nvim.bindings.autocmds").attach_on_hold(cfg.on_hold)
+  require("fileops_nvim.bindings.autocmds").attach_conflict_marks(cfg.conflict_marks)
 
   require("fileops_nvim.bindings.which_key").setup()
 end
