@@ -36,11 +36,17 @@
 ---@field delete? boolean          Master switch: register delete-current-file keymap.
 ---@field lhs?    FileOps.KeymapLhs  Per-key lhs overrides; `false` disables a single key.
 
+---@class FileOps.AutoMkdirConfig
+---@field enable?                boolean  Auto-create parent dirs on BufWritePre. Default: true.
+---@field skip_remote?           boolean  Skip remote/URL-style buffers (e.g. scheme://). Default: true.
+---@field detect_remote_pattern? string   Lua pattern to detect remote buffers. Default: "^%w%w+:[\\/][\\/]".
+
 ---@class FileOps.Config
----@field cycle?    FileOps.CycleConfig   File-cycle options.
----@field cd?       FileOps.CdConfig      Change-directory options.
----@field keymaps?  FileOps.KeymapConfig  Keymap registration flags.
----@field commands? boolean               Register all user commands (default: true).
+---@field cycle?      FileOps.CycleConfig      File-cycle options.
+---@field cd?         FileOps.CdConfig         Change-directory options.
+---@field keymaps?    FileOps.KeymapConfig     Keymap registration flags.
+---@field commands?   boolean                  Register all user commands (default: true).
+---@field auto_mkdir? FileOps.AutoMkdirConfig  Auto-create parent dirs before writing (default: enabled).
 
 ---@class FileOps.CycleState
 ---@field config FileOps.CycleConfig

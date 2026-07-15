@@ -14,11 +14,12 @@ CONTENTS                                                    *fileops-contents*
      5.1 Subcommands ............ |fileops-subcmds|
      5.2 Navigation targets ...... |fileops-targets|
   6. Keymaps ................... |fileops-keymaps|
-  7. Which-key .................. |fileops-whichkey|
-  8. Lua API ................... |fileops-api|
-  9. Tab completion ............ |fileops-completion|
- 10. Health check .............. |fileops-health|
- 11. Architecture .............. |fileops-architecture|
+  7. Autocommands ............... |fileops-autocmds|
+  8. Which-key .................. |fileops-whichkey|
+  9. Lua API ................... |fileops-api|
+ 10. Tab completion ............ |fileops-completion|
+ 11. Health check .............. |fileops-health|
+ 12. Architecture .............. |fileops-architecture|
 
 ==============================================================================
 1. INTRODUCTION                                                *fileops-intro*
@@ -94,6 +95,11 @@ packer.nvim / pckr.nvim: >lua
       },
     },
     commands = true,
+    auto_mkdir = {
+      enable                 = true,
+      skip_remote            = true,
+      detect_remote_pattern  = "^%w%w+:[\\/][\\/]",
+    },
   })
 <
 
@@ -145,6 +151,18 @@ keymaps.lhs ~
 
 commands ~
   Register `:File`. Default: `true`.
+
+auto_mkdir.enable ~
+  Auto-create parent directories on `BufWritePre` (the automatic-on-save
+  counterpart to |:File-mkdir|). Default: `true`. See |fileops-autocmds|.
+
+auto_mkdir.skip_remote ~
+  Skip buffers whose name matches `auto_mkdir.detect_remote_pattern` (e.g.
+  `ssh://`, `http://`). Default: `true`.
+
+auto_mkdir.detect_remote_pattern ~
+  Lua pattern used to detect remote buffer names.
+  Default: `"^%w%w+:[\\/][\\/]"`.
 
 ==============================================================================
 5. THE :File COMMAND                                        *fileops-command*
@@ -291,7 +309,36 @@ Disable or remap a single key without touching the rest of the family: >lua
 <
 
 ==============================================================================
-7. WHICH-KEY                                                *fileops-whichkey*
+7. AUTOCOMMANDS                                              *fileops-autocmds*
+
+auto_mkdir (`BufWritePre`) ~
+  Creates the parent directory hierarchy of the file about to be written —
+  the automatic-on-save counterpart to |:File-mkdir|. Enabled by default.
+
+  Configuration (see |fileops-config|): >lua
+    require("fileops_nvim").setup({
+      auto_mkdir = {
+        enable                = true,
+        skip_remote           = true,
+        detect_remote_pattern = "^%w%w+:[\\/][\\/]",
+      },
+    })
+  <
+
+  auto_mkdir.enable ~
+    Master switch. Set to `false` to disable entirely. Default: `true`.
+
+  auto_mkdir.skip_remote ~
+    Skip buffers whose name looks like a remote/URL-style path (e.g.
+    `ssh://`, `http://`) so no local directory is created for them.
+    Default: `true`.
+
+  auto_mkdir.detect_remote_pattern ~
+    Lua pattern used to detect remote buffer names.
+    Default: `"^%w%w+:[\\/][\\/]"`.
+
+==============================================================================
+8. WHICH-KEY                                                *fileops-whichkey*
 
 which-key.nvim (https://github.com/folke/which-key.nvim) is an OPTIONAL soft
 dependency. When installed, fileops.nvim groups the `<leader>n` and
@@ -300,7 +347,7 @@ is a no-op and every key still carries its own `desc`. Supports both
 which-key v2 (`register`) and v3 (`add`).
 
 ==============================================================================
-8. LUA API                                                      *fileops-api*
+9. LUA API                                                      *fileops-api*
 
 All functions are on the module table: `require("fileops_nvim")`.
 
@@ -330,7 +377,7 @@ cd_here({opts})                                      *fileops.cd_here()*
   {opts}: `{ scope?: "lcd"|"cd"|"tcd", refresh?: boolean }`.
 
 ==============================================================================
-9. TAB COMPLETION                                         *fileops-completion*
+10. TAB COMPLETION                                         *fileops-completion*
 
 `:File` provides context-aware tab completion:
 
@@ -342,7 +389,7 @@ cd_here({opts})                                      *fileops.cd_here()*
   (all path-taking subcmds use native file completion)
 
 ==============================================================================
-10. HEALTH CHECK                                              *fileops-health*
+11. HEALTH CHECK                                              *fileops-health*
 
 >
   :checkhealth fileops_nvim
@@ -358,7 +405,7 @@ Checks:
   - `which-key` integration status (optional)
 
 ==============================================================================
-11. ARCHITECTURE                                        *fileops-architecture*
+12. ARCHITECTURE                                        *fileops-architecture*
 
   plugin/fileops_nvim.lua    Load guard
   lua/fileops_nvim/
@@ -366,9 +413,10 @@ Checks:
     config/init.lua          Merge user opts over DEFAULTS, expose get()
     config/DEFAULTS.lua      Immutable default configuration
     @types/init.lua          LuaLS annotations
-    bindings/init.lua        Orchestrates usrcmds + keymaps + which-key
+    bindings/init.lua        Orchestrates usrcmds + keymaps + autocmds + which-key
     bindings/usrcmds.lua     :File command with subcommand dispatch
     bindings/keymaps.lua     Per-key configurable keymap registrations
+    bindings/autocmds.lua    auto_mkdir BufWritePre autocmd
     bindings/which_key.lua   Optional which-key group labels
     health.lua               checkhealth provider
     util/

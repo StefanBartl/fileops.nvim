@@ -49,9 +49,15 @@ or `:h fileops-command`.
 
 ## Autocommands
 
-fileops.nvim defines **no autocommands**. Every operation is triggered
-explicitly via `:File` or a keymap — there is no background/eventing
-behaviour to document here.
+Registered by [`bindings/autocmds.lua`](../lua/fileops_nvim/bindings/autocmds.lua),
+gated by `config.auto_mkdir.enable`.
+
+| Event | augroup | Action |
+|---|---|---|
+| `BufWritePre` | `fileops_nvim_auto_mkdir` | Create parent directories for the file about to be written (same logic as `:File mkdir`) |
+
+`config.auto_mkdir.skip_remote` (default `true`) skips buffers whose name
+matches `config.auto_mkdir.detect_remote_pattern` (e.g. `ssh://`, `http://`).
 
 ## Which-key groups
 

@@ -36,4 +36,9 @@ return {
     },
   },
   commands = true,
+  auto_mkdir = {
+    enable                 = true,
+    skip_remote            = true,
+    detect_remote_pattern  = "^%w%w+:[\\/][\\/]", -- e.g. "ssh://", "http://", "file://" (both slash styles)
+  },
 }
