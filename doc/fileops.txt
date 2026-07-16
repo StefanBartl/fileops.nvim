@@ -101,7 +101,7 @@ packer.nvim / pckr.nvim: >lua
       detect_remote_pattern  = "^%w%w+:[\\/][\\/]",
     },
     on_hold = {
-      enable                = true,
+      enable                = false,           -- opt-in
       modes                 = "n",             -- "n"|"v"|"i" (any combination) or array; nil = n+v
       delay                 = 3000,             -- extra debounce (ms) beyond 'updatetime'
       throttle_ms           = 1200,             -- min time (ms) between triggers per window
@@ -189,8 +189,8 @@ auto_mkdir.detect_remote_pattern ~
   Default: `"^%w%w+:[\\/][\\/]"`.
 
 on_hold.enable ~
-  Master switch for the ambient line-diff preview. Default: `true`.
-  See |fileops-autocmds|.
+  Master switch for the ambient line-diff preview. Default: `false`
+  (opt-in). See |fileops-autocmds|.
 
 on_hold.modes ~
   Mode filter for the preview: `"n"`, `"v"`, `"i"` (any combination as a
@@ -434,10 +434,10 @@ on_hold (`CursorHold`/`CursorHoldI`) ~
   text (via `git blame`/`git show`, argv-only — no shell). Per-window
   throttled (`on_hold.throttle_ms`), mode-aware (`on_hold.modes`), and cleared
   on the next cursor move. Sets `vim.o.updatetime = 100` when enabled.
-  Enabled by default.
+  Disabled by default — opt-in.
 
-  Disable with: >lua
-    require("fileops_nvim").setup({ on_hold = { enable = false } })
+  Enable with: >lua
+    require("fileops_nvim").setup({ on_hold = { enable = true } })
   <
   See |fileops-config| for the full `on_hold.*` option list.
 

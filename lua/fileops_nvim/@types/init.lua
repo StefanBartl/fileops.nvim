@@ -80,7 +80,7 @@
 ---@field keymaps?        FileOps.KeymapConfig         Keymap registration flags.
 ---@field commands?       boolean                      Register all user commands (default: true).
 ---@field auto_mkdir?     FileOps.AutoMkdirConfig      Auto-create parent dirs before writing (default: enabled).
----@field on_hold?        FileOps.OnHoldConfig         Ambient CursorHold line-diff preview (default: enabled).
+---@field on_hold?        FileOps.OnHoldConfig         Ambient CursorHold line-diff preview (default: disabled; opt-in).
 ---@field conflict_marks? FileOps.ConflictMarksConfig  Conflict-marker highlighting (default: enabled).
 
 ---@class FileOps.CycleState
