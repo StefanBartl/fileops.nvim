@@ -4,6 +4,7 @@
 local M = {}
 
 local notify = require("fileops_nvim.util.notify")
+local open_background = require("lib.nvim.buffer.open_background")
 local api, fn = vim.api, vim.fn
 local uv      = vim.uv or vim.loop
 
@@ -170,10 +171,11 @@ local function open_path(path, opts)
     return true
 
   elseif target == "background" then
-    local ok, b = pcall(fn.bufadd, path)
-    if not ok then return false end
-    pcall(fn.bufload, b)
-    pcall(function() vim.bo[b].buflisted = true end)
+    local ok, err = open_background(path)
+    if not ok then
+      notify.error("background open failed: " .. tostring(err))
+      return false
+    end
     return true
 
   else
