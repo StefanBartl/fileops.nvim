@@ -42,7 +42,7 @@ return {
     detect_remote_pattern  = "^%w%w+:[\\/][\\/]", -- e.g. "ssh://", "http://", "file://" (both slash styles)
   },
   on_hold = {
-    enable = true, -- master switch for this feature
+    enable = false, -- master switch for this feature; opt-in explicitly in your setup() spec
     modes = "n", -- "n"|"v"|"i" (any combination) or array; nil = n+v
     delay = 3000, -- extra debounce (ms) beyond 'updatetime'
     throttle_ms = 1200, -- min time (ms) between triggers per window

@@ -14,15 +14,15 @@ return function(H)
   ok(type(d.keymaps.lhs) == "table", "keymaps.lhs is a table")
   eq(d.auto_mkdir.enable, true, "default auto_mkdir.enable")
   eq(d.auto_mkdir.skip_remote, true, "default auto_mkdir.skip_remote")
-  eq(d.on_hold.enable, true, "default on_hold.enable")
+  eq(d.on_hold.enable, false, "default on_hold.enable (opt-in)")
   eq(d.on_hold.throttle_ms, 1200, "default on_hold.throttle_ms")
   eq(d.conflict_marks.enable, true, "default conflict_marks.enable")
   eq(d.conflict_marks.hl_a, "DiffDelete", "default conflict_marks.hl_a")
 
-  -- toggling off
-  config.setup({ on_hold = { enable = false }, conflict_marks = { enable = false } })
+  -- opting in / toggling off
+  config.setup({ on_hold = { enable = true }, conflict_marks = { enable = false } })
   local t = config.get()
-  eq(t.on_hold.enable, false, "on_hold can be disabled")
+  eq(t.on_hold.enable, true, "on_hold can be explicitly enabled")
   eq(t.conflict_marks.enable, false, "conflict_marks can be disabled")
 
   -- shallow override

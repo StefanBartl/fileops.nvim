@@ -163,9 +163,9 @@ require("fileops_nvim").setup({
     skip_remote           = true,
     detect_remote_pattern = "^%w%w+:[\\/][\\/]", -- e.g. "ssh://", "http://"
   },
-  -- Ambient CursorHold line-diff preview
+  -- Ambient CursorHold line-diff preview (opt-in)
   on_hold = {
-    enable = true,
+    enable = false,
     modes = "n", -- "n"|"v"|"i" (any combination) or array; nil = n+v
     delay = 3000, -- extra debounce (ms) beyond 'updatetime'
     throttle_ms = 1200, -- min time (ms) between triggers per window
@@ -368,11 +368,11 @@ showing the previous committed content of the line as virtual text (via
 `vim.o.updatetime = 100` when enabled, matching the responsiveness the
 fallback preview needs.
 
-Gated by `config.on_hold.enable` (default `true`). Disable it entirely:
+Gated by `config.on_hold.enable` (default `false` — opt-in). Enable it:
 
 ```lua
 require("fileops_nvim").setup({
-  on_hold = { enable = false },
+  on_hold = { enable = true },
 })
 ```
 
