@@ -4,7 +4,7 @@
 local M = {}
 
 local notify   = require("fileops_nvim.util.notify")
-local platform = require("fileops_nvim.util.platform")
+local fsops    = require("lib.nvim.cross.fs.mutate")
 local api, fn  = vim.api, vim.fn
 
 -- ─── Internal helpers ─────────────────────────────────────────────────────────
@@ -43,7 +43,7 @@ function M.ensure_parent(path)
   local dir = fn.fnamemodify(path, ":p:h")
   if dir == "" then return false end
   if fn.isdirectory(dir) == 1 then return true end
-  if not platform.mkdir_p(dir) then
+  if not fsops.mkdir_p(dir) then
     notify.error("cannot create directory: " .. dir)
     return false
   end
@@ -161,7 +161,7 @@ function M.rename(new_path, opts)
     if not ok then notify.error("save failed before rename: " .. tostring(err)); return false end
   end
 
-  local ok, err = platform.rename_file(old, abs)
+  local ok, err = fsops.rename_file(old, abs)
   if not ok then
     notify.error("rename failed: " .. tostring(err))
     return false
@@ -213,7 +213,7 @@ function M.duplicate(new_path, opts)
     if not ok then notify.error("save failed before duplicate: " .. tostring(err)); return false end
   end
 
-  local ok, err = platform.copy_file(src, abs)
+  local ok, err = fsops.copy_file(src, abs)
   if not ok then
     notify.error("copy failed: " .. tostring(err))
     return false
@@ -293,7 +293,7 @@ function M.delete_current(opts)
     return false
   end
 
-  local ok, err = platform.delete_file(path)
+  local ok, err = fsops.delete_file(path)
   if not ok then
     notify.error("delete failed: " .. tostring(err))
     return false

@@ -68,8 +68,9 @@ I/O going through libuv directly.
 ## Requirements
 
 - Neovim **0.9+**
-- *(optional)* [lib.nvim](https://github.com/StefanBartl/lib.nvim) — used for
-  notifications when present; fileops.nvim runs fully standalone without it
+- [lib.nvim](https://github.com/StefanBartl/lib.nvim) — **required**. Supplies
+  notifications, the injection-safe file primitives behind create/rename/
+  duplicate/delete (`lib.nvim.cross.fs.mutate`), and background buffer opening
 
 ---
 
@@ -87,7 +88,7 @@ I/O going through libuv directly.
 ```lua
 {
   "StefanBartl/fileops.nvim",
-  dependencies = { "StefanBartl/lib.nvim" }, -- optional
+  dependencies = { "StefanBartl/lib.nvim" },
   event = "VeryLazy",
   opts = {},
 }

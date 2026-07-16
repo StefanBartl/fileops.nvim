@@ -20,9 +20,26 @@ The runner prints one line per spec and exits non-zero on the first failure
 | ------------------- | ---------------------------------------------------------------- |
 | `harness.lua`       | Shared `eq`/`ok` assertions, `tmpdir()`, `write_file()`, `edit()`. |
 | `config_spec.lua`   | Config defaults + deep-merge of user options, incl. `keymaps.lhs`. |
-| `platform_spec.lua` | `util/platform.lua`: mkdir_p, copy_file, rename_file, delete_file. |
 | `cycle_spec.lua`    | `ops/cycle.lua`: directory listing, wrap, hidden-file filter, navigate. |
-| `run.lua`           | Runner: loads every spec, reports results, sets the exit code.   |
+| `run.lua`           | Runner: resolves lib.nvim, loads every spec, reports results, sets the exit code. |
+
+`platform_spec.lua` is gone: `util/platform.lua` was removed in favour of
+`lib.nvim.cross.fs.mutate`, and that behaviour (`mkdir_p`, `copy_file`,
+`rename_file`, `delete_file`) is covered by lib.nvim's own
+`docs/TESTS/nvim_helpers_spec.lua`. The coverage moved with the code.
+
+## lib.nvim
+
+The suite needs `lib.nvim` on the runtimepath, since `ops/file.lua` and
+`ops/cycle.lua` require it. `run.lua` resolves it in this order:
+
+1. `$LIB_NVIM_PATH`
+2. a sibling checkout (`../lib.nvim`)
+3. the plugin-manager copy (`stdpath("data")/lazy/lib.nvim`)
+
+The sibling checkout deliberately wins over the plugin-manager copy: the
+bootstrap clone is often older than the working checkout, and testing against
+a stale lib.nvim produces misleading failures.
 
 ## Adding a spec
 
