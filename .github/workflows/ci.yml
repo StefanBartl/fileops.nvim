@@ -11,11 +11,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: fileops.nvim
+      # docs/TESTS/run.lua hard-fails without lib.nvim on the runtimepath
+      # (a real runtime dependency, not just optional) -- check it out as a
+      # sibling so the run.lua's own sibling-checkout lookup (../lib.nvim)
+      # finds it.
+      - uses: actions/checkout@v4
+        with:
+          repository: StefanBartl/lib.nvim
+          path: lib.nvim
       - uses: rhysd/action-setup-vim@v1
         with:
           neovim: true
           version: stable
       - name: Run docs/TESTS suite
+        working-directory: fileops.nvim
         run: nvim --headless -i NONE -u NONE -c "set rtp+=." -c "luafile docs/TESTS/run.lua" -c "qa!"
 
   lint:

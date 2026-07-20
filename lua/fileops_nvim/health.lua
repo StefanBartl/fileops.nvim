@@ -60,11 +60,20 @@ function M.check()
     ok("nvim-treesitter not installed (not required)")
   end
 
-  -- lib.nvim (optional, soft dependency for notify/map)
-  if require("fileops_nvim.util.notify").using_lib() then
-    ok("lib.nvim detected (using lib.nvim.notify)")
+  -- lib.nvim: required (:File command layer via lib.nvim.usercmd.composer,
+  -- plus ops/file.lua's lib.nvim.cross.fs.mutate and ops/cycle.lua's
+  -- lib.nvim.buffer.open_background — both already hard requires with no
+  -- pcall, so this plugin has never actually run standalone). Only
+  -- notify's own styling is a genuinely soft, cosmetic fallback.
+  if pcall(require, "lib.nvim.usercmd.composer") then
+    ok("lib.nvim detected (:File command layer available)")
   else
-    ok("lib.nvim not found — using native vim.notify (standalone mode)")
+    warn("lib.nvim not found — :File will fail to register; install \"StefanBartl/lib.nvim\"")
+  end
+  if require("fileops_nvim.util.notify").using_lib() then
+    ok("lib.nvim.notify in use (styled notifications)")
+  else
+    ok("lib.nvim.notify not in use — falling back to native vim.notify")
   end
 
   -- which-key (optional, groups the <leader>n / <leader>p prefixes)
