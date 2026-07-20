@@ -3,6 +3,7 @@
 local M = {}
 
 local file = require("fileops_nvim.ops.file")
+local autocmd = require("lib.nvim.autocmd")
 
 local GROUP = "fileops_nvim_auto_mkdir"
 
@@ -17,16 +18,20 @@ function M.attach_auto_mkdir(cfg)
   end
 
   local pattern = cfg.detect_remote_pattern or "^%w%w+:[\\/][\\/]"
+
+  -- Created directly via nvim_create_augroup(..., { clear = true }) rather
+  -- than lib.nvim.autocmd.group(): that helper caches groups by name and
+  -- skips the clear on subsequent calls, which would stack duplicate
+  -- autocmds if attach_auto_mkdir() ever re-runs.
   local grp = vim.api.nvim_create_augroup(GROUP, { clear = true })
 
-  vim.api.nvim_create_autocmd("BufWritePre", {
+  autocmd.create("BufWritePre", function(event)
+    if cfg.skip_remote ~= false and event.match:match(pattern) then
+      return
+    end
+    file.ensure_parent(event.match)
+  end, {
     group = grp,
-    callback = function(event)
-      if cfg.skip_remote ~= false and event.match:match(pattern) then
-        return
-      end
-      file.ensure_parent(event.match)
-    end,
     desc = "[fileops] Create parent directories before writing a file",
   })
 end

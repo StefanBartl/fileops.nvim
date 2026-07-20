@@ -8,6 +8,7 @@
 
 local api, fn = vim.api, vim.fn
 local uv = vim.uv or vim.loop
+local autocmd = require("lib.nvim.autocmd")
 
 local M = {}
 
@@ -26,6 +27,10 @@ end
 ---@param name string
 ---@return integer
 local function augroup(name)
+  -- Created directly via nvim_create_augroup(..., { clear = true }) rather
+  -- than lib.nvim.autocmd.group(): that helper caches groups by name and
+  -- skips the clear on subsequent calls, which would stack duplicate
+  -- autocmds if setup() ever re-runs.
   return api.nvim_create_augroup("fileops_nvim_on_hold_" .. name, { clear = true })
 end
 
@@ -229,128 +234,136 @@ function M.setup(cfg)
 
   local events = effective_events(cfg.modes, cfg.events_override)
 
-  api.nvim_create_autocmd(events, {
-    group = augroup("preview"),
-    callback = function()
+  autocmd.create(events, function()
+    if not mode_allowed(cfg.modes) then
+      return
+    end
+
+    local win = api.nvim_get_current_win()
+    local now_ms = math.floor((uv.hrtime() or 0) / 1e6)
+    local last_ms = last_fire_ms_by_win[win] or 0
+    if (now_ms - last_ms) < throttle_ms then
+      return
+    end
+    last_fire_ms_by_win[win] = now_ms
+
+    local buf = api.nvim_get_current_buf()
+    if not normal_buf_allowed(cfg.ignore_buftypes) then
+      return
+    end
+    if cfg.require_clean_buffer and vim.bo[buf].modified then
+      return
+    end
+
+    local git = cfg.git_cmd or "git"
+    if not in_git_repo(git) then
+      return
+    end
+
+    local file = api.nvim_buf_get_name(buf)
+    if file == "" then
+      return
+    end
+    if cfg.only_tracked and not is_tracked(git, file) then
+      return
+    end
+
+    local my_gen = bump_gen(win)
+
+    local function run()
       if not mode_allowed(cfg.modes) then
         return
       end
-
-      local win = api.nvim_get_current_win()
-      local now_ms = math.floor((uv.hrtime() or 0) / 1e6)
-      local last_ms = last_fire_ms_by_win[win] or 0
-      if (now_ms - last_ms) < throttle_ms then
+      if gen_by_win[win] ~= my_gen then
         return
       end
-      last_fire_ms_by_win[win] = now_ms
-
-      local buf = api.nvim_get_current_buf()
-      if not normal_buf_allowed(cfg.ignore_buftypes) then
-        return
-      end
-      if cfg.require_clean_buffer and vim.bo[buf].modified then
+      -- run() may execute after a vim.defer_fn delay (cfg.delay > 0), by
+      -- which point the buffer captured above could have been closed —
+      -- re-validate before touching it.
+      if not api.nvim_buf_is_valid(buf) then
         return
       end
 
-      local git = cfg.git_cmd or "git"
-      if not in_git_repo(git) then
-        return
-      end
+      clear_line_diff(buf)
 
-      local file = api.nvim_buf_get_name(buf)
-      if file == "" then
-        return
-      end
-      if cfg.only_tracked and not is_tracked(git, file) then
-        return
-      end
-
-      local my_gen = bump_gen(win)
-
-      local function run()
-        if not mode_allowed(cfg.modes) then
-          return
-        end
-        if gen_by_win[win] ~= my_gen then
-          return
-        end
-
-        clear_line_diff(buf)
-
-        if prefer_inline then
-          local ok_gs, gs = pcall(require, "gitsigns")
-          if ok_gs and gs.preview_hunk_inline then
-            local view = fn.winsaveview()
-            local cur = api.nvim_win_get_cursor(0)
-            local ok_inline = pcall(gs.preview_hunk_inline)
-            if ok_inline then
-              if restore_view then
-                vim.schedule(function()
-                  pcall(fn.winrestview, view)
-                  pcall(api.nvim_win_set_cursor, 0, cur)
-                end)
-              end
-              api.nvim_create_autocmd({ "CursorMoved", "BufHidden", "InsertEnter" }, {
-                group = augroup("cleanup"),
-                buffer = buf,
-                once = true,
-                callback = function()
-                  clear_line_diff(buf)
-                end,
-                desc = "[fileops] Clear inline diff preview on next move",
-              })
-              return
+      if prefer_inline then
+        local ok_gs, gs = pcall(require, "gitsigns")
+        if ok_gs and gs.preview_hunk_inline then
+          local view = fn.winsaveview()
+          local cur = api.nvim_win_get_cursor(0)
+          local ok_inline = pcall(gs.preview_hunk_inline)
+          if ok_inline then
+            if restore_view then
+              vim.schedule(function()
+                pcall(fn.winrestview, view)
+                pcall(api.nvim_win_set_cursor, 0, cur)
+              end)
             end
+            -- Buffer-local (opts.buffer): lib.nvim.autocmd.create doesn't
+            -- forward a `buffer` option, so this one stays on the raw API.
+            api.nvim_create_autocmd({ "CursorMoved", "BufHidden", "InsertEnter" }, {
+              group = augroup("cleanup"),
+              buffer = buf,
+              once = true,
+              callback = function()
+                clear_line_diff(buf)
+              end,
+              desc = "[fileops] Clear inline diff preview on next move",
+            })
+            return
           end
         end
-
-        local lnum = get_lnum()
-        local prev = get_previous_line(git, file, lnum)
-        if not prev or prev == "" then
-          return
-        end
-
-        local virt = truncate(prev, tonumber(cfg.max_len or 160) or 160)
-        local pos = (cfg.right_align and "right_align") or "eol"
-        local pref = (cfg.prefix ~= nil) and tostring(cfg.prefix) or "previous: "
-
-        api.nvim_buf_set_extmark(buf, NS, lnum - 1, 0, {
-          virt_text = { { pref .. virt, cfg.hl_prev or "Comment" } },
-          virt_text_pos = pos,
-          priority = tonumber(cfg.virt_priority or 1000) or 1000,
-        })
-
-        api.nvim_create_autocmd({ "CursorMoved", "BufHidden", "InsertEnter" }, {
-          group = augroup("cleanup"),
-          buffer = buf,
-          once = true,
-          callback = function()
-            clear_line_diff(buf)
-          end,
-          desc = "[fileops] Clear previous-line preview on next move",
-        })
       end
 
-      local extra = tonumber(cfg.delay or 0) or 0
-      if extra > 0 then
-        vim.defer_fn(run, extra)
-      else
-        run()
+      local lnum = get_lnum()
+      local prev = get_previous_line(git, file, lnum)
+      if not prev or prev == "" then
+        return
       end
-    end,
+
+      local virt = truncate(prev, tonumber(cfg.max_len or 160) or 160)
+      local pos = (cfg.right_align and "right_align") or "eol"
+      local pref = (cfg.prefix ~= nil) and tostring(cfg.prefix) or "previous: "
+
+      api.nvim_buf_set_extmark(buf, NS, lnum - 1, 0, {
+        virt_text = { { pref .. virt, cfg.hl_prev or "Comment" } },
+        virt_text_pos = pos,
+        priority = tonumber(cfg.virt_priority or 1000) or 1000,
+      })
+
+      -- Buffer-local (opts.buffer): lib.nvim.autocmd.create doesn't
+      -- forward a `buffer` option, so this one stays on the raw API.
+      api.nvim_create_autocmd({ "CursorMoved", "BufHidden", "InsertEnter" }, {
+        group = augroup("cleanup"),
+        buffer = buf,
+        once = true,
+        callback = function()
+          clear_line_diff(buf)
+        end,
+        desc = "[fileops] Clear previous-line preview on next move",
+      })
+    end
+
+    local extra = tonumber(cfg.delay or 0) or 0
+    if extra > 0 then
+      vim.defer_fn(run, extra)
+    else
+      run()
+    end
+  end, {
+    group = augroup("preview"),
     desc = "[fileops] Show line diff/previous content on CursorHold/CursorHoldI (mode-aware, throttled)",
   })
 
-  api.nvim_create_autocmd("ModeChanged", {
+  autocmd.create("ModeChanged", function()
+    local win = api.nvim_get_current_win()
+    local buf = api.nvim_get_current_buf()
+    if not mode_allowed(cfg.modes) then
+      clear_line_diff(buf)
+      bump_gen(win)
+    end
+  end, {
     group = augroup("modeclear"),
-    callback = function()
-      local win = api.nvim_get_current_win()
-      local buf = api.nvim_get_current_buf()
-      if not mode_allowed(cfg.modes) then
-        clear_line_diff(buf)
-        bump_gen(win)
-      end
-    end,
     desc = "[fileops] Clear/abort line diff preview when leaving allowed modes",
   })
 end
