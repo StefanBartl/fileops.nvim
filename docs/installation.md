@@ -4,8 +4,9 @@
 
 - Neovim **0.9+**
 - [lib.nvim](https://github.com/StefanBartl/lib.nvim) — **required**. Supplies
-  notifications, the injection-safe file primitives behind create/rename/
-  duplicate/delete (`lib.nvim.cross.fs.mutate`), and background buffer opening
+  the `:File` command layer (`lib.nvim.usercmd.composer`), notifications, the
+  injection-safe file primitives behind create/rename/duplicate/delete
+  (`lib.nvim.cross.fs.mutate`), and background buffer opening
 
 ## Installation
 
@@ -32,7 +33,7 @@
 ```lua
 use({
   "StefanBartl/fileops.nvim",
-  requires = { "StefanBartl/lib.nvim" }, -- optional
+  requires = { "StefanBartl/lib.nvim" }, -- required
   config = function()
     require("fileops_nvim").setup()
   end,
@@ -42,7 +43,7 @@ use({
 ### vim-plug
 
 ```vim
-Plug 'StefanBartl/lib.nvim'  " optional
+Plug 'StefanBartl/lib.nvim'  " required
 Plug 'StefanBartl/fileops.nvim'
 ```
 ```lua

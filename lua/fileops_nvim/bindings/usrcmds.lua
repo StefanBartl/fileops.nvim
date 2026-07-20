@@ -1,7 +1,9 @@
 ---@module 'fileops_nvim.bindings.usrcmds'
----Registers the single :File[!] unified user command.
+---Registers the single :File[!] unified user command, built via
+---lib.nvim.usercmd.composer.
 local M = {}
 
+local composer = require("lib.nvim.usercmd.composer")
 local notify = require("fileops_nvim.util.notify")
 local file   = require("fileops_nvim.ops.file")
 local cycle  = require("fileops_nvim.ops.cycle")
@@ -41,67 +43,20 @@ local CYCLE_TARGET_MAP = {
 }
 
 -- ─── Completion ───────────────────────────────────────────────────────────────
+-- rename/duplicate's first slot ("%" or a direct dest path) needs a custom
+-- type; every other completion below maps onto a composer built-in (PATH,
+-- or enum on CD_SCOPES/CYCLE_TARGETS).
 
----@param ArgLead string
----@param CmdLine string
----@return string[]
-local function complete(ArgLead, CmdLine, _)
-  local tokens = vim.split(CmdLine:match("^%s*(.-)%s*$"), "%s+", { trimempty = true })
-  local trailing = CmdLine:match("%s$") ~= nil
-
-  -- Number of args fully committed before ArgLead
-  -- tokens[1] = command name, everything after = args
-  local committed = #tokens - (trailing and 0 or 1) - 1
-
-  -- Position 0 → completing subcommand
-  if committed == 0 then
-    return vim.tbl_filter(function(s)
-      return s:sub(1, #ArgLead) == ArgLead
-    end, SUBCMDS)
-  end
-
-  local subcmd = tokens[2]
-
-  if subcmd == "next" or subcmd == "prev" then
-    -- 1st arg: open target
-    if committed == 1 then
-      return vim.tbl_filter(function(s)
-        return s:sub(1, #ArgLead) == ArgLead
-      end, CYCLE_TARGETS)
+composer.register_type("FILEOPS_DEST_FIRST", {
+  validate = function(raw) return true, raw, nil end,
+  complete = function(arg_lead)
+    local fc = vim.fn.getcompletion(arg_lead, "file")
+    if ("%"):sub(1, #arg_lead) == arg_lead then
+      table.insert(fc, 1, "%")
     end
-    return {}
-  end
-
-  if subcmd == "delete" then
-    if committed == 1 then return { "%" } end
-    return {}
-  end
-
-  if subcmd == "cd" then
-    if committed == 1 then
-      return vim.tbl_filter(function(s)
-        return s:sub(1, #ArgLead) == ArgLead
-      end, CD_SCOPES)
-    end
-    return {}
-  end
-
-  if subcmd == "rename" or subcmd == "duplicate" then
-    if committed == 1 then
-      -- First arg: "%" (current) or direct dest path
-      local fc = vim.fn.getcompletion(ArgLead, "file")
-      if ("%"):sub(1, #ArgLead) == ArgLead then
-        table.insert(fc, 1, "%")
-      end
-      return fc
-    end
-    -- Second arg onwards: file path
-    return vim.fn.getcompletion(ArgLead, "file")
-  end
-
-  -- new / write / saveas / writeto / mkdir → file path completion
-  return vim.fn.getcompletion(ArgLead, "file")
-end
+    return fc
+  end,
+})
 
 -- ─── Dispatch ─────────────────────────────────────────────────────────────────
 
@@ -198,23 +153,55 @@ end
 
 -- ─── Register ────────────────────────────────────────────────────────────────
 
-function M.register()
-  vim.api.nvim_create_user_command("File", function(a)
-    local fargs = a.fargs  -- properly-parsed argument list (handles quoted paths)
-    if #fargs == 0 then
-      notify.warn("usage: File[!] {subcommand} [args…] — subcommands: " .. table.concat(SUBCMDS, ", "))
-      return
-    end
+---Reconstruct a flat fargs array (matching dispatch's expected shape) from
+--- composer's bound positionals + any leftover tokens.
+---@param ctx table composer Ctx
+---@return string[]
+local function fargs_of(ctx)
+  local out = {}
+  for _, v in ipairs(ctx.pos) do out[#out + 1] = tostring(v) end
+  for _, v in ipairs(ctx.rest) do out[#out + 1] = v end
+  return out
+end
 
-    local subcmd = table.remove(fargs, 1):lower()
-    local count  = (a.count and a.count > 0) and a.count or 1
-    dispatch(subcmd, fargs, a.bang, count)
-  end, {
-    nargs    = "+",
-    bang     = true,
-    count    = 0,
-    complete = complete,
-    desc     = "Unified file operations (new/write/saveas/writeto/mkdir/rename/duplicate/delete/next/prev/cd)",
+---@param subcmd string
+---@param args? table[]
+---@return table
+local function route(subcmd, args)
+  return {
+    path = { subcmd },
+    args = args,
+    run = function(ctx)
+      local count = (ctx.range.count and ctx.range.count > 0) and ctx.range.count or 1
+      dispatch(subcmd, fargs_of(ctx), ctx.bang, count)
+    end,
+  }
+end
+
+function M.register()
+  composer.verb("File", {
+    desc = "Unified file operations (new/write/saveas/writeto/mkdir/rename/duplicate/delete/next/prev/cd)",
+    bang = true,
+    count = 0,
+    routes = {
+      route("new", { { name = "path", type = "PATH" } }),
+      route("write", { { name = "path", type = "PATH" } }),
+      route("saveas", { { name = "path", type = "PATH" } }),
+      route("writeto", { { name = "path", type = "PATH" } }),
+      route("mkdir"),
+      route("rename", {
+        { name = "a1", type = "FILEOPS_DEST_FIRST", optional = true },
+        { name = "a2", type = "PATH", optional = true },
+      }),
+      route("duplicate", {
+        { name = "a1", type = "FILEOPS_DEST_FIRST", optional = true },
+        { name = "a2", type = "PATH", optional = true },
+      }),
+      route("delete"),
+      route("cd", { { name = "scope", type = "STRING", optional = true, enum = CD_SCOPES } }),
+      route("next", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
+      route("prev", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
+    },
   })
 end
 

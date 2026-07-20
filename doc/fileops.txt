@@ -35,8 +35,12 @@ injection risk, fully cross-platform (Windows and Unix).
 2. REQUIREMENTS                                         *fileops-requirements*
 
   - Neovim 0.9 or later
-  - (optional) lib.nvim (https://github.com/StefanBartl/lib.nvim) — used for
-    notifications when present; fileops.nvim runs fully standalone without it
+  - lib.nvim (https://github.com/StefanBartl/lib.nvim) — REQUIRED. Supplies
+    the :File command layer (lib.nvim.usercmd.composer), the injection-safe
+    file primitives behind create/rename/duplicate/delete
+    (lib.nvim.cross.fs.mutate), and background buffer opening
+    (lib.nvim.buffer.open_background). Only notify's own styling is a
+    genuinely soft, cosmetic fallback.
 
 ==============================================================================
 3. INSTALLATION                                         *fileops-installation*
@@ -44,7 +48,7 @@ injection risk, fully cross-platform (Windows and Unix).
 lazy.nvim: >lua
   {
     "StefanBartl/fileops.nvim",
-    dependencies = { "StefanBartl/lib.nvim" }, -- optional
+    dependencies = { "StefanBartl/lib.nvim" }, -- required
     event = "VeryLazy",
     opts  = {},
   }
@@ -53,7 +57,7 @@ lazy.nvim: >lua
 packer.nvim / pckr.nvim: >lua
   use({
     "StefanBartl/fileops.nvim",
-    requires = { "StefanBartl/lib.nvim" }, -- optional
+    requires = { "StefanBartl/lib.nvim" }, -- required
     config = function()
       require("fileops_nvim").setup()
     end,
@@ -515,7 +519,8 @@ Checks:
   - `vim.ui.select` available
   - `vim.fs.dir` available
   - Plugin loaded (guard flag set)
-  - `lib.nvim` integration status (optional)
+  - `lib.nvim` detected (required — the `:File` command layer)
+  - `lib.nvim.notify` in use (optional — cosmetic notification styling only)
   - `which-key` integration status (optional)
   - `git` executable found (required for on_hold)
   - `gitsigns.nvim` found (optional; on_hold prefers its inline preview)
@@ -551,9 +556,12 @@ Checks:
 
 Module load order: util → ops → config → bindings → init
 
-`lib.nvim` is a soft, guarded dependency: if present, `lib.nvim.notify` is
-used for notifications; otherwise fileops.nvim falls back to plain
-`vim.notify` and runs fully standalone.
+`lib.nvim` is a required dependency: the `:File` command layer
+(`bindings/usrcmds.lua`), `ops/file.lua`'s `lib.nvim.cross.fs.mutate`, and
+`ops/cycle.lua`'s `lib.nvim.buffer.open_background` all `require` it
+unconditionally. Only notifications are a genuinely soft, cosmetic
+fallback: if `lib.nvim.notify` is present it is used for styling,
+otherwise fileops.nvim falls back to plain `vim.notify`.
 
 ==============================================================================
 vim:tw=78:ts=8:noet:ft=help:norl:
