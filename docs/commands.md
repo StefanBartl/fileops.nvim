@@ -124,6 +124,18 @@ Navigate to the next / previous file in the current directory.
 | `tab` | New tab |
 | `bg` or `background` | Load into buffer list without switching |
 
+## `:File[!] first [target]` / `:File[!] last [target]`
+
+Jump straight to the first / last file in the current directory listing
+(alphabetical, respecting `cycle.include_hidden`/`cycle.case_insensitive`),
+instead of stepping one at a time with `next`/`prev`. Same `[target]` values
+and `!` behaviour as `next`/`prev`.
+
+```
+:File first              → jump to the first file
+:File last vsplit        → jump to the last file, in a vertical split
+```
+
 ## `:File cd [scope]`
 
 Change the working directory to the directory of the current buffer's file,

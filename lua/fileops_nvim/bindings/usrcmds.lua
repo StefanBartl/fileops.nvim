@@ -14,7 +14,7 @@ local config = require("fileops_nvim.config")
 local SUBCMDS = {
   "new", "write", "saveas", "writeto", "mkdir", "touch",
   "rename", "move", "duplicate", "copy", "delete",
-  "next", "prev", "cd", "help",
+  "next", "prev", "first", "last", "cd", "help",
 }
 
 local HELP_TEXT = table.concat({
@@ -32,6 +32,7 @@ local HELP_TEXT = table.concat({
   "  copy [%] {dest}         copy without opening (! overwrites)",
   "  delete [%]              delete + close buffer (! force-closes)",
   "  next/prev [target]      navigate directory listing",
+  "  first/last [target]     jump to first/last file in directory",
   "  cd [scope]              cd to buffer's dir + refresh explorer",
   "  help                    show this message",
   "",
@@ -104,6 +105,29 @@ local function do_cycle(direction, target_arg, count, bang)
   end
 
   report(cycle.navigate(dir, direction, copts, count))
+end
+
+---Jump straight to the first/last file in the directory, with opts from
+---config + per-call overrides (same target/bang handling as `do_cycle`).
+---@param edge "first"|"last"
+---@param target_arg string|nil
+---@param bang boolean
+local function do_jump(edge, target_arg, bang)
+  local cfg   = config.get()
+  local copts = vim.deepcopy(cfg.cycle or {})
+
+  local target = target_arg and CYCLE_TARGET_MAP[target_arg:lower()]
+  if target then copts.open_target = target end
+
+  if bang then copts.confirm_on_modified = false end
+
+  local dir, err = cycle.get_root_dir(copts)
+  if not dir then
+    notify.warn(err or "cannot determine root directory")
+    return
+  end
+
+  report(cycle.jump_edge(dir, edge, copts))
 end
 
 ---Resolve destination from fargs, handling optional "%" scope prefix.
@@ -183,6 +207,12 @@ local function dispatch(subcmd, fargs, bang, count)
   elseif subcmd == "prev" then
     do_cycle("prev", fargs[1], count, bang)
 
+  elseif subcmd == "first" then
+    do_jump("first", fargs[1], bang)
+
+  elseif subcmd == "last" then
+    do_jump("last", fargs[1], bang)
+
   elseif subcmd == "help" then
     notify.info(HELP_TEXT)
 
@@ -220,7 +250,7 @@ end
 
 function M.register()
   composer.verb("File", {
-    desc = "Unified file operations (new/write/saveas/writeto/mkdir/touch/rename/move/duplicate/copy/delete/next/prev/cd/help)",
+    desc = "Unified file operations (new/write/saveas/writeto/mkdir/touch/rename/move/duplicate/copy/delete/next/prev/first/last/cd/help)",
     bang = true,
     count = 0,
     routes = {
@@ -250,6 +280,8 @@ function M.register()
       route("cd", { { name = "scope", type = "STRING", optional = true, enum = CD_SCOPES } }),
       route("next", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
       route("prev", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
+      route("first", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
+      route("last", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
       route("help"),
     },
   })

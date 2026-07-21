@@ -12,8 +12,6 @@
 - **`:File next/prev` mit Glob-Filter** — z.B. `:File next *.lua` um nur Lua-Dateien zu cyclen
   Erweiterung der `list_files`-Funktion um `pattern`-Option in CycleConfig
 
-- **`:File first / last`** — springe zur ersten/letzten Datei im Verzeichnis
-
 - **Aufl isung von Verzeichnis-Tiefe** — optional rekursive Navigation (subdirs einschließen)
   z.B. `root = "buffer_dir_recursive"` als neuer Config-Wert
 
@@ -78,4 +76,8 @@
 
 - **`:File help`** — kurze Usage-Übersicht direkt in der Befehlszeile (notify.info)
   ohne vim-help öffnen zu müssen.
+
+- **`:File first / last`** — springe zur ersten/letzten Datei im Verzeichnis;
+  implementiert als `cycle.jump_edge(dir, edge, opts)`, teilt sich `list_files`/
+  `open_path` mit `next`/`prev`.
 

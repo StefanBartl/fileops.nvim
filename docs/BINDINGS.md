@@ -45,6 +45,8 @@ gated by `config.commands` (a single boolean — there is only one command).
 | `:File[!] delete` | `[%]` | Delete file from disk and close buffer |
 | `:[count]File[!] next` | `[target]` | Next file in directory |
 | `:[count]File[!] prev` | `[target]` | Previous file in directory |
+| `:File[!] first` | `[target]` | Jump to the first file in directory |
+| `:File[!] last` | `[target]` | Jump to the last file in directory |
 | `:File cd` | `[scope]` | Set cwd to buffer's dir + refresh file explorer |
 | `:File help` | — | Show a short usage overview in the command line |
 

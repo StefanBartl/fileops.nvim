@@ -248,4 +248,20 @@ function M.navigate(dir, mode, opts, count)
   return open_path(files[target_idx], opts)
 end
 
+---Jump straight to the first or last file in the directory listing.
+---@param dir string  Root directory (from get_root_dir).
+---@param edge "first"|"last"
+---@param opts FileOps.CycleConfig
+---@return boolean ok
+---@return string|nil msg
+function M.jump_edge(dir, edge, opts)
+  local files = list_files(dir, opts)
+  if #files == 0 then
+    return false, "no files in directory"
+  end
+
+  local target_idx = (edge == "last") and #files or 1
+  return open_path(files[target_idx], opts)
+end
+
 return M
