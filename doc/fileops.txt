@@ -461,6 +461,25 @@ is left alone (treated as already absolute).
     :File info
 <
 
+:File[!] bulk rename {pattern} {replacement}              *:File-bulk-rename*
+  Batch-rename every regular file directly inside the current buffer's
+  directory (no recursion) whose name changes under
+  `name:gsub(pattern, replacement)` — a Lua pattern, not a glob, applied to
+  the file name only. Files the pattern doesn't match, or that `gsub` leaves
+  unchanged, are left alone.
+
+  Shows a preview of every `old -> new` pair, then asks for confirmation via
+  |vim.ui.select()| before touching disk. `!` allows overwriting existing
+  destinations; without it a conflicting destination is skipped and
+  reported (other files in the batch still get renamed). Any open buffer
+  pointing at a renamed file is re-pointed at the new path (no reload — same
+  as |:File-move|), and each successful rename fires the usual
+  `User FileopsChanged` event (see |fileops-autocmds|). >
+    :File bulk rename ^draft_ final_
+    :File bulk rename %.txt$ .md
+    :File! bulk rename ^old_ new_
+<
+
 :File cd [scope]                                          *:File-cd*
   Change the working directory to the directory of the current buffer's file,
   then refresh any open file explorer (neo-tree, nvim-tree, netrw) so it tracks

@@ -50,6 +50,7 @@ gated by `config.commands` (a single boolean — there is only one command).
 | `:File[!] open` | `[target]` | Reopen the current file in a different window target |
 | `:File path` | `[mode]` | Copy the current file's path to the clipboard (abs/rel/name/dir) |
 | `:File info` | — | Show size/mtime/permissions for the current file |
+| `:File[!] bulk rename` | `{pattern} {replacement}` | Batch-rename files in the directory via a Lua pattern (preview + confirm) |
 | `:File cd` | `[scope]` | Set cwd to buffer's dir + refresh file explorer |
 | `:File help` | — | Show a short usage overview in the command line |
 

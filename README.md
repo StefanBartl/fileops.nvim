@@ -61,6 +61,7 @@ Requires Neovim **0.9+** and [lib.nvim](https://github.com/StefanBartl/lib.nvim)
 | `open` | `[target]` | Reopen the current file in a different window target |
 | `path` | `[mode]` | Copy the current file's path to the clipboard (abs/rel/name/dir) |
 | `info` | — | Show size/mtime/permissions for the current file |
+| `bulk rename` | `{pattern} {replacement}` | Batch-rename files in the directory via a Lua pattern (preview + confirm; `!` overwrites) |
 | `cd` | `[scope]` | Set cwd to buffer's dir + refresh file explorer |
 | `help` | — | Show a short usage overview in the command line |
 

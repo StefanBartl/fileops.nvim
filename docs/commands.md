@@ -207,6 +207,28 @@ libuv `fs_stat` (works cross-platform, including Windows).
   permissions: 644
 ```
 
+## `:File[!] bulk rename {pattern} {replacement}`
+
+Batch-rename every regular file directly inside the current buffer's
+directory (no recursion) whose name changes under
+`name:gsub(pattern, replacement)` — a **Lua pattern**, not a glob, applied
+to the file name only (not the full path). Files the pattern doesn't match,
+or that `gsub` leaves unchanged, are left alone.
+
+Shows a preview of every `old → new` pair via `notify.info`, then asks for
+confirmation via `vim.ui.select` before touching disk. `!` allows
+overwriting existing destinations; without it, a conflicting destination is
+skipped and reported (other files in the batch still get renamed). Any open
+buffer pointing at a renamed file is re-pointed at the new path (no
+reload — same as `:File move`), and each successful rename fires the usual
+`notify_change`/`User FileopsChanged` (see [Autocommands](autocommands.md)).
+
+```
+:File bulk rename ^draft_ final_     → draft_1.md → final_1.md, draft_2.md → final_2.md, …
+:File bulk rename %.txt$ .md         → note.txt → note.md
+:File! bulk rename ^old_ new_        → overwrites existing new_* files
+```
+
 ## `:File cd [scope]`
 
 Change the working directory to the directory of the current buffer's file,
