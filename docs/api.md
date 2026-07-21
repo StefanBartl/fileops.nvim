@@ -7,6 +7,7 @@ fileops.next(opts?, count?)          -- :File next equivalent
 fileops.prev(opts?, count?)          -- :File prev equivalent
 fileops.first(opts?)                 -- :File first equivalent
 fileops.last(opts?)                  -- :File last equivalent
+fileops.open(opts?)                  -- :File open equivalent
 fileops.new_file(path, opts?)        -- :File new
 fileops.touch(path)                  -- :File touch
 fileops.rename(path, opts?)          -- :File rename

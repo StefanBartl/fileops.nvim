@@ -108,7 +108,7 @@ end
 ---@param opts FileOps.CycleConfig
 ---@return boolean ok
 ---@return string|nil msg
-local function open_path(path, opts)
+function M.open_path(path, opts)
   if type(path) ~= "string" or path == "" then return false, "empty path" end
 
   local win = api.nvim_get_current_win()
@@ -245,7 +245,7 @@ function M.navigate(dir, mode, opts, count)
     return false, ("boundary reached (wrap=false, count=%d)"):format(count)
   end
 
-  return open_path(files[target_idx], opts)
+  return M.open_path(files[target_idx], opts)
 end
 
 ---Jump straight to the first or last file in the directory listing.
@@ -261,7 +261,20 @@ function M.jump_edge(dir, edge, opts)
   end
 
   local target_idx = (edge == "last") and #files or 1
-  return open_path(files[target_idx], opts)
+  return M.open_path(files[target_idx], opts)
+end
+
+---Reopen the current buffer's own path in a different window target
+---(split/vsplit/tab/background/…), without changing which file is shown.
+---@param opts FileOps.CycleConfig
+---@return boolean ok
+---@return string|nil msg
+function M.open_current(opts)
+  local name = api.nvim_buf_get_name(0)
+  if not name or name == "" then
+    return false, "current buffer has no file name"
+  end
+  return M.open_path(name, opts)
 end
 
 return M

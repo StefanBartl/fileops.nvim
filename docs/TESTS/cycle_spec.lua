@@ -58,4 +58,9 @@ return function(H)
 
   ok(cycle.jump_edge(root, "last", opts), "jump_edge last succeeds")
   eq(vim.fn.expand("%:t"), "c.lua", "jump_edge last lands on c.lua")
+
+  -- open_current: reopens the same file it started on (no navigation)
+  H.edit(dir .. "b.lua")
+  ok(cycle.open_current(opts), "open_current succeeds")
+  eq(vim.fn.expand("%:t"), "b.lua", "open_current stays on b.lua")
 end

@@ -58,6 +58,7 @@ Requires Neovim **0.9+** and [lib.nvim](https://github.com/StefanBartl/lib.nvim)
 | `prev` | `[target]` | Previous file in directory |
 | `first` | `[target]` | Jump to the first file in directory |
 | `last` | `[target]` | Jump to the last file in directory |
+| `open` | `[target]` | Reopen the current file in a different window target |
 | `cd` | `[scope]` | Set cwd to buffer's dir + refresh file explorer |
 | `help` | — | Show a short usage overview in the command line |
 

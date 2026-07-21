@@ -14,7 +14,7 @@ local config = require("fileops_nvim.config")
 local SUBCMDS = {
   "new", "write", "saveas", "writeto", "mkdir", "touch",
   "rename", "move", "duplicate", "copy", "delete",
-  "next", "prev", "first", "last", "cd", "help",
+  "next", "prev", "first", "last", "open", "cd", "help",
 }
 
 local HELP_TEXT = table.concat({
@@ -33,6 +33,7 @@ local HELP_TEXT = table.concat({
   "  delete [%]              delete + close buffer (! force-closes)",
   "  next/prev [target]      navigate directory listing",
   "  first/last [target]     jump to first/last file in directory",
+  "  open [target]           reopen current file in split/vsplit/tab/…",
   "  cd [scope]              cd to buffer's dir + refresh explorer",
   "  help                    show this message",
   "",
@@ -219,6 +220,17 @@ local function dispatch(subcmd, fargs, bang, count)
   elseif subcmd == "last" then
     do_jump("last", fargs[1], bang)
 
+  elseif subcmd == "open" then
+    local cfg   = config.get()
+    local copts = vim.deepcopy(cfg.cycle or {})
+
+    local target = fargs[1] and CYCLE_TARGET_MAP[fargs[1]:lower()]
+    if target then copts.open_target = target end
+
+    if bang then copts.confirm_on_modified = false end
+
+    report(cycle.open_current(copts))
+
   elseif subcmd == "help" then
     notify.info(HELP_TEXT)
 
@@ -256,7 +268,7 @@ end
 
 function M.register()
   composer.verb("File", {
-    desc = "Unified file operations (new/write/saveas/writeto/mkdir/touch/rename/move/duplicate/copy/delete/next/prev/first/last/cd/help)",
+    desc = "Unified file operations (new/write/saveas/writeto/mkdir/touch/rename/move/duplicate/copy/delete/next/prev/first/last/open/cd/help)",
     bang = true,
     count = 0,
     routes = {
@@ -288,6 +300,7 @@ function M.register()
       route("prev", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
       route("first", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
       route("last", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
+      route("open", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
       route("help"),
     },
   })

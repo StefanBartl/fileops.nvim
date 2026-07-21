@@ -72,6 +72,18 @@ function M.last(opts)
   return notify.report(cycle.jump_edge(dir, "last", copts))
 end
 
+---Reopen the current buffer's own path in a different window target
+---(split/vsplit/tab/background/…), without changing which file is shown.
+---@param opts? FileOps.CycleConfig
+---@return boolean ok
+function M.open(opts)
+  local cfg   = require("fileops_nvim.config").get()
+  local copts = vim.tbl_deep_extend("force", vim.deepcopy(cfg.cycle or {}), opts or {})
+  local cycle = require("fileops_nvim.ops.cycle")
+  local notify = require("fileops_nvim.util.notify")
+  return notify.report(cycle.open_current(copts))
+end
+
 ---Create a new file (set buffer name + optionally write).
 ---@param path string
 ---@param opts? { write?: boolean, bang?: boolean }

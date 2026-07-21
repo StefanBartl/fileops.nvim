@@ -2,11 +2,6 @@
 
 ## Geplante Features
 
-### High Priority
-
-- **`:File open [target]`** — aktuellen Puffer-Pfad in neuem Target öffnen
-  (z.B. `:File open vsplit` → aktuelle Datei in vsplit öffnen)
-
 ### Navigation Improvements
 
 - **`:File next/prev` mit Glob-Filter** — z.B. `:File next *.lua` um nur Lua-Dateien zu cyclen
