@@ -64,9 +64,10 @@ local function parse_blame_sha(first)
   return (#sha >= 7 and #sha <= 40) and sha or nil
 end
 
+---@param win integer
 ---@return integer
-local function get_lnum()
-  return api.nvim_win_get_cursor(0)[1]
+local function get_lnum(win)
+  return api.nvim_win_get_cursor(win)[1]
 end
 
 ---Normalize Neovim's mode string to one of "n"|"v"|"i".
@@ -278,9 +279,9 @@ function M.setup(cfg)
         return
       end
       -- run() may execute after a vim.defer_fn delay (cfg.delay > 0), by
-      -- which point the buffer captured above could have been closed —
-      -- re-validate before touching it.
-      if not api.nvim_buf_is_valid(buf) then
+      -- which point the buffer/window captured above could have been closed —
+      -- re-validate before touching them.
+      if not api.nvim_buf_is_valid(buf) or not api.nvim_win_is_valid(win) then
         return
       end
 
@@ -290,13 +291,16 @@ function M.setup(cfg)
         local ok_gs, gs = pcall(require, "gitsigns")
         if ok_gs and gs.preview_hunk_inline then
           local view = fn.winsaveview()
-          local cur = api.nvim_win_get_cursor(0)
+          local cur = api.nvim_win_get_cursor(win)
           local ok_inline = pcall(gs.preview_hunk_inline)
           if ok_inline then
             if restore_view then
               vim.schedule(function()
+                if not api.nvim_win_is_valid(win) then
+                  return
+                end
                 pcall(fn.winrestview, view)
-                pcall(api.nvim_win_set_cursor, 0, cur)
+                pcall(api.nvim_win_set_cursor, win, cur)
               end)
             end
             -- Buffer-local (opts.buffer): lib.nvim.autocmd.create doesn't
@@ -315,7 +319,7 @@ function M.setup(cfg)
         end
       end
 
-      local lnum = get_lnum()
+      local lnum = get_lnum(win)
       local prev = get_previous_line(git, file, lnum)
       if not prev or prev == "" then
         return
