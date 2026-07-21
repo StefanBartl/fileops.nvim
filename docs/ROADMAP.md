@@ -24,10 +24,6 @@
 - **Session-Kompatibilität** — nach `rename` den Session-Eintrag automatisch aktualisieren
   wenn eine Session-Plugin (mksession, possession.nvim, etc.) erkannt wird
 
-- **neo-tree / nvim-tree Integration** — Event-Emission nach jeder Datei-Op
-  damit Dateibaum-Plugins automatisch refreshen (`vim.api.nvim_exec_autocmds`)
-  (teilweise erledigt: `:File cd` refresht neo-tree/nvim-tree/netrw bereits)
-
 ### DX / UX
 
 - **Relativer Pfad-Completion** — Completion relativ zum aktuellen Buffer-Verzeichnis

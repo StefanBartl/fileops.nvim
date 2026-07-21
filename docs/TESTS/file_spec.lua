@@ -123,4 +123,37 @@ return function(H)
   ok(iok, "info succeeds: " .. tostring(imsg))
   ok(imsg:find("infoed.lua", 1, true) ~= nil, "info: message includes the file path")
   ok(imsg:find("10 bytes", 1, true) ~= nil, "info: message includes the byte size")
+
+  -- touch/rename/delete fire a "User FileopsChanged" autocmd with {action, path}
+  local seen = {}
+  local group = vim.api.nvim_create_augroup("fileops_spec_changed", { clear = true })
+  vim.api.nvim_create_autocmd("User", {
+    group = group,
+    pattern = "FileopsChanged",
+    callback = function(ev) seen[#seen + 1] = ev.data end,
+  })
+
+  local touched2 = dir .. "changed_touch.lua"
+  ok(file.touch(touched2), "touch (for event test) succeeds")
+  eq(#seen, 1, "touch fired exactly one FileopsChanged event")
+  eq(seen[1].action, "touch", "touch event action is 'touch'")
+  eq(seen[1].path, vim.fn.fnamemodify(touched2, ":p"), "touch event path matches")
+
+  H.edit(touched2)
+  local renamed2 = dir .. "changed_renamed.lua"
+  ok(file.rename(renamed2), "rename (for event test) succeeds")
+  eq(#seen, 2, "rename fired a second FileopsChanged event")
+  eq(seen[2].action, "rename", "rename event action is 'rename'")
+
+  ok(file.delete_current({ force = true }), "delete_current (for event test) succeeds")
+  eq(#seen, 3, "delete fired a third FileopsChanged event")
+  eq(seen[3].action, "delete", "delete event action is 'delete'")
+
+  -- refresh_explorers = false suppresses the reload call but NOT the event
+  seen = {}
+  local no_reload = dir .. "changed_no_reload.lua"
+  ok(file.touch(no_reload, { refresh_explorers = false }), "touch with refresh_explorers=false succeeds")
+  eq(#seen, 1, "event still fires when refresh_explorers = false")
+
+  vim.api.nvim_del_augroup_by_id(group)
 end

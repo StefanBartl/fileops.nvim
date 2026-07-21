@@ -159,82 +159,107 @@ local function prompt_dest(prompt_label, cb)
   end)
 end
 
+---Whether tree-explorer refresh is enabled per `config.explorer.refresh_on_change`.
+---@return boolean
+local function refresh_flag()
+  local cfg = config.get()
+  return not (cfg.explorer and cfg.explorer.refresh_on_change == false)
+end
+
 ---Dispatch a parsed command to the appropriate operation.
 ---@param subcmd string
 ---@param fargs string[]  Arguments after the subcommand.
 ---@param bang boolean
 ---@param count integer   v:count1 equivalent from :N File
 local function dispatch(subcmd, fargs, bang, count)
+  local refresh = refresh_flag()
+
   if subcmd == "new" then
     if fargs[1] then
-      report(file.edit_new(fargs[1], {}))
+      report(file.edit_new(fargs[1], { refresh_explorers = refresh }))
     else
-      prompt_dest("File new: ", function(dest) report(file.edit_new(dest, {})) end)
+      prompt_dest("File new: ", function(dest)
+        report(file.edit_new(dest, { refresh_explorers = refresh }))
+      end)
     end
 
   elseif subcmd == "write" then
     if fargs[1] then
-      report(file.edit_new(fargs[1], { write = true, bang = bang }))
+      report(file.edit_new(fargs[1], { write = true, bang = bang, refresh_explorers = refresh }))
     else
       prompt_dest("File write: ", function(dest)
-        report(file.edit_new(dest, { write = true, bang = bang }))
+        report(file.edit_new(dest, { write = true, bang = bang, refresh_explorers = refresh }))
       end)
     end
 
   elseif subcmd == "saveas" then
     if fargs[1] then
-      report(file.save_as(fargs[1], { bang = bang }))
+      report(file.save_as(fargs[1], { bang = bang, refresh_explorers = refresh }))
     else
-      prompt_dest("File saveas: ", function(dest) report(file.save_as(dest, { bang = bang })) end)
+      prompt_dest("File saveas: ", function(dest)
+        report(file.save_as(dest, { bang = bang, refresh_explorers = refresh }))
+      end)
     end
 
   elseif subcmd == "writeto" then
     if fargs[1] then
-      report(file.write_to(fargs[1], { bang = bang }))
+      report(file.write_to(fargs[1], { bang = bang, refresh_explorers = refresh }))
     else
-      prompt_dest("File writeto: ", function(dest) report(file.write_to(dest, { bang = bang })) end)
+      prompt_dest("File writeto: ", function(dest)
+        report(file.write_to(dest, { bang = bang, refresh_explorers = refresh }))
+      end)
     end
 
   elseif subcmd == "mkdir" then
-    report(file.mk_parent())
+    report(file.mk_parent({ refresh_explorers = refresh }))
 
   elseif subcmd == "touch" then
     if fargs[1] then
-      report(file.touch(fargs[1]))
+      report(file.touch(fargs[1], { refresh_explorers = refresh }))
     else
-      prompt_dest("File touch: ", function(dest) report(file.touch(dest)) end)
+      prompt_dest("File touch: ", function(dest)
+        report(file.touch(dest, { refresh_explorers = refresh }))
+      end)
     end
 
   elseif subcmd == "rename" then
     local dest = resolve_dest(fargs)
     if dest then
-      report(file.rename(dest, { bang = bang }))
+      report(file.rename(dest, { bang = bang, refresh_explorers = refresh }))
     else
-      prompt_dest("File rename: ", function(d) report(file.rename(d, { bang = bang })) end)
+      prompt_dest("File rename: ", function(d)
+        report(file.rename(d, { bang = bang, refresh_explorers = refresh }))
+      end)
     end
 
   elseif subcmd == "move" then
     local dest = resolve_dest(fargs)
     if dest then
-      report(file.move(dest, { bang = bang }))
+      report(file.move(dest, { bang = bang, refresh_explorers = refresh }))
     else
-      prompt_dest("File move: ", function(d) report(file.move(d, { bang = bang })) end)
+      prompt_dest("File move: ", function(d)
+        report(file.move(d, { bang = bang, refresh_explorers = refresh }))
+      end)
     end
 
   elseif subcmd == "duplicate" then
     local dest = resolve_dest(fargs)
     if dest then
-      report(file.duplicate(dest, { bang = bang }))
+      report(file.duplicate(dest, { bang = bang, refresh_explorers = refresh }))
     else
-      prompt_dest("File duplicate: ", function(d) report(file.duplicate(d, { bang = bang })) end)
+      prompt_dest("File duplicate: ", function(d)
+        report(file.duplicate(d, { bang = bang, refresh_explorers = refresh }))
+      end)
     end
 
   elseif subcmd == "copy" then
     local dest = resolve_dest(fargs)
     if dest then
-      report(file.copy(dest, { bang = bang }))
+      report(file.copy(dest, { bang = bang, refresh_explorers = refresh }))
     else
-      prompt_dest("File copy: ", function(d) report(file.copy(d, { bang = bang })) end)
+      prompt_dest("File copy: ", function(d)
+        report(file.copy(d, { bang = bang, refresh_explorers = refresh }))
+      end)
     end
 
   elseif subcmd == "delete" then
@@ -244,14 +269,15 @@ local function dispatch(subcmd, fargs, bang, count)
       force = bang,
       mode = dcfg.mode,
       on_before_delete = dcfg.on_before_delete,
+      refresh_explorers = refresh,
     }))
 
   elseif subcmd == "cd" then
     local cfg   = config.get()
     local arg   = fargs[1] and CD_SCOPE_MAP[fargs[1]:lower()]
     local scope = arg or (cfg.cd and CD_SCOPE_MAP[cfg.cd.scope]) or "lcd"
-    local refresh = not (cfg.cd and cfg.cd.refresh_explorers == false)
-    report(file.cd_here({ scope = scope, refresh = refresh }))
+    local cd_refresh = not (cfg.cd and cfg.cd.refresh_explorers == false)
+    report(file.cd_here({ scope = scope, refresh = cd_refresh }))
 
   elseif subcmd == "next" then
     do_cycle("next", fargs[1], count, bang)

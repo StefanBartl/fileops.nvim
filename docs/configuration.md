@@ -18,6 +18,11 @@ require("fileops_nvim").setup({
     scope             = "window", -- "window" (:lcd) | "tab" (:tcd) | "global" (:cd)
     refresh_explorers = true,     -- Refresh neo-tree/nvim-tree/netrw after cd
   },
+  -- Refresh tree explorers after any file op that changes the tree
+  explorer = {
+    refresh_on_change = true, -- reload neo-tree/nvim-tree after create/rename/move/duplicate/copy/delete
+                               -- (a `User FileopsChanged` autocmd fires either way)
+  },
   -- Options for :File[!] delete
   delete = {
     mode             = "permanent", -- "permanent" (fs_unlink) | "trash" (OS trash/recycle bin)

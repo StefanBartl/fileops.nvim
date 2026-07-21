@@ -20,6 +20,9 @@
 ---@field scope?             FileOps.CdScope  cd scope: window (lcd), tab (tcd), global (cd).
 ---@field refresh_explorers? boolean          Refresh neo-tree/nvim-tree/netrw after cd.
 
+---@class FileOps.ExplorerConfig
+---@field refresh_on_change? boolean  Refresh neo-tree/nvim-tree after any file op that changes the tree (create/rename/move/duplicate/copy/delete). Default: true. Also emits a `User FileopsChanged` autocmd regardless of this setting.
+
 ---@alias FileOps.DeleteMode "permanent"|"trash"
 
 ---@class FileOps.DeleteConfig
@@ -83,6 +86,7 @@
 ---@class FileOps.Config
 ---@field cycle?          FileOps.CycleConfig          File-cycle options.
 ---@field cd?             FileOps.CdConfig             Change-directory options.
+---@field explorer?       FileOps.ExplorerConfig       Tree-explorer refresh options.
 ---@field delete?         FileOps.DeleteConfig         Delete-mode and pre-delete hook options.
 ---@field keymaps?        FileOps.KeymapConfig         Keymap registration flags.
 ---@field commands?       boolean                      Register all user commands (default: true).
