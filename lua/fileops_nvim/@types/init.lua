@@ -2,7 +2,7 @@
 ---@module 'fileops_nvim.@types'
 
 ---@alias FileOps.OpenTarget "replace"|"current"|"split"|"vsplit"|"tab"|"background"
----@alias FileOps.CycleRoot  "buffer_dir"|"cwd"
+---@alias FileOps.CycleRoot  "buffer_dir"|"cwd"|"buffer_dir_recursive"|"cwd_recursive"
 ---@alias FileOps.Direction  "next"|"prev"
 ---@alias FileOps.CdScope    "window"|"tab"|"global"
 
@@ -12,7 +12,7 @@
 ---@field include_hidden?      boolean              Include dot-files.
 ---@field wrap?                boolean              Wrap at directory boundary.
 ---@field follow_symlinks?     boolean              Resolve symlinks for comparisons.
----@field root?                FileOps.CycleRoot    Which directory to list.
+---@field root?                FileOps.CycleRoot    Which directory to list; the "_recursive" variants also walk subdirectories (symlinked dirs are never descended into).
 ---@field confirm_on_modified? boolean              Prompt when current buffer is modified.
 ---@field case_insensitive?    boolean              Sort and compare paths case-insensitively.
 ---@field pattern?             string|nil           Glob filter (e.g. "*.lua") applied to file names; matched via `vim.fn.glob2regpat`. Default: nil (no filter).

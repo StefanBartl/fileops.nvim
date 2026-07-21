@@ -2,11 +2,6 @@
 
 ## Geplante Features
 
-### Navigation Improvements
-
-- **Aufl isung von Verzeichnis-Tiefe** — optional rekursive Navigation (subdirs einschließen)
-  z.B. `root = "buffer_dir_recursive"` als neuer Config-Wert
-
 ### Bulk Operations
 
 - **`:File bulk rename {pattern} {replacement}`** — Batch-Rename aller Dateien im Verzeichnis

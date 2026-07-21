@@ -147,6 +147,10 @@ If the first argument isn't one of the target keywords above, it's treated
 as the glob pattern instead (so `:File next *.lua` works without needing to
 name a target first).
 
+Set `cycle.root = "buffer_dir_recursive"` (or `"cwd_recursive"`) to also walk
+subdirectories instead of listing just the top-level directory — see
+[Configuration](configuration.md).
+
 ## `:File[!] first [target]` / `:File[!] last [target]`
 
 Jump straight to the first / last file in the current directory listing

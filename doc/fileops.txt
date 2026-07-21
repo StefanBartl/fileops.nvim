@@ -75,7 +75,7 @@ packer.nvim / pckr.nvim: >lua
       include_hidden      = false,
       wrap                = true,
       follow_symlinks     = true,
-      root                = "buffer_dir",
+      root                = "buffer_dir", -- or "cwd"|"buffer_dir_recursive"|"cwd_recursive"
       confirm_on_modified = true,
       case_insensitive    = true,
       pattern             = nil,
@@ -156,7 +156,10 @@ cycle.follow_symlinks ~
   Use `uv.fs_realpath` for path canonicalisation. Default: `true`.
 
 cycle.root ~
-  `"buffer_dir"` or `"cwd"` — directory to scan. Default: `"buffer_dir"`.
+  `"buffer_dir"`, `"cwd"`, `"buffer_dir_recursive"` or `"cwd_recursive"` —
+  directory to scan. The `_recursive` variants also walk subdirectories
+  (symlinked directories are never descended into, so a symlink cycle can't
+  cause an infinite walk). Default: `"buffer_dir"`.
 
 cycle.confirm_on_modified ~
   Show a `vim.ui.select` prompt when the buffer has unsaved changes and

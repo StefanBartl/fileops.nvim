@@ -77,4 +77,27 @@ return function(H)
   local opts_lua = vim.tbl_extend("force", opts, { pattern = "*.lua" })
   ok(cycle.navigate(root, "next", opts_lua, 1), "pattern *.lua: navigate next succeeds")
   eq(vim.fn.expand("%:t"), "b.lua", "pattern *.lua: notes.md excluded from the cycle")
+
+  -- root = buffer_dir_recursive: picks up files in subdirectories too.
+  -- Listing sorts by full path, so "sub/nested.lua" sorts after the
+  -- top-level a/b/c.lua files — jump_edge("last") landing there proves
+  -- the recursive walk found it.
+  H.write_file(dir .. "sub/nested.lua", "-- nested")
+  H.write_file(dir .. "sub/deeper/deepest.lua", "-- deepest")
+  local opts_rec = vim.tbl_extend("force", opts, {
+    root = "buffer_dir_recursive", pattern = "*.lua", wrap = true,
+  })
+  H.edit(dir .. "a.lua")
+  local root_rec, root_rec_err = cycle.get_root_dir(opts_rec)
+  ok(root_rec ~= nil, "get_root_dir (recursive) resolves a directory: " .. tostring(root_rec_err))
+  ---@cast root_rec string
+  ok(cycle.jump_edge(root_rec, "last", opts_rec), "recursive jump_edge last succeeds")
+  eq(vim.fn.expand("%:t"), "nested.lua", "recursive listing descends into sub/ and sub/deeper/")
+
+  -- non-recursive root = buffer_dir does NOT see into subdirectories
+  local opts_nonrec = vim.tbl_extend("force", opts, { pattern = "*.lua", wrap = false })
+  H.edit(dir .. "a.lua")
+  local nr_ok, nr_msg = cycle.jump_edge(root, "last", opts_nonrec)
+  ok(nr_ok, "non-recursive jump_edge last succeeds: " .. tostring(nr_msg))
+  eq(vim.fn.expand("%:t"), "c.lua", "non-recursive listing stays on c.lua, ignoring sub/")
 end
