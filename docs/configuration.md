@@ -18,6 +18,11 @@ require("fileops_nvim").setup({
     scope             = "window", -- "window" (:lcd) | "tab" (:tcd) | "global" (:cd)
     refresh_explorers = true,     -- Refresh neo-tree/nvim-tree/netrw after cd
   },
+  -- Options for :File[!] delete
+  delete = {
+    mode             = "permanent", -- "permanent" (fs_unlink) | "trash" (OS trash/recycle bin)
+    on_before_delete = nil,         -- fun(path: string): boolean|nil — return false to abort
+  },
   keymaps = {
     cycle  = true,   -- master switch: <leader>nf/pf family
     delete = true,   -- master switch: <leader>dcf

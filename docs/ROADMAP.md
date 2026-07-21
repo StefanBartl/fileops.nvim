@@ -29,15 +29,6 @@
 - **`:File bulk rename {pattern} {replacement}`** — Batch-Rename aller Dateien im Verzeichnis
   via lua-Regex; Vorschau-Modus mit Bestätigungsdialog
 
-### Undo / Safety
-
-- **Trash statt Delete** — `:File delete` in den OS-Papierkorb statt `fs_unlink`;
-  OS-Detection: Windows (Recycle Bin via shell), macOS (`osascript`), Linux (`gio trash`)
-  Konfigurierbar: `delete_mode = "trash"|"permanent"`
-
-- **Pre-delete Hook** — `on_before_delete(path)` Callback in Config; kann `false` zurückgeben
-  um Löschen abzubrechen (nützlich für Git-tracked-File-Warnung)
-
 ### Integration
 
 - **Git-Awareness** — Warnung wenn Datei git-tracked ist bei rename/delete/duplicate;
@@ -80,4 +71,12 @@
 - **`:File first / last`** — springe zur ersten/letzten Datei im Verzeichnis;
   implementiert als `cycle.jump_edge(dir, edge, opts)`, teilt sich `list_files`/
   `open_path` mit `next`/`prev`.
+
+- **Trash statt Delete** — `delete.mode = "trash"|"permanent"` (Default:
+  `"permanent"`); nutzt `lib.nvim.fs.trash` (bereits vorhandene
+  OS-Detection: Windows Recycle Bin, macOS `osascript`, Linux `gio trash`/
+  `trash-put`), kein eigener Plattform-Code nötig.
+
+- **Pre-delete Hook** — `delete.on_before_delete(path)` Callback; ein
+  `false`-Rückgabewert bricht das Löschen ab, bevor die Platte angefasst wird.
 

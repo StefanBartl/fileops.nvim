@@ -359,7 +359,7 @@ local function switch_windows_off(bufnr)
 end
 
 ---Delete the file of the current buffer from disk and close the buffer.
----@param opts? { force?: boolean }
+---@param opts? { force?: boolean, mode?: "trash"|"permanent", on_before_delete?: fun(path: string): boolean|nil }
 ---@return boolean ok
 ---@return string|nil msg
 function M.delete_current(opts)
@@ -380,9 +380,21 @@ function M.delete_current(opts)
     return false, "buffer has unsaved changes — use :File! delete to delete and force-close"
   end
 
-  local ok, err = fsops.delete_file(path)
+  -- Give the hook a chance to veto (e.g. warn on git-tracked files) before
+  -- anything touches the disk.
+  if opts.on_before_delete and opts.on_before_delete(path) == false then
+    return false, "deletion cancelled by on_before_delete hook: " .. path
+  end
+
+  local trash = opts.mode == "trash"
+  local ok, err
+  if trash then
+    ok, err = require("lib.nvim.fs.trash").trash_blocking(path)
+  else
+    ok, err = fsops.delete_file(path)
+  end
   if not ok then
-    return false, "delete failed: " .. tostring(err)
+    return false, (trash and "trash failed: " or "delete failed: ") .. tostring(err)
   end
 
   -- Close the buffer (force already implied by the guard above for modified ones).
@@ -393,7 +405,7 @@ function M.delete_current(opts)
     pcall(api.nvim_buf_delete, b, { force = opts.force or false })
   end
 
-  return true, "deleted " .. fn.fnamemodify(path, ":t")
+  return true, (trash and "trashed " or "deleted ") .. fn.fnamemodify(path, ":t")
 end
 
 -- ─── Change directory ──────────────────────────────────────────────────────────

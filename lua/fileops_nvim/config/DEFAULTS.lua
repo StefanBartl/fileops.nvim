@@ -17,6 +17,10 @@ return {
     scope             = "window",  -- "window" (lcd) | "tab" (tcd) | "global" (cd)
     refresh_explorers = true,      -- refresh neo-tree/nvim-tree/netrw after cd
   },
+  delete = {
+    mode              = "permanent", -- "permanent" (fs_unlink) | "trash" (OS trash/recycle bin)
+    on_before_delete  = nil,         -- fun(path: string): boolean|nil — return false to abort
+  },
   keymaps = {
     cycle  = true,
     delete = true,

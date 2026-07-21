@@ -83,6 +83,10 @@ packer.nvim / pckr.nvim: >lua
       scope             = "window",
       refresh_explorers = true,
     },
+    delete = {
+      mode             = "permanent",  -- "permanent"|"trash"
+      on_before_delete = nil,          -- fun(path): boolean|nil
+    },
     keymaps = {
       cycle  = true,
       delete = true,
@@ -164,6 +168,17 @@ cd.scope ~
 cd.refresh_explorers ~
   After changing directory, refresh an open neo-tree, nvim-tree or netrw so it
   tracks the new root. Default: `true`.
+
+delete.mode ~
+  `"permanent"` (`uv.fs_unlink` via lib.nvim.cross.fs.mutate) or `"trash"`
+  (OS trash/recycle bin via lib.nvim.fs.trash — Windows Recycle Bin, macOS
+  Finder, Linux `gio trash`/`trash-put`). Default: `"permanent"`.
+
+delete.on_before_delete ~
+  `fun(path: string): boolean|nil` called right before a file is deleted (by
+  |:File-delete| or `fileops.delete_current()`); return `false` to abort
+  (nothing is deleted, the buffer is untouched). Useful for a git-tracked-file
+  warning. Default: `nil`.
 
 keymaps.cycle ~
   Master switch: register the `<leader>nf` / `<leader>pf` family.
@@ -347,8 +362,11 @@ it is always implied when omitted.
 
 :File[!] delete [%]                                       *:File-delete*
   Delete the current file from disk and close the buffer. Uses `uv.fs_unlink`
-  (no shell command). If the buffer has unsaved changes, plain `:File delete`
-  refuses (nothing is deleted); `!` deletes and force-closes. >
+  by default (no shell command), or the OS trash/recycle bin when
+  `delete.mode = "trash"` — see |fileops-config|. If the buffer has unsaved
+  changes, plain `:File delete` refuses (nothing is deleted); `!` deletes and
+  force-closes. If `delete.on_before_delete` is set, it runs first and can
+  abort the deletion by returning `false`. >
     :File delete
     :File delete %     → identical
     :File! delete      → delete + force-close a modified buffer
@@ -545,7 +563,8 @@ copy({path}, {opts})                                      *fileops.copy()*
   Copy to new path without opening it. {opts}: `{ bang?: boolean }`.
 
 delete_current({opts})                          *fileops.delete_current()*
-  Delete current file. {opts}: `{ force?: boolean }`.
+  Delete current file. {opts}: `{ force?: boolean, mode?: "trash"|
+  "permanent", on_before_delete?: fun(path): boolean|nil }`.
 
 cd_here({opts})                                      *fileops.cd_here()*
   Change directory to the buffer's directory and refresh open explorers.

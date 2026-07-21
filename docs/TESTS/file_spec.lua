@@ -68,4 +68,25 @@ return function(H)
   local tok3 = file.touch(nested)
   ok(tok3, "touch creates missing parent directories")
   eq(vim.fn.filereadable(nested), 1, "touch: nested file exists")
+
+  -- delete_current: on_before_delete returning false aborts before disk/buffer
+  -- are touched; default mode ("permanent"/unset) actually deletes.
+  local vetoed = dir .. "vetoed.lua"
+  H.write_file(vetoed, "keep me")
+  local vbuf = H.edit(vetoed)
+  local dok1, dmsg1 = file.delete_current({ on_before_delete = function() return false end })
+  ok(not dok1, "delete_current: on_before_delete=false aborts: " .. tostring(dmsg1))
+  eq(vim.fn.filereadable(vetoed), 1, "delete_current: vetoed file still exists")
+  ok(vim.api.nvim_buf_is_valid(vbuf), "delete_current: vetoed buffer still valid")
+
+  local deletable = dir .. "deletable.lua"
+  H.write_file(deletable, "bye")
+  H.edit(deletable)
+  local seen_path = nil
+  local dok2, dmsg2 = file.delete_current({
+    on_before_delete = function(p) seen_path = p; return true end,
+  })
+  ok(dok2, "delete_current: on_before_delete=true proceeds: " .. tostring(dmsg2))
+  eq(vim.fn.filereadable(deletable), 0, "delete_current: file actually deleted")
+  eq(seen_path, vim.fn.fnamemodify(deletable, ":p"), "delete_current: hook received the file path")
 end

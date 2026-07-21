@@ -20,6 +20,12 @@
 ---@field scope?             FileOps.CdScope  cd scope: window (lcd), tab (tcd), global (cd).
 ---@field refresh_explorers? boolean          Refresh neo-tree/nvim-tree/netrw after cd.
 
+---@alias FileOps.DeleteMode "permanent"|"trash"
+
+---@class FileOps.DeleteConfig
+---@field mode?              FileOps.DeleteMode  "permanent" (fs_unlink) or "trash" (OS trash/recycle bin). Default: "permanent".
+---@field on_before_delete?  fun(path: string): boolean|nil  Called before deletion; return `false` to abort. Default: nil.
+
 ---@class FileOps.KeymapLhs
 ---@field next_replace?    string|false  Next file, replace buffer.
 ---@field prev_replace?    string|false  Previous file, replace buffer.
@@ -77,6 +83,7 @@
 ---@class FileOps.Config
 ---@field cycle?          FileOps.CycleConfig          File-cycle options.
 ---@field cd?             FileOps.CdConfig             Change-directory options.
+---@field delete?         FileOps.DeleteConfig         Delete-mode and pre-delete hook options.
 ---@field keymaps?        FileOps.KeymapConfig         Keymap registration flags.
 ---@field commands?       boolean                      Register all user commands (default: true).
 ---@field auto_mkdir?     FileOps.AutoMkdirConfig      Auto-create parent dirs before writing (default: enabled).
