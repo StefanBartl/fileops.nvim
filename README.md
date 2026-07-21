@@ -54,8 +54,8 @@ Requires Neovim **0.9+** and [lib.nvim](https://github.com/StefanBartl/lib.nvim)
 | `duplicate` | `[%] [dest]` | Copy file to new path and open the copy |
 | `copy` | `[%] [dest]` | Copy file to new path without opening it |
 | `delete` | `[%]` | Delete file from disk and close buffer (`!` force-closes if modified) |
-| `next` | `[target]` | Next file in directory |
-| `prev` | `[target]` | Previous file in directory |
+| `next` | `[target] [glob]` | Next file in directory, optionally filtered (e.g. `*.lua`) |
+| `prev` | `[target] [glob]` | Previous file in directory, optionally filtered |
 | `first` | `[target]` | Jump to the first file in directory |
 | `last` | `[target]` | Jump to the last file in directory |
 | `open` | `[target]` | Reopen the current file in a different window target |

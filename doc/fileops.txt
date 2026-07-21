@@ -78,6 +78,7 @@ packer.nvim / pckr.nvim: >lua
       root                = "buffer_dir",
       confirm_on_modified = true,
       case_insensitive    = true,
+      pattern             = nil,
     },
     cd = {
       scope             = "window",
@@ -163,6 +164,11 @@ cycle.confirm_on_modified ~
 
 cycle.case_insensitive ~
   Sort and compare filenames case-insensitively. Default: `true`.
+
+cycle.pattern ~
+  Glob filter (e.g. `"*.lua"`) applied to file names before navigating,
+  matched via `glob2regpat()`. Overridable per-call via |:File-next|'s
+  `[glob]` argument. Default: `nil` (no filter).
 
 cd.scope ~
   `"window"` (`:lcd`), `"tab"` (`:tcd`) or `"global"` (`:cd`) — scope of the
@@ -390,15 +396,21 @@ is left alone (treated as already absolute).
     :File! delete      → delete + force-close a modified buffer
 <
 
-:[count]File[!] next [target]                             *:File-next*
-  Open the next file in the current directory. >
+:[count]File[!] next [target] [glob]                      *:File-next*
+  Open the next file in the current directory. An optional trailing `[glob]`
+  (e.g. `*.lua`, matched via `glob2regpat()`) narrows the listing before
+  navigating. If the first argument isn't a recognized target keyword, it is
+  treated as `[glob]` instead — so `:File next *.lua` works without naming a
+  target first. >
     :File next              → next file, configured open_target
     :File next vsplit       → open in vertical split
+    :File next *.lua        → next file matching *.lua
+    :File next vsplit *.lua → open in vertical split, matching *.lua
     :2File next             → skip 2 files
     :File! next             → bypass modified-buffer prompt
 <
 
-:[count]File[!] prev [target]                             *:File-prev*
+:[count]File[!] prev [target] [glob]                      *:File-prev*
   Open the previous file in the current directory. Same options as
   |:File-next|.
 

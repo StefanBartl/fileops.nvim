@@ -4,9 +4,6 @@
 
 ### Navigation Improvements
 
-- **`:File next/prev` mit Glob-Filter** — z.B. `:File next *.lua` um nur Lua-Dateien zu cyclen
-  Erweiterung der `list_files`-Funktion um `pattern`-Option in CycleConfig
-
 - **Aufl isung von Verzeichnis-Tiefe** — optional rekursive Navigation (subdirs einschließen)
   z.B. `root = "buffer_dir_recursive"` als neuer Config-Wert
 

@@ -43,8 +43,8 @@ gated by `config.commands` (a single boolean — there is only one command).
 | `:File[!] duplicate` | `[%] [dest]` | Copy file to new path and open the copy |
 | `:File[!] copy` | `[%] [dest]` | Copy file to new path without opening it |
 | `:File[!] delete` | `[%]` | Delete file from disk and close buffer |
-| `:[count]File[!] next` | `[target]` | Next file in directory |
-| `:[count]File[!] prev` | `[target]` | Previous file in directory |
+| `:[count]File[!] next` | `[target] [glob]` | Next file in directory, optionally filtered (e.g. `*.lua`) |
+| `:[count]File[!] prev` | `[target] [glob]` | Previous file in directory, optionally filtered |
 | `:File[!] first` | `[target]` | Jump to the first file in directory |
 | `:File[!] last` | `[target]` | Jump to the last file in directory |
 | `:File[!] open` | `[target]` | Reopen the current file in a different window target |
