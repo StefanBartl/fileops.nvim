@@ -66,6 +66,17 @@ function M.rename(new_path, opts)
   )
 end
 
+---Move the current file on disk (possibly to a different directory) without
+---reloading the buffer from disk.
+---@param new_path string
+---@param opts? { bang?: boolean }
+---@return boolean ok
+function M.move(new_path, opts)
+  return require("fileops_nvim.util.notify").report(
+    require("fileops_nvim.ops.file").move(new_path, opts)
+  )
+end
+
 ---Duplicate the current file to a new path.
 ---@param new_path string
 ---@param opts? { bang?: boolean, open?: boolean }

@@ -39,13 +39,26 @@ runs automatically before every save too — see [Autocommands](autocommands.md)
 ## `:File[!] rename [%] {dest}`
 
 Rename (or move) the current file on disk to `{dest}`. Updates the buffer
-name. Writes unsaved changes before renaming. `!` overwrites an existing
-destination.
+name and **reloads the buffer from disk** afterwards (resets signs/
+diagnostics). Writes unsaved changes before renaming. `!` overwrites an
+existing destination.
 
 ```
 :File rename newname.lua
 :File rename % newname.lua    (explicit %, same result)
 :File! rename ../moved.lua    (overwrite if exists)
+```
+
+## `:File[!] move [%] {dest}`
+
+Move the current file on disk to `{dest}` (possibly a different directory)
+and update the buffer name — same underlying rename as `rename`, but the
+buffer is **not** reloaded: content and undo history stay exactly as they
+were. `!` overwrites an existing destination.
+
+```
+:File move ../elsewhere/file.lua
+:File! move % ../elsewhere/file.lua
 ```
 
 ## `:File[!] duplicate [%] {dest}`

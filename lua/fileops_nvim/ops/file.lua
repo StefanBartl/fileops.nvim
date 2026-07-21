@@ -135,15 +135,24 @@ function M.mk_parent()
   return M.ensure_parent(p)
 end
 
--- ─── Rename ───────────────────────────────────────────────────────────────────
+-- ─── Rename / Move ────────────────────────────────────────────────────────────
 
----Rename the file of the current buffer on disk and update the buffer name.
+---Shared implementation for `M.rename` and `M.move`: rename the file of the
+---current buffer on disk via `fsops.rename_file` (works across directories
+---too, so this also covers "move") and re-point the buffer at the new path.
+---The only behavioral difference between the two public entry points is
+---whether the buffer is reloaded from disk afterwards (`opts.reload`):
+---`rename` resets signs/diagnostics via a fresh `:edit`, `move` leaves the
+---buffer's content/undo history untouched.
 ---@param new_path string  New path (may be relative or use ~).
----@param opts? { bang?: boolean }
+---@param opts? { bang?: boolean, reload?: boolean, action?: string }
 ---@return boolean ok
 ---@return string|nil msg
-function M.rename(new_path, opts)
+local function move_or_rename(new_path, opts)
   opts = opts or {}
+  local reload = opts.reload ~= false
+  local action = opts.action or "rename"
+
   local b = cur_buf()
   if not b then return false, "no valid buffer" end
 
@@ -167,20 +176,46 @@ function M.rename(new_path, opts)
   -- Write unsaved changes before renaming so no data is lost
   if vim.bo[b].modified then
     local ok, err = pcall(vim.cmd, "write")
-    if not ok then return false, "save failed before rename: " .. tostring(err) end
+    if not ok then return false, "save failed before " .. action .. ": " .. tostring(err) end
   end
 
   local ok, err = fsops.rename_file(old, abs)
   if not ok then
-    return false, "rename failed: " .. tostring(err)
+    return false, action .. " failed: " .. tostring(err)
   end
 
   -- Update buffer to point at new path
   local esc = fn.fnameescape(abs)
   pcall(vim.cmd, "file " .. esc)
-  pcall(vim.cmd, "edit")  -- reload from disk so signs/diagnostics reset
+  if reload then
+    pcall(vim.cmd, "edit")  -- reload from disk so signs/diagnostics reset
+  end
 
-  return true, ("renamed %s → %s"):format(fn.fnamemodify(old, ":t"), fn.fnamemodify(abs, ":t"))
+  return true, (action .. "d %s → %s"):format(fn.fnamemodify(old, ":t"), fn.fnamemodify(abs, ":t"))
+end
+
+---Rename the file of the current buffer on disk and update the buffer name.
+---Reloads the buffer from disk afterwards (resets signs/diagnostics).
+---@param new_path string  New path (may be relative or use ~).
+---@param opts? { bang?: boolean }
+---@return boolean ok
+---@return string|nil msg
+function M.rename(new_path, opts)
+  opts = opts or {}
+  return move_or_rename(new_path, { bang = opts.bang, reload = true, action = "rename" })
+end
+
+---Move the file of the current buffer on disk to a (possibly different)
+---directory and update the buffer name. Unlike `M.rename`, the buffer is
+---NOT reloaded from disk afterwards — its content and undo history stay
+---exactly as they were, only the on-disk location and buffer name change.
+---@param new_path string  New path (may be relative or use ~).
+---@param opts? { bang?: boolean }
+---@return boolean ok
+---@return string|nil msg
+function M.move(new_path, opts)
+  opts = opts or {}
+  return move_or_rename(new_path, { bang = opts.bang, reload = false, action = "move" })
 end
 
 -- ─── Duplicate ────────────────────────────────────────────────────────────────

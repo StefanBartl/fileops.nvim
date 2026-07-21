@@ -4,9 +4,6 @@
 
 ### High Priority
 
-- **`:File move {dest}`** — Datei in anderes Verzeichnis verschieben ohne Buffer-Name-Änderung
-  (writeto-Logik + alten Buffer umhängen); Unterschied zu `rename`: kein Neuladen
-
 - **`:File open [target]`** — aktuellen Puffer-Pfad in neuem Target öffnen
   (z.B. `:File open vsplit` → aktuelle Datei in vsplit öffnen)
 
@@ -76,4 +73,8 @@
 
 - **`:File copy {dest}`** — wie `duplicate`, aber ohne automatisches Öffnen
   (stille Kopie); implementiert als dünner Wrapper um `duplicate(open=false)`.
+
+- **`:File move {dest}`** — Datei in anderes Verzeichnis verschieben; Unterschied
+  zu `rename`: kein Neuladen des Buffers (Inhalt/Undo-History bleiben erhalten).
+  Implementiert als gemeinsame `move_or_rename`-Hilfsfunktion mit `reload`-Flag.
 
