@@ -1,13 +1,13 @@
----@module 'fileops_nvim.bindings.keymaps'
----Keymap registration for fileops_nvim. Called only from bindings.setup().
+---@module 'fileops.bindings.keymaps'
+---Keymap registration for fileops. Called only from bindings.setup().
 ---Individual keys are gated by config.keymaps.lhs.* — set an entry to `false`
 ---to disable just that one mapping, or to a different string to remap it.
 local M = {}
 
-local file   = require("fileops_nvim.ops.file")
-local cycle  = require("fileops_nvim.ops.cycle")
-local notify = require("fileops_nvim.util.notify")
-local config = require("fileops_nvim.config")
+local file   = require("fileops.ops.file")
+local cycle  = require("fileops.ops.cycle")
+local notify = require("fileops.util.notify")
+local config = require("fileops.config")
 
 ---Set a keymap. Uses lib.nvim's map helper if available (soft dependency),
 ---else falls back to plain vim.keymap.set.

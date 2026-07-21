@@ -1,7 +1,7 @@
 # Lua API
 
 ```lua
-local fileops = require("fileops_nvim")
+local fileops = require("fileops")
 
 fileops.next(opts?, count?)          -- :File next equivalent
 fileops.prev(opts?, count?)          -- :File prev equivalent

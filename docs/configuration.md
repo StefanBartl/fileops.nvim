@@ -1,7 +1,7 @@
 # Configuration
 
 ```lua
-require("fileops_nvim").setup({
+require("fileops").setup({
   -- Options for :File next / :File prev
   cycle = {
     open_target         = "replace",    -- "replace"|"current"|"split"|"vsplit"|"tab"|"background"

@@ -1,7 +1,7 @@
 # Architecture
 
 ```
-lua/fileops_nvim/
+lua/fileops/
   init.lua              Public API + setup()
   config/
     init.lua             Merge user opts over DEFAULTS, expose get()
@@ -13,7 +13,7 @@ lua/fileops_nvim/
     keymaps.lua           Per-key configurable vim.keymap.set registrations
     autocmds.lua           auto_mkdir/on_hold/conflict_marks registration
     which_key.lua         Optional which-key group labels (soft dependency)
-  health.lua             :checkhealth fileops_nvim
+  health.lua             :checkhealth fileops
   util/
     notify.lua            "[fileops] " prefixed notifier; upgrades to
                            lib.nvim.notify when lib.nvim is installed
@@ -25,7 +25,7 @@ lua/fileops_nvim/
     on_hold.lua             Ambient CursorHold line-diff preview
     conflict_marks.lua      Conflict-marker highlighting
 plugin/
-  fileops_nvim.lua        Load guard
+  fileops.lua        Load guard
 docs/
   BINDINGS.md             Cheatsheet of every keymap, user command, autocmd
   ROADMAP.md              Planned features

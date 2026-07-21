@@ -2,7 +2,7 @@
 
 return function(H)
   local eq, ok = H.eq, H.ok
-  local cycle = require("fileops_nvim.ops.cycle")
+  local cycle = require("fileops.ops.cycle")
 
   local dir = H.tmpdir()
   H.write_file(dir .. "a.lua", "-- a")

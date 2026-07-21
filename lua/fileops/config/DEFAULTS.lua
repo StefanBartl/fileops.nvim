@@ -1,4 +1,4 @@
----@module 'fileops_nvim.config.DEFAULTS'
+---@module 'fileops.config.DEFAULTS'
 ---Immutable default configuration. Deep-merged with user opts in config/init.lua.
 
 ---@type FileOps.Config

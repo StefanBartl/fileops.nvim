@@ -1,9 +1,9 @@
----@module 'fileops_nvim.config'
+---@module 'fileops.config'
 ---Runtime config store: merge user options over DEFAULTS, expose get().
 local M = {}
 
 ---@type FileOps.Config
-M.DEFAULTS = require("fileops_nvim.config.DEFAULTS")
+M.DEFAULTS = require("fileops.config.DEFAULTS")
 
 ---@type FileOps.Config
 local _active = vim.deepcopy(M.DEFAULTS)

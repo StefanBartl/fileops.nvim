@@ -2,12 +2,12 @@
 
 | Event | augroup | Action |
 |---|---|---|
-| `BufWritePre` | `fileops_nvim_auto_mkdir` | Create parent directories for the file about to be written — the automatic-on-save counterpart to [`:File mkdir`](commands.md#file-mkdir) |
+| `BufWritePre` | `fileops_auto_mkdir` | Create parent directories for the file about to be written — the automatic-on-save counterpart to [`:File mkdir`](commands.md#file-mkdir) |
 
 Gated by `config.auto_mkdir.enable` (default `true`). Disable it entirely:
 
 ```lua
-require("fileops_nvim").setup({
+require("fileops").setup({
   auto_mkdir = { enable = false },
 })
 ```
@@ -28,7 +28,7 @@ fallback preview needs.
 Gated by `config.on_hold.enable` (default `false` — opt-in). Enable it:
 
 ```lua
-require("fileops_nvim").setup({
+require("fileops").setup({
   on_hold = { enable = true },
 })
 ```
@@ -42,7 +42,7 @@ per-window.
 Gated by `config.conflict_marks.enable` (default `true`). Disable it entirely:
 
 ```lua
-require("fileops_nvim").setup({
+require("fileops").setup({
   conflict_marks = { enable = false },
 })
 ```

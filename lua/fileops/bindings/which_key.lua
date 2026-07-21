@@ -1,12 +1,12 @@
----@module 'fileops_nvim.bindings.which_key'
----Optional, guarded which-key group labels for fileops_nvim's cycle prefixes.
+---@module 'fileops.bindings.which_key'
+---Optional, guarded which-key group labels for fileops's cycle prefixes.
 ---which-key is a soft dependency: a no-op when it is not installed. Individual
 ---keys already carry their own `desc` (see bindings/keymaps.lua), so only the
 ---shared `<leader>n` / `<leader>p` group labels are registered here. Supports
 ---both which-key v3 (`add`) and v2 (`register`) APIs.
 local M = {}
 
----Register fileops_nvim's group labels with which-key, if available.
+---Register fileops's group labels with which-key, if available.
 ---@return boolean registered
 function M.setup()
   local ok, wk = pcall(require, "which-key")

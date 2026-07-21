@@ -1,19 +1,19 @@
----@module 'fileops_nvim'
----Entry point for fileops_nvim. Call M.setup() once in your Neovim config.
+---@module 'fileops'
+---Entry point for fileops. Call M.setup() once in your Neovim config.
 local M = {}
 
 local _setup_done = false
 
----Configure and activate fileops_nvim.
+---Configure and activate fileops.
 ---@param user_opts FileOps.Config|nil
 function M.setup(user_opts)
   if _setup_done then return end
   _setup_done = true
 
-  local cfg = require("fileops_nvim.config").setup(user_opts)
-  require("fileops_nvim.bindings").setup(cfg)
+  local cfg = require("fileops.config").setup(user_opts)
+  require("fileops.bindings").setup(cfg)
 
-  vim.g.loaded_fileops_nvim = 1
+  vim.g.loaded_fileops = 1
 end
 
 -- ─── Public Lua API ──────────────────────────────────────────────────────────
@@ -23,10 +23,10 @@ end
 ---@param count? integer
 ---@return boolean ok
 function M.next(opts, count)
-  local cfg   = require("fileops_nvim.config").get()
+  local cfg   = require("fileops.config").get()
   local copts = vim.tbl_deep_extend("force", vim.deepcopy(cfg.cycle or {}), opts or {})
-  local cycle = require("fileops_nvim.ops.cycle")
-  local notify = require("fileops_nvim.util.notify")
+  local cycle = require("fileops.ops.cycle")
+  local notify = require("fileops.util.notify")
   local dir, err = cycle.get_root_dir(copts)
   if not dir then notify.warn(err or "no root dir"); return false end
   return notify.report(cycle.navigate(dir, "next", copts, count))
@@ -37,10 +37,10 @@ end
 ---@param count? integer
 ---@return boolean ok
 function M.prev(opts, count)
-  local cfg   = require("fileops_nvim.config").get()
+  local cfg   = require("fileops.config").get()
   local copts = vim.tbl_deep_extend("force", vim.deepcopy(cfg.cycle or {}), opts or {})
-  local cycle = require("fileops_nvim.ops.cycle")
-  local notify = require("fileops_nvim.util.notify")
+  local cycle = require("fileops.ops.cycle")
+  local notify = require("fileops.util.notify")
   local dir, err = cycle.get_root_dir(copts)
   if not dir then notify.warn(err or "no root dir"); return false end
   return notify.report(cycle.navigate(dir, "prev", copts, count))
@@ -51,8 +51,8 @@ end
 ---@param opts? { write?: boolean, bang?: boolean }
 ---@return boolean ok
 function M.new_file(path, opts)
-  return require("fileops_nvim.util.notify").report(
-    require("fileops_nvim.ops.file").edit_new(path, opts)
+  return require("fileops.util.notify").report(
+    require("fileops.ops.file").edit_new(path, opts)
   )
 end
 
@@ -61,8 +61,8 @@ end
 ---@param opts? { bang?: boolean }
 ---@return boolean ok
 function M.rename(new_path, opts)
-  return require("fileops_nvim.util.notify").report(
-    require("fileops_nvim.ops.file").rename(new_path, opts)
+  return require("fileops.util.notify").report(
+    require("fileops.ops.file").rename(new_path, opts)
   )
 end
 
@@ -71,8 +71,8 @@ end
 ---@param opts? { bang?: boolean, open?: boolean }
 ---@return boolean ok
 function M.duplicate(new_path, opts)
-  return require("fileops_nvim.util.notify").report(
-    require("fileops_nvim.ops.file").duplicate(new_path, opts)
+  return require("fileops.util.notify").report(
+    require("fileops.ops.file").duplicate(new_path, opts)
   )
 end
 
@@ -80,8 +80,8 @@ end
 ---@param opts? { force?: boolean }
 ---@return boolean ok
 function M.delete_current(opts)
-  return require("fileops_nvim.util.notify").report(
-    require("fileops_nvim.ops.file").delete_current(opts)
+  return require("fileops.util.notify").report(
+    require("fileops.ops.file").delete_current(opts)
   )
 end
 
@@ -90,8 +90,8 @@ end
 ---@param opts? { scope?: "lcd"|"cd"|"tcd", refresh?: boolean }
 ---@return boolean ok
 function M.cd_here(opts)
-  return require("fileops_nvim.util.notify").report(
-    require("fileops_nvim.ops.file").cd_here(opts)
+  return require("fileops.util.notify").report(
+    require("fileops.ops.file").cd_here(opts)
   )
 end
 

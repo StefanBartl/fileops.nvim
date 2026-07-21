@@ -35,7 +35,7 @@ use({
   "StefanBartl/fileops.nvim",
   requires = { "StefanBartl/lib.nvim" }, -- required
   config = function()
-    require("fileops_nvim").setup()
+    require("fileops").setup()
   end,
 })
 ```
@@ -47,7 +47,7 @@ Plug 'StefanBartl/lib.nvim'  " required
 Plug 'StefanBartl/fileops.nvim'
 ```
 ```lua
-require("fileops_nvim").setup()
+require("fileops").setup()
 ```
 
 See [Configuration](configuration.md) for all available `setup()` options.

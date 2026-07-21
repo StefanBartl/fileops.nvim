@@ -59,7 +59,7 @@ packer.nvim / pckr.nvim: >lua
     "StefanBartl/fileops.nvim",
     requires = { "StefanBartl/lib.nvim" }, -- required
     config = function()
-      require("fileops_nvim").setup()
+      require("fileops").setup()
     end,
   })
 <
@@ -68,7 +68,7 @@ packer.nvim / pckr.nvim: >lua
 4. CONFIGURATION                                             *fileops-config*
 
 >lua
-  require("fileops_nvim").setup({
+  require("fileops").setup({
     cycle = {
       open_target         = "replace",
       keep_focus          = true,
@@ -392,7 +392,7 @@ Delete keymap (`keymaps.delete = true`): ~
   `<leader>dcf`  `:File delete`
 
 Disable or remap a single key without touching the rest of the family: >lua
-  require("fileops_nvim").setup({
+  require("fileops").setup({
     keymaps = {
       lhs = {
         next_replace = false,       -- disable just <leader>nf
@@ -410,7 +410,7 @@ auto_mkdir (`BufWritePre`) ~
   the automatic-on-save counterpart to |:File-mkdir|. Enabled by default.
 
   Configuration (see |fileops-config|): >lua
-    require("fileops_nvim").setup({
+    require("fileops").setup({
       auto_mkdir = {
         enable                = true,
         skip_remote           = true,
@@ -441,7 +441,7 @@ on_hold (`CursorHold`/`CursorHoldI`) ~
   Disabled by default — opt-in.
 
   Enable with: >lua
-    require("fileops_nvim").setup({ on_hold = { enable = true } })
+    require("fileops").setup({ on_hold = { enable = true } })
   <
   See |fileops-config| for the full `on_hold.*` option list.
 
@@ -451,7 +451,7 @@ conflict_marks (`BufWinEnter`/`BufWinLeave`) ~
   default.
 
   Disable with: >lua
-    require("fileops_nvim").setup({ conflict_marks = { enable = false } })
+    require("fileops").setup({ conflict_marks = { enable = false } })
   <
   See |fileops-config| for the `conflict_marks.*` option list.
 
@@ -467,7 +467,7 @@ which-key v2 (`register`) and v3 (`add`).
 ==============================================================================
 9. LUA API                                                      *fileops-api*
 
-All functions are on the module table: `require("fileops_nvim")`.
+All functions are on the module table: `require("fileops")`.
 
 setup({opts})                                            *fileops.setup()*
   Configure and activate. Idempotent (subsequent calls are no-ops).
@@ -510,7 +510,7 @@ cd_here({opts})                                      *fileops.cd_here()*
 11. HEALTH CHECK                                              *fileops-health*
 
 >
-  :checkhealth fileops_nvim
+  :checkhealth fileops
 <
 
 Checks:
@@ -528,8 +528,8 @@ Checks:
 ==============================================================================
 12. ARCHITECTURE                                        *fileops-architecture*
 
-  plugin/fileops_nvim.lua    Load guard
-  lua/fileops_nvim/
+  plugin/fileops.lua    Load guard
+  lua/fileops/
     init.lua                 Public API, setup()
     config/init.lua          Merge user opts over DEFAULTS, expose get()
     config/DEFAULTS.lua      Immutable default configuration

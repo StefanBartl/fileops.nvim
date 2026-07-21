@@ -1,4 +1,4 @@
----@module 'fileops_nvim.ops.cycle'
+---@module 'fileops.ops.cycle'
 ---Core logic for cycling through files in a directory (next/previous).
 ---Pure functions where possible; no global state.
 ---
@@ -9,7 +9,7 @@
 ---(vim.ui.select) with no synchronous caller to report back to.
 local M = {}
 
-local notify = require("fileops_nvim.util.notify")
+local notify = require("fileops.util.notify")
 local open_background = require("lib.nvim.buffer.open_background")
 local api, fn = vim.api, vim.fn
 local uv      = vim.uv or vim.loop

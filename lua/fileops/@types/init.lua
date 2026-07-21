@@ -1,5 +1,5 @@
 ---@meta
----@module 'fileops_nvim.@types'
+---@module 'fileops.@types'
 
 ---@alias FileOps.OpenTarget "replace"|"current"|"split"|"vsplit"|"tab"|"background"
 ---@alias FileOps.CycleRoot  "buffer_dir"|"cwd"
