@@ -60,6 +60,8 @@ composer.register_type("FILEOPS_DEST_FIRST", {
 
 -- ─── Dispatch ─────────────────────────────────────────────────────────────────
 
+local report = notify.report
+
 ---Run the file-cycle navigate with opts from config + per-call overrides.
 ---@param direction FileOps.Direction
 ---@param target_arg string|nil
@@ -80,7 +82,7 @@ local function do_cycle(direction, target_arg, count, bang)
     return
   end
 
-  cycle.navigate(dir, direction, copts, count)
+  report(cycle.navigate(dir, direction, copts, count))
 end
 
 ---Resolve destination from fargs, handling optional "%" scope prefix.
@@ -103,42 +105,42 @@ end
 local function dispatch(subcmd, fargs, bang, count)
   if subcmd == "new" then
     if not fargs[1] then notify.warn("usage: File new {path}"); return end
-    file.edit_new(fargs[1], {})
+    report(file.edit_new(fargs[1], {}))
 
   elseif subcmd == "write" then
     if not fargs[1] then notify.warn("usage: File[!] write {path}"); return end
-    file.edit_new(fargs[1], { write = true, bang = bang })
+    report(file.edit_new(fargs[1], { write = true, bang = bang }))
 
   elseif subcmd == "saveas" then
     if not fargs[1] then notify.warn("usage: File[!] saveas {path}"); return end
-    file.save_as(fargs[1], { bang = bang })
+    report(file.save_as(fargs[1], { bang = bang }))
 
   elseif subcmd == "writeto" then
     if not fargs[1] then notify.warn("usage: File[!] writeto {path}"); return end
-    file.write_to(fargs[1], { bang = bang })
+    report(file.write_to(fargs[1], { bang = bang }))
 
   elseif subcmd == "mkdir" then
-    file.mk_parent()
+    report(file.mk_parent())
 
   elseif subcmd == "rename" then
     local dest = resolve_dest(fargs)
     if not dest then notify.warn("usage: File[!] rename [%] {dest}"); return end
-    file.rename(dest, { bang = bang })
+    report(file.rename(dest, { bang = bang }))
 
   elseif subcmd == "duplicate" then
     local dest = resolve_dest(fargs)
     if not dest then notify.warn("usage: File[!] duplicate [%] {dest}"); return end
-    file.duplicate(dest, { bang = bang })
+    report(file.duplicate(dest, { bang = bang }))
 
   elseif subcmd == "delete" then
-    file.delete_current({ force = bang })
+    report(file.delete_current({ force = bang }))
 
   elseif subcmd == "cd" then
     local cfg   = config.get()
     local arg   = fargs[1] and CD_SCOPE_MAP[fargs[1]:lower()]
     local scope = arg or (cfg.cd and CD_SCOPE_MAP[cfg.cd.scope]) or "lcd"
     local refresh = not (cfg.cd and cfg.cd.refresh_explorers == false)
-    file.cd_here({ scope = scope, refresh = refresh })
+    report(file.cd_here({ scope = scope, refresh = refresh }))
 
   elseif subcmd == "next" then
     do_cycle("next", fargs[1], count, bang)

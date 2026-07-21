@@ -41,7 +41,7 @@ local function cycle_fn(direction, target)
       notify.warn(err or "cannot determine root directory")
       return
     end
-    cycle.navigate(dir, direction, copts, vim.v.count1)
+    notify.report(cycle.navigate(dir, direction, copts, vim.v.count1))
   end
 end
 
@@ -78,7 +78,7 @@ function M.attach_delete()
   local lhs = lhs_cfg().delete
   if type(lhs) ~= "string" or lhs == "" then return end
   map(lhs, function()
-    file.delete_current({})
+    notify.report(file.delete_current({}))
   end, "[fileops] Delete current file")
 end
 

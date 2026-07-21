@@ -38,4 +38,19 @@ function M.using_lib()
   return lib ~= nil
 end
 
+---Relay a low-level op's `ok, msg` result. Low-level modules (ops.file,
+---ops.cycle, …) never call notify themselves; they return `ok, msg` and
+---leave the decision of whether/how to surface it to the caller. This is
+---the one place that makes that decision, so it stays consistent across
+---every binding (usercmds, keymaps, the public Lua API).
+---@param ok boolean
+---@param msg string|nil
+---@return boolean ok  passthrough, so callers can chain
+function M.report(ok, msg)
+  if msg then
+    if ok then M.info(msg) else M.error(msg) end
+  end
+  return ok
+end
+
 return M
