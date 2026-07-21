@@ -192,7 +192,13 @@ local function dispatch(subcmd, fargs, bang, count)
     report(file.copy(dest, { bang = bang }))
 
   elseif subcmd == "delete" then
-    report(file.delete_current({ force = bang }))
+    local cfg = config.get()
+    local dcfg = cfg.delete or {}
+    report(file.delete_current({
+      force = bang,
+      mode = dcfg.mode,
+      on_before_delete = dcfg.on_before_delete,
+    }))
 
   elseif subcmd == "cd" then
     local cfg   = config.get()
