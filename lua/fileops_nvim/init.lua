@@ -46,6 +46,32 @@ function M.prev(opts, count)
   return notify.report(cycle.navigate(dir, "prev", copts, count))
 end
 
+---Jump straight to the first file in the current directory listing.
+---@param opts? FileOps.CycleConfig
+---@return boolean ok
+function M.first(opts)
+  local cfg   = require("fileops_nvim.config").get()
+  local copts = vim.tbl_deep_extend("force", vim.deepcopy(cfg.cycle or {}), opts or {})
+  local cycle = require("fileops_nvim.ops.cycle")
+  local notify = require("fileops_nvim.util.notify")
+  local dir, err = cycle.get_root_dir(copts)
+  if not dir then notify.warn(err or "no root dir"); return false end
+  return notify.report(cycle.jump_edge(dir, "first", copts))
+end
+
+---Jump straight to the last file in the current directory listing.
+---@param opts? FileOps.CycleConfig
+---@return boolean ok
+function M.last(opts)
+  local cfg   = require("fileops_nvim.config").get()
+  local copts = vim.tbl_deep_extend("force", vim.deepcopy(cfg.cycle or {}), opts or {})
+  local cycle = require("fileops_nvim.ops.cycle")
+  local notify = require("fileops_nvim.util.notify")
+  local dir, err = cycle.get_root_dir(copts)
+  if not dir then notify.warn(err or "no root dir"); return false end
+  return notify.report(cycle.jump_edge(dir, "last", copts))
+end
+
 ---Create a new file (set buffer name + optionally write).
 ---@param path string
 ---@param opts? { write?: boolean, bang?: boolean }

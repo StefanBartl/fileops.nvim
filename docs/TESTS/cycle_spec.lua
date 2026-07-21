@@ -50,4 +50,12 @@ return function(H)
   H.edit(dir .. "c.lua")
   ok(cycle.navigate(root, "next", opts_hidden, 1), "navigate next with include_hidden succeeds")
   eq(vim.fn.expand("%:t"), ".hidden.lua", "hidden file included when include_hidden = true")
+
+  -- jump_edge: first/last jump directly, regardless of current position
+  H.edit(dir .. "b.lua")
+  ok(cycle.jump_edge(root, "first", opts), "jump_edge first succeeds")
+  eq(vim.fn.expand("%:t"), "a.lua", "jump_edge first lands on a.lua")
+
+  ok(cycle.jump_edge(root, "last", opts), "jump_edge last succeeds")
+  eq(vim.fn.expand("%:t"), "c.lua", "jump_edge last lands on c.lua")
 end

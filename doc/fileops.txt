@@ -366,6 +366,19 @@ it is always implied when omitted.
   Open the previous file in the current directory. Same options as
   |:File-next|.
 
+:File[!] first [target]                                  *:File-first*
+  Jump straight to the first file in the current directory listing
+  (alphabetical, respecting `cycle.include_hidden`/`cycle.case_insensitive`),
+  instead of stepping one at a time with |:File-next|. Same `[target]`
+  values and `!` behaviour as |:File-next|. >
+    :File first
+    :File last vsplit
+<
+
+:File[!] last [target]                                    *:File-last*
+  Jump straight to the last file in the current directory listing. See
+  |:File-first|.
+
 :File cd [scope]                                          *:File-cd*
   Change the working directory to the directory of the current buffer's file,
   then refresh any open file explorer (neo-tree, nvim-tree, netrw) so it tracks
@@ -506,6 +519,12 @@ next({opts}, {count})                                     *fileops.next()*
 
 prev({opts}, {count})                                     *fileops.prev()*
   Open the previous file.
+
+first({opts})                                            *fileops.first()*
+  Jump to the first file in the current directory listing.
+
+last({opts})                                              *fileops.last()*
+  Jump to the last file in the current directory listing.
 
 new_file({path}, {opts})                             *fileops.new_file()*
   Set buffer name. {opts}: `{ write?: boolean, bang?: boolean }`.
