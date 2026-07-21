@@ -71,18 +71,44 @@ local CYCLE_TARGET_MAP = {
 
 -- ─── Completion ───────────────────────────────────────────────────────────────
 -- rename/duplicate's first slot ("%" or a direct dest path) needs a custom
--- type; every other completion below maps onto a composer built-in (PATH,
--- or enum on CD_SCOPES/CYCLE_TARGETS).
+-- type; every other path completion below is FILEOPS_PATH (bufdir-relative);
+-- non-path args map onto enums (CD_SCOPES/CYCLE_TARGETS/PATH_MODES).
+
+---Complete `arg_lead` relative to the current buffer's directory instead of
+---cwd (`getcompletion`'s default base), so `:File rename <Tab>` browses
+---files next to the buffer being edited rather than wherever Neovim's cwd
+---happens to be. Absolute-looking input (`~`, `/`, or a Windows drive
+---letter) is left alone. Candidates come back as full absolute paths — that
+---keeps them unambiguous regardless of cwd once the command actually runs.
+---@param arg_lead string
+---@return string[]
+local function complete_from_bufdir(arg_lead)
+  if arg_lead:match("^~") or arg_lead:match("^/") or arg_lead:match("^%a:[\\/]") then
+    return vim.fn.getcompletion(arg_lead, "file")
+  end
+
+  local bufdir = vim.fn.expand("%:p:h")
+  if bufdir == "" or vim.fn.isdirectory(bufdir) ~= 1 then
+    return vim.fn.getcompletion(arg_lead, "file")
+  end
+
+  return vim.fn.getcompletion(bufdir .. "/" .. arg_lead, "file")
+end
 
 composer.register_type("FILEOPS_DEST_FIRST", {
   validate = function(raw) return true, raw, nil end,
   complete = function(arg_lead)
-    local fc = vim.fn.getcompletion(arg_lead, "file")
+    local fc = complete_from_bufdir(arg_lead)
     if ("%"):sub(1, #arg_lead) == arg_lead then
       table.insert(fc, 1, "%")
     end
     return fc
   end,
+})
+
+composer.register_type("FILEOPS_PATH", {
+  validate = function(raw) return true, require("lib.nvim.cross.fs.expand_path")(raw), nil end,
+  complete = complete_from_bufdir,
 })
 
 -- ─── Dispatch ─────────────────────────────────────────────────────────────────
@@ -349,27 +375,27 @@ function M.register()
     bang = true,
     count = 0,
     routes = {
-      route("new", { { name = "path", type = "PATH", optional = true } }),
-      route("write", { { name = "path", type = "PATH", optional = true } }),
-      route("saveas", { { name = "path", type = "PATH", optional = true } }),
-      route("writeto", { { name = "path", type = "PATH", optional = true } }),
+      route("new", { { name = "path", type = "FILEOPS_PATH", optional = true } }),
+      route("write", { { name = "path", type = "FILEOPS_PATH", optional = true } }),
+      route("saveas", { { name = "path", type = "FILEOPS_PATH", optional = true } }),
+      route("writeto", { { name = "path", type = "FILEOPS_PATH", optional = true } }),
       route("mkdir"),
-      route("touch", { { name = "path", type = "PATH", optional = true } }),
+      route("touch", { { name = "path", type = "FILEOPS_PATH", optional = true } }),
       route("rename", {
         { name = "a1", type = "FILEOPS_DEST_FIRST", optional = true },
-        { name = "a2", type = "PATH", optional = true },
+        { name = "a2", type = "FILEOPS_PATH", optional = true },
       }),
       route("move", {
         { name = "a1", type = "FILEOPS_DEST_FIRST", optional = true },
-        { name = "a2", type = "PATH", optional = true },
+        { name = "a2", type = "FILEOPS_PATH", optional = true },
       }),
       route("duplicate", {
         { name = "a1", type = "FILEOPS_DEST_FIRST", optional = true },
-        { name = "a2", type = "PATH", optional = true },
+        { name = "a2", type = "FILEOPS_PATH", optional = true },
       }),
       route("copy", {
         { name = "a1", type = "FILEOPS_DEST_FIRST", optional = true },
-        { name = "a2", type = "PATH", optional = true },
+        { name = "a2", type = "FILEOPS_PATH", optional = true },
       }),
       route("delete"),
       route("cd", { { name = "scope", type = "STRING", optional = true, enum = CD_SCOPES } }),
