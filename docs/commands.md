@@ -141,3 +141,8 @@ the new root. Optional `[scope]` overrides `cd.scope` for this call.
 | `window` | `:lcd` | Window-local working directory (default) |
 | `tab` | `:tcd` | Tab-local working directory |
 | `global` | `:cd` | Global working directory |
+
+## `:File help`
+
+Show a short usage overview for every subcommand directly in the command
+line (via `notify.info`), without opening `:h fileops`.

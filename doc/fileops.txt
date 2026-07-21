@@ -380,6 +380,10 @@ it is always implied when omitted.
     :File cd global
 <
 
+:File help                                                *:File-help*
+  Show a short usage overview for every subcommand directly in the command
+  line, without opening this helpfile.
+
 ------------------------------------------------------------------------------
 5.2 Navigation targets                                       *fileops-targets*
 
