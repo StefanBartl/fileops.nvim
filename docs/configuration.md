@@ -29,6 +29,13 @@ require("fileops_nvim").setup({
     mode             = "permanent", -- "permanent" (fs_unlink) | "trash" (OS trash/recycle bin)
     on_before_delete = nil,         -- fun(path: string): boolean|nil — return false to abort
   },
+  -- Git-tracked-file awareness for rename/move/duplicate/copy/delete
+  git_aware = {
+    enable    = false, -- master switch (opt-in — shells out to `git ls-files`)
+    warn_only = true,  -- true: note tracked-ness in the result message only, still use libuv
+                        -- false: use `git mv`/`git rm` for tracked files (delete: only when mode = "permanent")
+    git_cmd   = "git",
+  },
   keymaps = {
     cycle  = true,   -- master switch: <leader>nf/pf family
     delete = true,   -- master switch: <leader>dcf

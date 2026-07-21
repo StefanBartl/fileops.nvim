@@ -23,6 +23,7 @@ The runner prints one line per spec and exits non-zero on the first failure
 | `cycle_spec.lua`    | `ops/cycle.lua`: directory listing, wrap, hidden-file filter, navigate. |
 | `file_spec.lua`     | `ops/file.lua`: copy/move/touch and other non-buffer-destructive mutations. |
 | `bulk_spec.lua`     | `ops/bulk.lua`: bulk-rename plan/execute, conflicts, hidden-file filtering. |
+| `git_spec.lua`      | `util/git.lua`: is_tracked/mv/rm against a real temp git repo (skips if git is unusable). |
 | `run.lua`           | Runner: resolves lib.nvim, loads every spec, reports results, sets the exit code. |
 
 `platform_spec.lua` is gone: `util/platform.lua` was removed in favour of

@@ -91,6 +91,11 @@ packer.nvim / pckr.nvim: >lua
       mode             = "permanent",  -- "permanent"|"trash"
       on_before_delete = nil,          -- fun(path): boolean|nil
     },
+    git_aware = {
+      enable    = false,
+      warn_only = true,
+      git_cmd   = "git",
+    },
     keymaps = {
       cycle  = true,
       delete = true,
@@ -197,6 +202,21 @@ delete.on_before_delete ~
   |:File-delete| or `fileops.delete_current()`); return `false` to abort
   (nothing is deleted, the buffer is untouched). Useful for a git-tracked-file
   warning. Default: `nil`.
+
+git_aware.enable ~
+  Master switch for git-tracked-file awareness on rename/move/duplicate/copy/
+  delete. Opt-in — shells out to `git ls-files` to check tracked-ness.
+  Default: `false`.
+
+git_aware.warn_only ~
+  `true`: just note tracked-ness in the op's result message, still use
+  libuv/`uv.fs_unlink` underneath. `false`: use `git mv` for rename/move and
+  `git rm` for delete instead (delete only applies this when
+  `delete.mode == "permanent"` — trashing a file is a different operation
+  than `git rm`). Default: `true`.
+
+git_aware.git_cmd ~
+  Git executable to use. Default: `"git"`.
 
 keymaps.cycle ~
   Master switch: register the `<leader>nf` / `<leader>pf` family.
@@ -316,6 +336,12 @@ Tab-completion for these arguments is relative to the current buffer's
 directory, not Neovim's cwd — `:File rename <Tab>` browses files next to the
 one you're editing. Input starting with `~`, `/`, or a Windows drive letter
 is left alone (treated as already absolute).
+
+|:File-rename|/|:File-move|/|:File-duplicate|/|:File-copy|/|:File-delete| are
+git-aware when `git_aware.enable = true` (opt-in — see |fileops-config|): by
+default they just note in the result message that the file is tracked; with
+`git_aware.warn_only = false`, rename/move use `git mv` and delete uses
+`git rm` instead of a plain filesystem op, keeping the git index in sync.
 
 ------------------------------------------------------------------------------
 5.1 Subcommands                                              *fileops-subcmds*

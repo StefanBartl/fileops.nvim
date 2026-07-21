@@ -10,6 +10,7 @@
 local M = {}
 
 local fsops    = require("lib.nvim.cross.fs.mutate")
+local git      = require("fileops_nvim.util.git")
 local api, fn  = vim.api, vim.fn
 local uv       = vim.uv or vim.loop
 
@@ -221,7 +222,7 @@ end
 ---`rename` resets signs/diagnostics via a fresh `:edit`, `move` leaves the
 ---buffer's content/undo history untouched.
 ---@param new_path string  New path (may be relative or use ~).
----@param opts? { bang?: boolean, reload?: boolean, action?: string }
+---@param opts? { bang?: boolean, reload?: boolean, action?: string, git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string }
 ---@return boolean ok
 ---@return string|nil msg
 local function move_or_rename(new_path, opts)
@@ -255,9 +256,22 @@ local function move_or_rename(new_path, opts)
     if not ok then return false, "save failed before " .. action .. ": " .. tostring(err) end
   end
 
-  local ok, err = fsops.rename_file(old, abs)
-  if not ok then
-    return false, action .. " failed: " .. tostring(err)
+  local tracked = opts.git_aware and git.is_tracked(old, opts.git_cmd)
+  local used_git = false
+
+  if tracked and not opts.git_warn_only then
+    local gok, gerr = git.mv(old, abs, opts.git_cmd)
+    if not gok then
+      return false, action .. " failed (git mv): " .. tostring(gerr)
+    end
+    used_git = true
+  end
+
+  if not used_git then
+    local ok, err = fsops.rename_file(old, abs)
+    if not ok then
+      return false, action .. " failed: " .. tostring(err)
+    end
   end
 
   -- Update buffer to point at new path
@@ -268,13 +282,15 @@ local function move_or_rename(new_path, opts)
   end
 
   M.notify_change(action, abs, opts)
-  return true, (action .. "d %s → %s"):format(fn.fnamemodify(old, ":t"), fn.fnamemodify(abs, ":t"))
+  local suffix = tracked and (used_git and " (git mv)" or " (git-tracked)") or ""
+  return true, (action .. "d %s → %s%s"):format(
+    fn.fnamemodify(old, ":t"), fn.fnamemodify(abs, ":t"), suffix)
 end
 
 ---Rename the file of the current buffer on disk and update the buffer name.
 ---Reloads the buffer from disk afterwards (resets signs/diagnostics).
 ---@param new_path string  New path (may be relative or use ~).
----@param opts? { bang?: boolean, refresh_explorers?: boolean }
+---@param opts? { bang?: boolean, refresh_explorers?: boolean, git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string }
 ---@return boolean ok
 ---@return string|nil msg
 function M.rename(new_path, opts)
@@ -282,6 +298,7 @@ function M.rename(new_path, opts)
   return move_or_rename(new_path, {
     bang = opts.bang, reload = true, action = "rename",
     refresh_explorers = opts.refresh_explorers,
+    git_aware = opts.git_aware, git_warn_only = opts.git_warn_only, git_cmd = opts.git_cmd,
   })
 end
 
@@ -290,7 +307,7 @@ end
 ---NOT reloaded from disk afterwards — its content and undo history stay
 ---exactly as they were, only the on-disk location and buffer name change.
 ---@param new_path string  New path (may be relative or use ~).
----@param opts? { bang?: boolean, refresh_explorers?: boolean }
+---@param opts? { bang?: boolean, refresh_explorers?: boolean, git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string }
 ---@return boolean ok
 ---@return string|nil msg
 function M.move(new_path, opts)
@@ -298,14 +315,18 @@ function M.move(new_path, opts)
   return move_or_rename(new_path, {
     bang = opts.bang, reload = false, action = "move",
     refresh_explorers = opts.refresh_explorers,
+    git_aware = opts.git_aware, git_warn_only = opts.git_warn_only, git_cmd = opts.git_cmd,
   })
 end
 
 -- ─── Duplicate ────────────────────────────────────────────────────────────────
 
----Copy the current buffer's file to `new_path` and open the duplicate.
+---Copy the current buffer's file to `new_path` and open the duplicate. No
+---git command is run for tracked sources (there's no `git`-native "copy" —
+---the new file just isn't tracked yet); `opts.git_aware` only adds a note
+---to the returned message so the caller can warn if it wants to.
 ---@param new_path string
----@param opts? { bang?: boolean, open?: boolean, verb?: string, refresh_explorers?: boolean }
+---@param opts? { bang?: boolean, open?: boolean, verb?: string, refresh_explorers?: boolean, git_aware?: boolean, git_cmd?: string }
 ---@return boolean ok
 ---@return string|nil msg
 function M.duplicate(new_path, opts)
@@ -350,7 +371,10 @@ function M.duplicate(new_path, opts)
   end
 
   M.notify_change(verb == "copied" and "copy" or "duplicate", abs, opts)
-  return true, ("%s %s → %s"):format(verb, fn.fnamemodify(src, ":t"), fn.fnamemodify(abs, ":t"))
+  local tracked = opts.git_aware and git.is_tracked(src, opts.git_cmd)
+  local suffix = tracked and " (source is git-tracked)" or ""
+  return true, ("%s %s → %s%s"):format(
+    verb, fn.fnamemodify(src, ":t"), fn.fnamemodify(abs, ":t"), suffix)
 end
 
 -- ─── Copy ─────────────────────────────────────────────────────────────────────
@@ -359,7 +383,7 @@ end
 ---Silent counterpart to `M.duplicate` — same validation and libuv copy, just
 ---`opts.open` forced off.
 ---@param new_path string
----@param opts? { bang?: boolean, refresh_explorers?: boolean }
+---@param opts? { bang?: boolean, refresh_explorers?: boolean, git_aware?: boolean, git_cmd?: string }
 ---@return boolean ok
 ---@return string|nil msg
 function M.copy(new_path, opts)
@@ -367,6 +391,7 @@ function M.copy(new_path, opts)
   return M.duplicate(new_path, {
     bang = opts.bang, open = false, verb = "copied",
     refresh_explorers = opts.refresh_explorers,
+    git_aware = opts.git_aware, git_cmd = opts.git_cmd,
   })
 end
 
@@ -412,7 +437,11 @@ local function switch_windows_off(bufnr)
 end
 
 ---Delete the file of the current buffer from disk and close the buffer.
----@param opts? { force?: boolean, mode?: "trash"|"permanent", on_before_delete?: fun(path: string): boolean|nil, refresh_explorers?: boolean }
+---Git-aware deletion (`opts.git_aware` + not `opts.git_warn_only`) only
+---applies when `opts.mode` is `"permanent"` (or unset) — trashing a file is
+---a different operation than `git rm`, so trash mode always uses the trash
+---path and just notes tracked-ness in the message.
+---@param opts? { force?: boolean, mode?: "trash"|"permanent", on_before_delete?: fun(path: string): boolean|nil, refresh_explorers?: boolean, git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string }
 ---@return boolean ok
 ---@return string|nil msg
 function M.delete_current(opts)
@@ -440,9 +469,19 @@ function M.delete_current(opts)
   end
 
   local trash = opts.mode == "trash"
+  local tracked = opts.git_aware and git.is_tracked(path, opts.git_cmd)
+  local used_git = false
   local ok, err
+
   if trash then
     ok, err = require("lib.nvim.fs.trash").trash_blocking(path)
+  elseif tracked and not opts.git_warn_only then
+    ok, err = git.rm(path, opts.git_cmd)
+    used_git = ok
+    if not ok then
+      -- Fall back to a plain delete rather than leaving the file untouched.
+      ok, err = fsops.delete_file(path)
+    end
   else
     ok, err = fsops.delete_file(path)
   end
@@ -459,7 +498,8 @@ function M.delete_current(opts)
   end
 
   M.notify_change("delete", path, opts)
-  return true, (trash and "trashed " or "deleted ") .. fn.fnamemodify(path, ":t")
+  local suffix = tracked and (used_git and " (git rm)" or " (git-tracked)") or ""
+  return true, (trash and "trashed " or "deleted ") .. fn.fnamemodify(path, ":t") .. suffix
 end
 
 -- ─── Info ─────────────────────────────────────────────────────────────────────

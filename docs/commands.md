@@ -16,6 +16,12 @@ directory**, not Neovim's cwd — `:File rename <Tab>` browses files next to
 the one you're editing. Input starting with `~`, `/`, or a Windows drive
 letter is left alone (treated as already absolute).
 
+`rename`/`move`/`duplicate`/`copy`/`delete` are git-aware when
+`git_aware.enable = true` (opt-in — see [Configuration](configuration.md)):
+by default they just note in the result message that the file is tracked;
+with `git_aware.warn_only = false`, rename/move use `git mv` and delete uses
+`git rm` instead of a plain filesystem op, so the git index stays in sync.
+
 ## `:File new [path]`
 
 Set the current buffer's file name to `{path}`. Creates parent directories.

@@ -30,6 +30,13 @@
 ---@field mode?              FileOps.DeleteMode  "permanent" (fs_unlink) or "trash" (OS trash/recycle bin). Default: "permanent".
 ---@field on_before_delete?  fun(path: string): boolean|nil  Called before deletion; return `false` to abort. Default: nil.
 
+---@class FileOps.GitAwareConfig
+--- Warns (or, opt-in, uses `git mv`/`git rm`) when rename/move/duplicate/copy/delete
+--- act on a git-tracked file. Tracked-ness is checked synchronously via `git ls-files`.
+---@field enable?    boolean  Master switch. Default: false (opt-in — shells out to git).
+---@field warn_only? boolean  true: just note tracked-ness in the result message, still use libuv. false: use `git mv`/`git rm` for tracked files (delete only applies this when `delete.mode == "permanent"`). Default: true.
+---@field git_cmd?   string   Git executable to use. Default: "git".
+
 ---@class FileOps.KeymapLhs
 ---@field next_replace?    string|false  Next file, replace buffer.
 ---@field prev_replace?    string|false  Previous file, replace buffer.
@@ -89,6 +96,7 @@
 ---@field cd?             FileOps.CdConfig             Change-directory options.
 ---@field explorer?       FileOps.ExplorerConfig       Tree-explorer refresh options.
 ---@field delete?         FileOps.DeleteConfig         Delete-mode and pre-delete hook options.
+---@field git_aware?      FileOps.GitAwareConfig       Git-tracked-file warnings/git mv/git rm (default: disabled; opt-in).
 ---@field keymaps?        FileOps.KeymapConfig         Keymap registration flags.
 ---@field commands?       boolean                      Register all user commands (default: true).
 ---@field auto_mkdir?     FileOps.AutoMkdirConfig      Auto-create parent dirs before writing (default: enabled).
