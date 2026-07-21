@@ -35,7 +35,7 @@ end
 ---@return string|nil dir
 ---@return string|nil err
 function M.get_root_dir(opts)
-  if opts.root == "cwd" then
+  if opts.root == "cwd" or opts.root == "cwd_recursive" then
     local cwd = fn.getcwd()
     return (type(cwd) == "string" and cwd ~= "") and cwd or nil,
            (type(cwd) ~= "string" or cwd == "") and "getcwd() failed" or nil
@@ -59,29 +59,74 @@ local function matches_pattern(name, pattern)
   return fn.match(name, fn.glob2regpat(pattern)) ~= -1
 end
 
----List regular, filtered files in `dir` sorted alphabetically.
+---Classify a `vim.fs.dir` entry, falling back to `fs_stat` when the
+---iterator itself couldn't determine the type (e.g. some network mounts).
+---@param full string  Absolute-ish path to the entry.
+---@param t string|nil  Type reported by `vim.fs.dir` ("file"|"directory"|nil).
+---@return boolean is_file
+---@return boolean is_dir
+local function classify_entry(full, t)
+  if t == "file" then return true, false end
+  if t == "directory" then return false, true end
+  local st = uv.fs_stat and uv.fs_stat(fn.fnamemodify(full, ":p"))
+  if not st then return false, false end
+  return st.type == "file", st.type == "directory"
+end
+
+---Recursively collect matching files under `dir` into `acc`. Symlinked
+---directories are never descended into, so a symlink cycle can't cause an
+---infinite walk.
+---@param dir string
+---@param opts FileOps.CycleConfig
+---@param acc string[]
+local function collect_recursive(dir, opts, acc)
+  local ok, iter = pcall(vim.fs.dir, dir)
+  if not ok then return end
+  for name, t in iter do
+    local hidden = name:sub(1, 1) == "."
+    if opts.include_hidden or not hidden then
+      local full = dir .. "/" .. name
+      local is_file, is_dir = classify_entry(full, t)
+      if is_file and matches_pattern(name, opts.pattern) then
+        acc[#acc + 1] = canon(full, opts.follow_symlinks)
+      elseif is_dir then
+        local lst = uv.fs_lstat and uv.fs_lstat(full)
+        local is_symlink = lst and lst.type == "link"
+        if not is_symlink then
+          collect_recursive(full, opts, acc)
+        end
+      end
+    end
+  end
+end
+
+---List regular, filtered files in `dir` sorted alphabetically. Recurses
+---into subdirectories when `opts.root` is `"buffer_dir_recursive"` or
+---`"cwd_recursive"`.
 ---@param dir string
 ---@param opts FileOps.CycleConfig
 ---@return string[]  Absolute, canonicalized paths.
 local function list_files(dir, opts)
   local acc = {}
   local ci = opts.case_insensitive
-  local ok, err_or_iter = pcall(vim.fs.dir, dir)
-  if not ok then
-    -- dir does not exist or is not readable; return empty list
-    return acc
-  end
-  for name, t in err_or_iter do
-    local is_file = (t == "file")
-    if not is_file and t == nil then
-      local st = uv.fs_stat and uv.fs_stat(fn.fnamemodify(dir .. "/" .. name, ":p"))
-      is_file = (st and st.type == "file") or false
+
+  if opts.root == "buffer_dir_recursive" or opts.root == "cwd_recursive" then
+    collect_recursive(dir, opts, acc)
+  else
+    local ok, err_or_iter = pcall(vim.fs.dir, dir)
+    if not ok then
+      -- dir does not exist or is not readable; return empty list
+      return acc
     end
-    local hidden = name:sub(1, 1) == "."
-    if is_file and (opts.include_hidden or not hidden) and matches_pattern(name, opts.pattern) then
-      acc[#acc + 1] = canon(dir .. "/" .. name, opts.follow_symlinks)
+    for name, t in err_or_iter do
+      local is_file = classify_entry(dir .. "/" .. name, t)
+      local hidden = name:sub(1, 1) == "."
+      if is_file and (opts.include_hidden or not hidden) and matches_pattern(name, opts.pattern) then
+        acc[#acc + 1] = canon(dir .. "/" .. name, opts.follow_symlinks)
+      end
     end
   end
+
   table.sort(acc, function(a, b)
     return ci and (a:lower() < b:lower()) or (a < b)
   end)
