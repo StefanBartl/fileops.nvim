@@ -14,8 +14,29 @@ local config = require("fileops_nvim.config")
 local SUBCMDS = {
   "new", "write", "saveas", "writeto", "mkdir", "touch",
   "rename", "move", "duplicate", "copy", "delete",
-  "next", "prev", "cd",
+  "next", "prev", "cd", "help",
 }
+
+local HELP_TEXT = table.concat({
+  ":File[!] {subcommand} [args…]",
+  "",
+  "  new {path}              set buffer name (no write)",
+  "  write {path}            set buffer name + write (! overwrites)",
+  "  saveas {path}           :saveas-equivalent (! overwrites)",
+  "  writeto {path}          write a copy, name stays (! overwrites)",
+  "  mkdir                   create parent dirs for current buffer",
+  "  touch {path}            create an empty file if missing",
+  "  rename [%] {dest}       rename + update buffer (reloads)",
+  "  move [%] {dest}         move + update buffer (no reload)",
+  "  duplicate [%] {dest}    copy + open the copy (! overwrites)",
+  "  copy [%] {dest}         copy without opening (! overwrites)",
+  "  delete [%]              delete + close buffer (! force-closes)",
+  "  next/prev [target]      navigate directory listing",
+  "  cd [scope]              cd to buffer's dir + refresh explorer",
+  "  help                    show this message",
+  "",
+  "See :h fileops-command or docs/commands.md for full details.",
+}, "\n")
 
 local CD_SCOPES = { "window", "tab", "global" }
 
@@ -162,6 +183,9 @@ local function dispatch(subcmd, fargs, bang, count)
   elseif subcmd == "prev" then
     do_cycle("prev", fargs[1], count, bang)
 
+  elseif subcmd == "help" then
+    notify.info(HELP_TEXT)
+
   else
     notify.warn(("unknown subcommand %q — try: %s"):format(subcmd, table.concat(SUBCMDS, ", ")))
   end
@@ -196,7 +220,7 @@ end
 
 function M.register()
   composer.verb("File", {
-    desc = "Unified file operations (new/write/saveas/writeto/mkdir/touch/rename/move/duplicate/copy/delete/next/prev/cd)",
+    desc = "Unified file operations (new/write/saveas/writeto/mkdir/touch/rename/move/duplicate/copy/delete/next/prev/cd/help)",
     bang = true,
     count = 0,
     routes = {
@@ -226,6 +250,7 @@ function M.register()
       route("cd", { { name = "scope", type = "STRING", optional = true, enum = CD_SCOPES } }),
       route("next", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
       route("prev", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
+      route("help"),
     },
   })
 end

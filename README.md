@@ -57,6 +57,7 @@ Requires Neovim **0.9+** and [lib.nvim](https://github.com/StefanBartl/lib.nvim)
 | `next` | `[target]` | Next file in directory |
 | `prev` | `[target]` | Previous file in directory |
 | `cd` | `[scope]` | Set cwd to buffer's dir + refresh file explorer |
+| `help` | — | Show a short usage overview in the command line |
 
 `!` overrides safety checks (existing-file guard, modified-buffer confirm).
 `%` is an optional explicit "current file" scope — always implied when omitted.

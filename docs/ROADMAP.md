@@ -55,9 +55,6 @@
 
 ### DX / UX
 
-- **`:File help`** — kurze Usage-Übersicht direkt in der Befehlszeile (notify.info)
-  ohne vim-help öffnen zu müssen
-
 - **Input-Prompt für fehlende Argumente** — wenn `:File rename` ohne Ziel aufgerufen wird,
   `vim.ui.input` öffnen statt Fehlermeldung
 
@@ -78,4 +75,7 @@
 - **`:File touch {path}`** — leere Datei anlegen (Eltern-Dirs erstellen, 0-Byte
   schreiben), lässt eine bereits existierende Datei unangetastet (echte
   `touch`-Semantik). Braucht keinen Buffer.
+
+- **`:File help`** — kurze Usage-Übersicht direkt in der Befehlszeile (notify.info)
+  ohne vim-help öffnen zu müssen.
 

@@ -46,6 +46,7 @@ gated by `config.commands` (a single boolean — there is only one command).
 | `:[count]File[!] next` | `[target]` | Next file in directory |
 | `:[count]File[!] prev` | `[target]` | Previous file in directory |
 | `:File cd` | `[scope]` | Set cwd to buffer's dir + refresh file explorer |
+| `:File help` | — | Show a short usage overview in the command line |
 
 Full reference: [README.md § Command reference](../README.md#command-reference)
 or `:h fileops-command`.
