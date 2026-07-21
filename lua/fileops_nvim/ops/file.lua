@@ -40,6 +40,39 @@ local function resolve_path(raw)
   return (abs ~= "") and abs or nil
 end
 
+-- ─── Explorer refresh / change events ──────────────────────────────────────────
+
+---Reload known file-explorer plugins in place (no root change) so they pick
+---up a file that was just created/renamed/moved/copied/deleted elsewhere in
+---the tree. All calls are guarded; plugins that are not loaded are silently
+---skipped.
+local function reload_explorers()
+  if package.loaded["nvim-tree"] then
+    pcall(function() require("nvim-tree.api").tree.reload() end)
+  end
+  if package.loaded["neo-tree"] then
+    pcall(function() require("neo-tree.sources.manager").refresh("filesystem") end)
+  end
+end
+
+---Notify listeners that a file op changed the tree: always emits a
+---`User FileopsChanged` autocmd (so any plugin/user config can react), and
+---additionally reloads neo-tree/nvim-tree in place unless
+---`opts.refresh_explorers == false`.
+---@param action string  e.g. "touch", "rename", "move", "duplicate", "copy", "delete", "new", "mkdir".
+---@param path string    Absolute path the op acted on (its resulting location for renames/moves).
+---@param opts? { refresh_explorers?: boolean }
+local function notify_change(action, path, opts)
+  opts = opts or {}
+  pcall(api.nvim_exec_autocmds, "User", {
+    pattern = "FileopsChanged",
+    data = { action = action, path = path },
+  })
+  if opts.refresh_explorers ~= false then
+    reload_explorers()
+  end
+end
+
 -- ─── Create / open operations ─────────────────────────────────────────────────
 
 ---Ensure the parent directory of `path` exists (create recursively if needed).
@@ -59,7 +92,7 @@ end
 ---Set the current buffer's file name (creates parent dirs if needed).
 ---Does NOT write the buffer to disk.
 ---@param path string  Destination path (may be relative or use ~).
----@param opts? { write?: boolean, bang?: boolean }
+---@param opts? { write?: boolean, bang?: boolean, refresh_explorers?: boolean }
 ---@return boolean ok
 ---@return string|nil msg
 function M.edit_new(path, opts)
@@ -80,13 +113,14 @@ function M.edit_new(path, opts)
     if not wok then return false, "write failed: " .. tostring(werr) end
   end
 
+  notify_change("new", abs, opts)
   return true, "created " .. abs
 end
 
 ---Save a copy of the current buffer under a new path (like `:saveas`).
 ---Creates parent directories automatically.
 ---@param path string
----@param opts? { bang?: boolean }
+---@param opts? { bang?: boolean, refresh_explorers?: boolean }
 ---@return boolean ok
 ---@return string|nil msg
 function M.save_as(path, opts)
@@ -101,13 +135,14 @@ function M.save_as(path, opts)
   local ok, err = pcall(vim.cmd, cmd .. esc)
   if not ok then return false, "saveas failed: " .. tostring(err) end
 
+  notify_change("saveas", abs, opts)
   return true, "saved as " .. abs
 end
 
 ---Write a copy of the current buffer to `path` without changing buffer name.
 ---Creates parent directories automatically.
 ---@param path string
----@param opts? { bang?: boolean }
+---@param opts? { bang?: boolean, refresh_explorers?: boolean }
 ---@return boolean ok
 ---@return string|nil msg
 function M.write_to(path, opts)
@@ -122,18 +157,22 @@ function M.write_to(path, opts)
   local ok, err = pcall(vim.cmd, cmd .. esc)
   if not ok then return false, "write to failed: " .. tostring(err) end
 
+  notify_change("writeto", abs, opts)
   return true, "written to " .. abs
 end
 
 ---Ensure the parent directory of the current buffer's file exists.
+---@param opts? { refresh_explorers?: boolean }
 ---@return boolean ok
 ---@return string|nil msg
-function M.mk_parent()
+function M.mk_parent(opts)
   local b = cur_buf()
   if not b then return false, "no valid buffer" end
   local p = buf_path(b)
   if not p then return false, "current buffer has no file name" end
-  return M.ensure_parent(p)
+  local ok, msg = M.ensure_parent(p)
+  if ok then notify_change("mkdir", p, opts) end
+  return ok, msg
 end
 
 -- ─── Touch ────────────────────────────────────────────────────────────────────
@@ -142,9 +181,10 @@ end
 ---directories). Real `touch` semantics: an existing file is left untouched,
 ---never truncated. Does not require or open a buffer.
 ---@param path string  Destination path (may be relative or use ~).
+---@param opts? { refresh_explorers?: boolean }
 ---@return boolean ok
 ---@return string|nil msg
-function M.touch(path)
+function M.touch(path, opts)
   local abs = resolve_path(path)
   if not abs then return false, "invalid path: " .. tostring(path) end
 
@@ -166,6 +206,7 @@ function M.touch(path)
   end
   uv.fs_close(fd)
 
+  notify_change("touch", abs, opts)
   return true, "touched " .. abs
 end
 
@@ -225,18 +266,22 @@ local function move_or_rename(new_path, opts)
     pcall(vim.cmd, "edit")  -- reload from disk so signs/diagnostics reset
   end
 
+  notify_change(action, abs, opts)
   return true, (action .. "d %s → %s"):format(fn.fnamemodify(old, ":t"), fn.fnamemodify(abs, ":t"))
 end
 
 ---Rename the file of the current buffer on disk and update the buffer name.
 ---Reloads the buffer from disk afterwards (resets signs/diagnostics).
 ---@param new_path string  New path (may be relative or use ~).
----@param opts? { bang?: boolean }
+---@param opts? { bang?: boolean, refresh_explorers?: boolean }
 ---@return boolean ok
 ---@return string|nil msg
 function M.rename(new_path, opts)
   opts = opts or {}
-  return move_or_rename(new_path, { bang = opts.bang, reload = true, action = "rename" })
+  return move_or_rename(new_path, {
+    bang = opts.bang, reload = true, action = "rename",
+    refresh_explorers = opts.refresh_explorers,
+  })
 end
 
 ---Move the file of the current buffer on disk to a (possibly different)
@@ -244,19 +289,22 @@ end
 ---NOT reloaded from disk afterwards — its content and undo history stay
 ---exactly as they were, only the on-disk location and buffer name change.
 ---@param new_path string  New path (may be relative or use ~).
----@param opts? { bang?: boolean }
+---@param opts? { bang?: boolean, refresh_explorers?: boolean }
 ---@return boolean ok
 ---@return string|nil msg
 function M.move(new_path, opts)
   opts = opts or {}
-  return move_or_rename(new_path, { bang = opts.bang, reload = false, action = "move" })
+  return move_or_rename(new_path, {
+    bang = opts.bang, reload = false, action = "move",
+    refresh_explorers = opts.refresh_explorers,
+  })
 end
 
 -- ─── Duplicate ────────────────────────────────────────────────────────────────
 
 ---Copy the current buffer's file to `new_path` and open the duplicate.
 ---@param new_path string
----@param opts? { bang?: boolean, open?: boolean, verb?: string }
+---@param opts? { bang?: boolean, open?: boolean, verb?: string, refresh_explorers?: boolean }
 ---@return boolean ok
 ---@return string|nil msg
 function M.duplicate(new_path, opts)
@@ -300,6 +348,7 @@ function M.duplicate(new_path, opts)
     pcall(vim.cmd, "edit " .. esc)
   end
 
+  notify_change(verb == "copied" and "copy" or "duplicate", abs, opts)
   return true, ("%s %s → %s"):format(verb, fn.fnamemodify(src, ":t"), fn.fnamemodify(abs, ":t"))
 end
 
@@ -309,12 +358,15 @@ end
 ---Silent counterpart to `M.duplicate` — same validation and libuv copy, just
 ---`opts.open` forced off.
 ---@param new_path string
----@param opts? { bang?: boolean }
+---@param opts? { bang?: boolean, refresh_explorers?: boolean }
 ---@return boolean ok
 ---@return string|nil msg
 function M.copy(new_path, opts)
   opts = opts or {}
-  return M.duplicate(new_path, { bang = opts.bang, open = false, verb = "copied" })
+  return M.duplicate(new_path, {
+    bang = opts.bang, open = false, verb = "copied",
+    refresh_explorers = opts.refresh_explorers,
+  })
 end
 
 -- ─── Delete ───────────────────────────────────────────────────────────────────
@@ -359,7 +411,7 @@ local function switch_windows_off(bufnr)
 end
 
 ---Delete the file of the current buffer from disk and close the buffer.
----@param opts? { force?: boolean, mode?: "trash"|"permanent", on_before_delete?: fun(path: string): boolean|nil }
+---@param opts? { force?: boolean, mode?: "trash"|"permanent", on_before_delete?: fun(path: string): boolean|nil, refresh_explorers?: boolean }
 ---@return boolean ok
 ---@return string|nil msg
 function M.delete_current(opts)
@@ -405,6 +457,7 @@ function M.delete_current(opts)
     pcall(api.nvim_buf_delete, b, { force = opts.force or false })
   end
 
+  notify_change("delete", path, opts)
   return true, (trash and "trashed " or "deleted ") .. fn.fnamemodify(path, ":t")
 end
 

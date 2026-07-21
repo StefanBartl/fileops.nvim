@@ -83,6 +83,9 @@ packer.nvim / pckr.nvim: >lua
       scope             = "window",
       refresh_explorers = true,
     },
+    explorer = {
+      refresh_on_change = true,
+    },
     delete = {
       mode             = "permanent",  -- "permanent"|"trash"
       on_before_delete = nil,          -- fun(path): boolean|nil
@@ -168,6 +171,12 @@ cd.scope ~
 cd.refresh_explorers ~
   After changing directory, refresh an open neo-tree, nvim-tree or netrw so it
   tracks the new root. Default: `true`.
+
+explorer.refresh_on_change ~
+  Reload neo-tree/nvim-tree in place (no root change) after any file op that
+  changes the tree: new/write/saveas/writeto/mkdir/touch/rename/move/
+  duplicate/copy/delete. A `User FileopsChanged` autocmd fires regardless of
+  this setting. See |fileops-autocmds|. Default: `true`.
 
 delete.mode ~
   `"permanent"` (`uv.fs_unlink` via lib.nvim.cross.fs.mutate) or `"trash"`
@@ -549,6 +558,24 @@ conflict_marks (`BufWinEnter`/`BufWinLeave`) ~
     require("fileops_nvim").setup({ conflict_marks = { enable = false } })
   <
   See |fileops-config| for the `conflict_marks.*` option list.
+
+User FileopsChanged ~
+  Fired on every op that changes the file tree (`new`, `write`, `saveas`,
+  `writeto`, `mkdir`, `touch`, `rename`, `move`, `duplicate`, `copy`,
+  `delete`), so any plugin or user config can react — not just the two tree
+  explorers fileops.nvim knows about directly. >lua
+    vim.api.nvim_create_autocmd("User", {
+      pattern = "FileopsChanged",
+      callback = function(ev)
+        -- ev.data = { action = "rename"|"move"|..., path = "/abs/path" }
+        vim.notify(ev.data.action .. ": " .. ev.data.path)
+      end,
+    })
+  <
+  fileops.nvim itself also reloads neo-tree/nvim-tree in place after these
+  ops (no root change, unlike |:File-cd|), gated by
+  `explorer.refresh_on_change` (default `true`) — the event fires regardless
+  of that setting.
 
 ==============================================================================
 8. WHICH-KEY                                                *fileops-whichkey*

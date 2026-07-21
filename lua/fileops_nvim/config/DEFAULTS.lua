@@ -17,6 +17,10 @@ return {
     scope             = "window",  -- "window" (lcd) | "tab" (tcd) | "global" (cd)
     refresh_explorers = true,      -- refresh neo-tree/nvim-tree/netrw after cd
   },
+  explorer = {
+    refresh_on_change = true,      -- refresh neo-tree/nvim-tree after any file op
+                                    -- (create/rename/move/duplicate/copy/delete)
+  },
   delete = {
     mode              = "permanent", -- "permanent" (fs_unlink) | "trash" (OS trash/recycle bin)
     on_before_delete  = nil,         -- fun(path: string): boolean|nil — return false to abort

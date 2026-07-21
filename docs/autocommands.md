@@ -47,4 +47,27 @@ require("fileops_nvim").setup({
 })
 ```
 
+## `User FileopsChanged`
+
+Every op that changes the file tree (`new`, `write`, `saveas`, `writeto`,
+`mkdir`, `touch`, `rename`, `move`, `duplicate`, `copy`, `delete`) fires a
+`User FileopsChanged` autocmd on success, so any plugin or user config can
+react — not just the two tree explorers fileops.nvim knows about directly.
+
+```lua
+vim.api.nvim_create_autocmd("User", {
+  pattern = "FileopsChanged",
+  callback = function(ev)
+    -- ev.data = { action = "rename"|"move"|"duplicate"|"copy"|"delete"|
+    --                      "touch"|"new"|"saveas"|"writeto"|"mkdir",
+    --             path = "/abs/path/to/file" }
+    vim.notify(ev.data.action .. ": " .. ev.data.path)
+  end,
+})
+```
+
+fileops.nvim itself also reloads neo-tree/nvim-tree in place after these ops
+(no root change, unlike `:File cd`), gated by `config.explorer.refresh_on_change`
+(default `true`) — the event fires regardless of that setting.
+
 See [Configuration](configuration.md) for the full option list.
