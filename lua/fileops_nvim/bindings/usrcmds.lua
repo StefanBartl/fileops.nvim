@@ -12,7 +12,7 @@ local config = require("fileops_nvim.config")
 -- ─── Subcommand catalogue ─────────────────────────────────────────────────────
 
 local SUBCMDS = {
-  "new", "write", "saveas", "writeto", "mkdir",
+  "new", "write", "saveas", "writeto", "mkdir", "touch",
   "rename", "move", "duplicate", "copy", "delete",
   "next", "prev", "cd",
 }
@@ -122,6 +122,10 @@ local function dispatch(subcmd, fargs, bang, count)
   elseif subcmd == "mkdir" then
     report(file.mk_parent())
 
+  elseif subcmd == "touch" then
+    if not fargs[1] then notify.warn("usage: File touch {path}"); return end
+    report(file.touch(fargs[1]))
+
   elseif subcmd == "rename" then
     local dest = resolve_dest(fargs)
     if not dest then notify.warn("usage: File[!] rename [%] {dest}"); return end
@@ -192,7 +196,7 @@ end
 
 function M.register()
   composer.verb("File", {
-    desc = "Unified file operations (new/write/saveas/writeto/mkdir/rename/move/duplicate/copy/delete/next/prev/cd)",
+    desc = "Unified file operations (new/write/saveas/writeto/mkdir/touch/rename/move/duplicate/copy/delete/next/prev/cd)",
     bang = true,
     count = 0,
     routes = {
@@ -201,6 +205,7 @@ function M.register()
       route("saveas", { { name = "path", type = "PATH" } }),
       route("writeto", { { name = "path", type = "PATH" } }),
       route("mkdir"),
+      route("touch", { { name = "path", type = "PATH" } }),
       route("rename", {
         { name = "a1", type = "FILEOPS_DEST_FIRST", optional = true },
         { name = "a2", type = "PATH", optional = true },

@@ -28,9 +28,6 @@
 
 ### Bulk Operations
 
-- **`:File touch {path}`** — leere Datei anlegen (Eltern-Dirs erstellen, 0-Byte schreiben)
-  Abkürzung für `:File write` wenn Buffer leer ist
-
 - **`:File bulk rename {pattern} {replacement}`** — Batch-Rename aller Dateien im Verzeichnis
   via lua-Regex; Vorschau-Modus mit Bestätigungsdialog
 
@@ -77,4 +74,8 @@
 - **`:File move {dest}`** — Datei in anderes Verzeichnis verschieben; Unterschied
   zu `rename`: kein Neuladen des Buffers (Inhalt/Undo-History bleiben erhalten).
   Implementiert als gemeinsame `move_or_rename`-Hilfsfunktion mit `reload`-Flag.
+
+- **`:File touch {path}`** — leere Datei anlegen (Eltern-Dirs erstellen, 0-Byte
+  schreiben), lässt eine bereits existierende Datei unangetastet (echte
+  `touch`-Semantik). Braucht keinen Buffer.
 

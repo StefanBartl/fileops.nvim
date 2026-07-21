@@ -48,6 +48,7 @@ Requires Neovim **0.9+** and [lib.nvim](https://github.com/StefanBartl/lib.nvim)
 | `saveas` | `{path}` | Save-as, buffer name changes (creates parents) |
 | `writeto` | `{path}` | Write a copy, buffer name stays (creates parents) |
 | `mkdir` | — | Create parent dirs for current buffer |
+| `touch` | `{path}` | Create an empty file if it doesn't exist yet |
 | `rename` | `[%] {dest}` | Rename file on disk + update buffer (reloads) |
 | `move` | `[%] {dest}` | Move file on disk + update buffer (no reload) |
 | `duplicate` | `[%] {dest}` | Copy file to new path and open the copy |

@@ -56,6 +56,16 @@ function M.new_file(path, opts)
   )
 end
 
+---Create an empty file at `path` if it doesn't already exist. Does not
+---require or touch a buffer.
+---@param path string
+---@return boolean ok
+function M.touch(path)
+  return require("fileops_nvim.util.notify").report(
+    require("fileops_nvim.ops.file").touch(path)
+  )
+end
+
 ---Rename the current file on disk.
 ---@param new_path string
 ---@param opts? { bang?: boolean }

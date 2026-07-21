@@ -11,6 +11,7 @@ local M = {}
 
 local fsops    = require("lib.nvim.cross.fs.mutate")
 local api, fn  = vim.api, vim.fn
+local uv       = vim.uv or vim.loop
 
 -- ─── Internal helpers ─────────────────────────────────────────────────────────
 
@@ -133,6 +134,39 @@ function M.mk_parent()
   local p = buf_path(b)
   if not p then return false, "current buffer has no file name" end
   return M.ensure_parent(p)
+end
+
+-- ─── Touch ────────────────────────────────────────────────────────────────────
+
+---Create an empty file at `path` if it doesn't already exist (creates parent
+---directories). Real `touch` semantics: an existing file is left untouched,
+---never truncated. Does not require or open a buffer.
+---@param path string  Destination path (may be relative or use ~).
+---@return boolean ok
+---@return string|nil msg
+function M.touch(path)
+  local abs = resolve_path(path)
+  if not abs then return false, "invalid path: " .. tostring(path) end
+
+  if fn.filereadable(abs) == 1 then
+    return true, "already exists: " .. abs
+  end
+
+  local pok, perr = M.ensure_parent(abs)
+  if not pok then return false, perr end
+
+  local fd, err = uv.fs_open(abs, "wx", 420) -- O_CREAT|O_EXCL, mode 0644
+  if not fd then
+    -- Lost a create race to something else between the filereadable check
+    -- and here; the file existing is the outcome we wanted either way.
+    if type(err) == "string" and err:match("^EEXIST") then
+      return true, "already exists: " .. abs
+    end
+    return false, "touch failed: " .. tostring(err)
+  end
+  uv.fs_close(fd)
+
+  return true, "touched " .. abs
 end
 
 -- ─── Rename / Move ────────────────────────────────────────────────────────────

@@ -48,4 +48,24 @@ return function(H)
   ok(not mok2, "move without bang refuses existing destination: " .. tostring(mmsg2))
   local mok3 = file.move(dest2, { bang = true })
   ok(mok3, "move! overwrites existing destination")
+
+  -- touch: creates a 0-byte file, doesn't need a buffer
+  local touched = dir .. "touched.lua"
+  eq(vim.fn.filereadable(touched), 0, "setup: touch target does not exist yet")
+  local tok, tmsg = file.touch(touched)
+  ok(tok, "touch succeeds: " .. tostring(tmsg))
+  eq(vim.fn.filereadable(touched), 1, "touch: file now exists")
+  eq(vim.fn.getfsize(touched), 0, "touch: file is 0 bytes")
+
+  -- touch on an existing file is a no-op (does not truncate)
+  H.write_file(touched, "not empty")
+  local tok2, tmsg2 = file.touch(touched)
+  ok(tok2, "touch on existing file still reports success: " .. tostring(tmsg2))
+  eq(vim.fn.getfsize(touched), 9, "touch: existing file content untouched")
+
+  -- touch creates parent directories
+  local nested = dir .. "nested/dir/new.lua"
+  local tok3 = file.touch(nested)
+  ok(tok3, "touch creates missing parent directories")
+  eq(vim.fn.filereadable(nested), 1, "touch: nested file exists")
 end
