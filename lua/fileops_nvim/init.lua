@@ -21,59 +21,78 @@ end
 ---Navigate to the next file in the current directory.
 ---@param opts? FileOps.CycleConfig
 ---@param count? integer
+---@return boolean ok
 function M.next(opts, count)
   local cfg   = require("fileops_nvim.config").get()
   local copts = vim.tbl_deep_extend("force", vim.deepcopy(cfg.cycle or {}), opts or {})
   local cycle = require("fileops_nvim.ops.cycle")
+  local notify = require("fileops_nvim.util.notify")
   local dir, err = cycle.get_root_dir(copts)
-  if not dir then require("fileops_nvim.util.notify").warn(err or "no root dir"); return end
-  cycle.navigate(dir, "next", copts, count)
+  if not dir then notify.warn(err or "no root dir"); return false end
+  return notify.report(cycle.navigate(dir, "next", copts, count))
 end
 
 ---Navigate to the previous file in the current directory.
 ---@param opts? FileOps.CycleConfig
 ---@param count? integer
+---@return boolean ok
 function M.prev(opts, count)
   local cfg   = require("fileops_nvim.config").get()
   local copts = vim.tbl_deep_extend("force", vim.deepcopy(cfg.cycle or {}), opts or {})
   local cycle = require("fileops_nvim.ops.cycle")
+  local notify = require("fileops_nvim.util.notify")
   local dir, err = cycle.get_root_dir(copts)
-  if not dir then require("fileops_nvim.util.notify").warn(err or "no root dir"); return end
-  cycle.navigate(dir, "prev", copts, count)
+  if not dir then notify.warn(err or "no root dir"); return false end
+  return notify.report(cycle.navigate(dir, "prev", copts, count))
 end
 
 ---Create a new file (set buffer name + optionally write).
 ---@param path string
 ---@param opts? { write?: boolean, bang?: boolean }
+---@return boolean ok
 function M.new_file(path, opts)
-  require("fileops_nvim.ops.file").edit_new(path, opts)
+  return require("fileops_nvim.util.notify").report(
+    require("fileops_nvim.ops.file").edit_new(path, opts)
+  )
 end
 
 ---Rename the current file on disk.
 ---@param new_path string
 ---@param opts? { bang?: boolean }
+---@return boolean ok
 function M.rename(new_path, opts)
-  require("fileops_nvim.ops.file").rename(new_path, opts)
+  return require("fileops_nvim.util.notify").report(
+    require("fileops_nvim.ops.file").rename(new_path, opts)
+  )
 end
 
 ---Duplicate the current file to a new path.
 ---@param new_path string
 ---@param opts? { bang?: boolean, open?: boolean }
+---@return boolean ok
 function M.duplicate(new_path, opts)
-  require("fileops_nvim.ops.file").duplicate(new_path, opts)
+  return require("fileops_nvim.util.notify").report(
+    require("fileops_nvim.ops.file").duplicate(new_path, opts)
+  )
 end
 
 ---Delete the current file from disk and close the buffer.
 ---@param opts? { force?: boolean }
+---@return boolean ok
 function M.delete_current(opts)
-  require("fileops_nvim.ops.file").delete_current(opts)
+  return require("fileops_nvim.util.notify").report(
+    require("fileops_nvim.ops.file").delete_current(opts)
+  )
 end
 
 ---Change the working directory to the current buffer's directory and refresh
 ---any open file explorer (neo-tree/nvim-tree/netrw).
 ---@param opts? { scope?: "lcd"|"cd"|"tcd", refresh?: boolean }
+---@return boolean ok
 function M.cd_here(opts)
-  require("fileops_nvim.ops.file").cd_here(opts)
+  return require("fileops_nvim.util.notify").report(
+    require("fileops_nvim.ops.file").cd_here(opts)
+  )
 end
 
 return M

@@ -1,9 +1,14 @@
 ---@module 'fileops_nvim.ops.file'
 ---File create / rename / duplicate / delete operations.
 ---All ops validate API handles and use libuv for I/O (no shell injection).
+---
+---Every public function returns `ok, msg`: `msg` is a human-readable string
+---to relay regardless of outcome (success or failure), and the caller (the
+---UI/binding layer) decides whether/how to notify it. This module never
+---calls notify itself, so it can be reused from contexts that want silence
+---or a different presentation.
 local M = {}
 
-local notify   = require("fileops_nvim.util.notify")
 local fsops    = require("lib.nvim.cross.fs.mutate")
 local api, fn  = vim.api, vim.fn
 
@@ -39,15 +44,15 @@ end
 ---Ensure the parent directory of `path` exists (create recursively if needed).
 ---@param path string  Absolute path.
 ---@return boolean ok
+---@return string|nil err
 function M.ensure_parent(path)
   local dir = fn.fnamemodify(path, ":p:h")
-  if dir == "" then return false end
-  if fn.isdirectory(dir) == 1 then return true end
+  if dir == "" then return false, "cannot resolve parent directory" end
+  if fn.isdirectory(dir) == 1 then return true, nil end
   if not fsops.mkdir_p(dir) then
-    notify.error("cannot create directory: " .. dir)
-    return false
+    return false, "cannot create directory: " .. dir
   end
-  return true
+  return true, nil
 end
 
 ---Set the current buffer's file name (creates parent dirs if needed).
@@ -55,25 +60,26 @@ end
 ---@param path string  Destination path (may be relative or use ~).
 ---@param opts? { write?: boolean, bang?: boolean }
 ---@return boolean ok
+---@return string|nil msg
 function M.edit_new(path, opts)
   opts = opts or {}
   local abs = resolve_path(path)
-  if not abs then notify.error("invalid path: " .. tostring(path)); return false end
-  if not M.ensure_parent(abs) then return false end
+  if not abs then return false, "invalid path: " .. tostring(path) end
+  local pok, perr = M.ensure_parent(abs)
+  if not pok then return false, perr end
 
   local esc = fn.fnameescape(abs)
   local cmd = "file " .. esc
   local ok, err = pcall(vim.cmd, cmd)
-  if not ok then notify.error("file command failed: " .. tostring(err)); return false end
+  if not ok then return false, "file command failed: " .. tostring(err) end
 
   if opts.write then
     local write_cmd = opts.bang and "write!" or "write"
     local wok, werr = pcall(vim.cmd, write_cmd)
-    if not wok then notify.error("write failed: " .. tostring(werr)); return false end
+    if not wok then return false, "write failed: " .. tostring(werr) end
   end
 
-  notify.info("created " .. abs)
-  return true
+  return true, "created " .. abs
 end
 
 ---Save a copy of the current buffer under a new path (like `:saveas`).
@@ -81,19 +87,20 @@ end
 ---@param path string
 ---@param opts? { bang?: boolean }
 ---@return boolean ok
+---@return string|nil msg
 function M.save_as(path, opts)
   opts = opts or {}
   local abs = resolve_path(path)
-  if not abs then notify.error("invalid path: " .. tostring(path)); return false end
-  if not M.ensure_parent(abs) then return false end
+  if not abs then return false, "invalid path: " .. tostring(path) end
+  local pok, perr = M.ensure_parent(abs)
+  if not pok then return false, perr end
 
   local esc = fn.fnameescape(abs)
   local cmd = opts.bang and "saveas! " or "saveas "
   local ok, err = pcall(vim.cmd, cmd .. esc)
-  if not ok then notify.error("saveas failed: " .. tostring(err)); return false end
+  if not ok then return false, "saveas failed: " .. tostring(err) end
 
-  notify.info("saved as " .. abs)
-  return true
+  return true, "saved as " .. abs
 end
 
 ---Write a copy of the current buffer to `path` without changing buffer name.
@@ -101,28 +108,30 @@ end
 ---@param path string
 ---@param opts? { bang?: boolean }
 ---@return boolean ok
+---@return string|nil msg
 function M.write_to(path, opts)
   opts = opts or {}
   local abs = resolve_path(path)
-  if not abs then notify.error("invalid path: " .. tostring(path)); return false end
-  if not M.ensure_parent(abs) then return false end
+  if not abs then return false, "invalid path: " .. tostring(path) end
+  local pok, perr = M.ensure_parent(abs)
+  if not pok then return false, perr end
 
   local esc = fn.fnameescape(abs)
   local cmd = opts.bang and "write! " or "write "
   local ok, err = pcall(vim.cmd, cmd .. esc)
-  if not ok then notify.error("write to failed: " .. tostring(err)); return false end
+  if not ok then return false, "write to failed: " .. tostring(err) end
 
-  notify.info("written to " .. abs)
-  return true
+  return true, "written to " .. abs
 end
 
 ---Ensure the parent directory of the current buffer's file exists.
 ---@return boolean ok
+---@return string|nil msg
 function M.mk_parent()
   local b = cur_buf()
-  if not b then notify.error("no valid buffer"); return false end
+  if not b then return false, "no valid buffer" end
   local p = buf_path(b)
-  if not p then notify.error("current buffer has no file name"); return false end
+  if not p then return false, "current buffer has no file name" end
   return M.ensure_parent(p)
 end
 
@@ -132,39 +141,38 @@ end
 ---@param new_path string  New path (may be relative or use ~).
 ---@param opts? { bang?: boolean }
 ---@return boolean ok
+---@return string|nil msg
 function M.rename(new_path, opts)
   opts = opts or {}
   local b = cur_buf()
-  if not b then notify.error("no valid buffer"); return false end
+  if not b then return false, "no valid buffer" end
 
   local old = buf_path(b)
-  if not old then notify.error("current buffer has no file name"); return false end
+  if not old then return false, "current buffer has no file name" end
 
   if fn.filereadable(old) ~= 1 then
-    notify.error("source file does not exist or is not readable: " .. old)
-    return false
+    return false, "source file does not exist or is not readable: " .. old
   end
 
   local abs = resolve_path(new_path)
-  if not abs then notify.error("invalid destination: " .. tostring(new_path)); return false end
+  if not abs then return false, "invalid destination: " .. tostring(new_path) end
 
   if fn.filereadable(abs) == 1 and not opts.bang then
-    notify.error("destination already exists (use ! to overwrite): " .. abs)
-    return false
+    return false, "destination already exists (use ! to overwrite): " .. abs
   end
 
-  if not M.ensure_parent(abs) then return false end
+  local pok, perr = M.ensure_parent(abs)
+  if not pok then return false, perr end
 
   -- Write unsaved changes before renaming so no data is lost
   if vim.bo[b].modified then
     local ok, err = pcall(vim.cmd, "write")
-    if not ok then notify.error("save failed before rename: " .. tostring(err)); return false end
+    if not ok then return false, "save failed before rename: " .. tostring(err) end
   end
 
   local ok, err = fsops.rename_file(old, abs)
   if not ok then
-    notify.error("rename failed: " .. tostring(err))
-    return false
+    return false, "rename failed: " .. tostring(err)
   end
 
   -- Update buffer to point at new path
@@ -172,8 +180,7 @@ function M.rename(new_path, opts)
   pcall(vim.cmd, "file " .. esc)
   pcall(vim.cmd, "edit")  -- reload from disk so signs/diagnostics reset
 
-  notify.info(("renamed %s → %s"):format(fn.fnamemodify(old, ":t"), fn.fnamemodify(abs, ":t")))
-  return true
+  return true, ("renamed %s → %s"):format(fn.fnamemodify(old, ":t"), fn.fnamemodify(abs, ":t"))
 end
 
 -- ─── Duplicate ────────────────────────────────────────────────────────────────
@@ -182,51 +189,48 @@ end
 ---@param new_path string
 ---@param opts? { bang?: boolean, open?: boolean }
 ---@return boolean ok
+---@return string|nil msg
 function M.duplicate(new_path, opts)
   opts = opts or {}
   local open = opts.open ~= false  -- open by default
 
   local b = cur_buf()
-  if not b then notify.error("no valid buffer"); return false end
+  if not b then return false, "no valid buffer" end
 
   local src = buf_path(b)
-  if not src then notify.error("current buffer has no file name"); return false end
+  if not src then return false, "current buffer has no file name" end
 
   if fn.filereadable(src) ~= 1 then
-    notify.error("source file does not exist: " .. src)
-    return false
+    return false, "source file does not exist: " .. src
   end
 
   local abs = resolve_path(new_path)
-  if not abs then notify.error("invalid destination: " .. tostring(new_path)); return false end
+  if not abs then return false, "invalid destination: " .. tostring(new_path) end
 
   if fn.filereadable(abs) == 1 and not opts.bang then
-    notify.error("destination already exists (use ! to overwrite): " .. abs)
-    return false
+    return false, "destination already exists (use ! to overwrite): " .. abs
   end
 
-  if not M.ensure_parent(abs) then return false end
+  local pok, perr = M.ensure_parent(abs)
+  if not pok then return false, perr end
 
   -- Flush unsaved content first
   if vim.bo[b].modified then
     local ok, err = pcall(vim.cmd, "write")
-    if not ok then notify.error("save failed before duplicate: " .. tostring(err)); return false end
+    if not ok then return false, "save failed before duplicate: " .. tostring(err) end
   end
 
   local ok, err = fsops.copy_file(src, abs)
   if not ok then
-    notify.error("copy failed: " .. tostring(err))
-    return false
+    return false, "copy failed: " .. tostring(err)
   end
-
-  notify.info(("duplicated %s → %s"):format(fn.fnamemodify(src, ":t"), fn.fnamemodify(abs, ":t")))
 
   if open then
     local esc = fn.fnameescape(abs)
     pcall(vim.cmd, "edit " .. esc)
   end
 
-  return true
+  return true, ("duplicated %s → %s"):format(fn.fnamemodify(src, ":t"), fn.fnamemodify(abs, ":t"))
 end
 
 -- ─── Delete ───────────────────────────────────────────────────────────────────
@@ -273,33 +277,29 @@ end
 ---Delete the file of the current buffer from disk and close the buffer.
 ---@param opts? { force?: boolean }
 ---@return boolean ok
+---@return string|nil msg
 function M.delete_current(opts)
   opts = opts or {}
   local b = cur_buf()
-  if not b then notify.error("no valid buffer"); return false end
+  if not b then return false, "no valid buffer" end
 
   local path = buf_path(b)
-  if not path then notify.error("current buffer has no file name"); return false end
+  if not path then return false, "current buffer has no file name" end
 
   if fn.filereadable(path) ~= 1 then
-    notify.error("file does not exist or is not readable: " .. path)
-    return false
+    return false, "file does not exist or is not readable: " .. path
   end
 
   -- Guard unsaved changes BEFORE touching the disk: abort unless forced, so a
   -- follow-up `:File! delete` still has a file to delete and can force-close.
   if vim.bo[b].modified and not opts.force then
-    notify.error("buffer has unsaved changes — use :File! delete to delete and force-close")
-    return false
+    return false, "buffer has unsaved changes — use :File! delete to delete and force-close"
   end
 
   local ok, err = fsops.delete_file(path)
   if not ok then
-    notify.error("delete failed: " .. tostring(err))
-    return false
+    return false, "delete failed: " .. tostring(err)
   end
-
-  notify.info("deleted " .. fn.fnamemodify(path, ":t"))
 
   -- Close the buffer (force already implied by the guard above for modified ones).
   if api.nvim_buf_is_valid(b) then
@@ -309,7 +309,7 @@ function M.delete_current(opts)
     pcall(api.nvim_buf_delete, b, { force = opts.force or false })
   end
 
-  return true
+  return true, "deleted " .. fn.fnamemodify(path, ":t")
 end
 
 -- ─── Change directory ──────────────────────────────────────────────────────────
@@ -351,31 +351,30 @@ end
 ---then refresh any open file explorer so it tracks the new root.
 ---@param opts? { scope?: "lcd"|"cd"|"tcd", refresh?: boolean }
 ---@return boolean ok
+---@return string|nil msg
 function M.cd_here(opts)
   opts = opts or {}
   local b = cur_buf()
-  if not b then notify.error("no valid buffer"); return false end
+  if not b then return false, "no valid buffer" end
 
   local p = buf_path(b)
-  if not p then notify.error("current buffer has no file name"); return false end
+  if not p then return false, "current buffer has no file name" end
 
   local dir = fn.fnamemodify(p, ":p:h")
   if dir == "" or fn.isdirectory(dir) ~= 1 then
-    notify.error("cannot resolve buffer directory")
-    return false
+    return false, "cannot resolve buffer directory"
   end
 
   local scope = opts.scope
   local cmd = (scope == "cd" or scope == "tcd") and scope or "lcd"
   local ok, err = pcall(vim.cmd, cmd .. " " .. fn.fnameescape(dir))
-  if not ok then notify.error("cd failed: " .. tostring(err)); return false end
+  if not ok then return false, "cd failed: " .. tostring(err) end
 
   if opts.refresh ~= false then
     refresh_explorers(dir)
   end
 
-  notify.info("cwd → " .. dir)
-  return true
+  return true, "cwd → " .. dir
 end
 
 return M

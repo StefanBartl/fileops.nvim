@@ -1,6 +1,12 @@
 ---@module 'fileops_nvim.ops.cycle'
 ---Core logic for cycling through files in a directory (next/previous).
 ---Pure functions where possible; no global state.
+---
+---Public functions return `ok, msg`: `msg` is a human-readable string to
+---relay regardless of outcome, and the caller (the UI/binding layer) decides
+---whether/how to notify it. The one exception is the "unsaved changes"
+---confirm dialog inside `open_path`, which is itself an interactive UI flow
+---(vim.ui.select) with no synchronous caller to report back to.
 local M = {}
 
 local notify = require("fileops_nvim.util.notify")
@@ -101,19 +107,22 @@ end
 ---@param path string
 ---@param opts FileOps.CycleConfig
 ---@return boolean ok
+---@return string|nil msg
 local function open_path(path, opts)
-  if type(path) ~= "string" or path == "" then return false end
+  if type(path) ~= "string" or path == "" then return false, "empty path" end
 
   local win = api.nvim_get_current_win()
-  if not (win and api.nvim_win_is_valid(win)) then return false end
+  if not (win and api.nvim_win_is_valid(win)) then return false, "no valid window" end
 
   local bufnr = api.nvim_get_current_buf()
-  if not (bufnr and api.nvim_buf_is_valid(bufnr)) then return false end
+  if not (bufnr and api.nvim_buf_is_valid(bufnr)) then return false, "no valid buffer" end
 
   local target = opts.open_target or "replace"
   local esc    = fn.fnameescape(path)
 
-  -- Prompt for modified buffer when replacing
+  -- Prompt for modified buffer when replacing. This branch is an interactive
+  -- confirm dialog (vim.ui.select) with no synchronous caller to report back
+  -- to, so it notifies directly rather than returning through the callback.
   if target == "replace" and opts.confirm_on_modified and vim.bo[bufnr].modified then
     vim.ui.select(
       { "Save and open", "Discard changes and open", "Cancel" },
@@ -130,32 +139,31 @@ local function open_path(path, opts)
         pcall(vim.cmd, cmd .. esc)
       end
     )
-    return true
+    return true, nil
   end
 
   if target == "replace" then
     local old = bufnr
     local ok, err = pcall(vim.cmd, "edit " .. esc)
     if not ok then
-      notify.error("open failed: " .. tostring(err))
-      return false
+      return false, "open failed: " .. tostring(err)
     end
     local new = api.nvim_get_current_buf()
     if old ~= new and api.nvim_buf_is_valid(old) then
       pcall(api.nvim_buf_delete, old, { force = false })
     end
-    return true
+    return true, nil
 
   elseif target == "current" then
     local ok, err = pcall(vim.cmd, "edit " .. esc)
-    if not ok then notify.error("open failed: " .. tostring(err)); return false end
-    return true
+    if not ok then return false, "open failed: " .. tostring(err) end
+    return true, nil
 
   elseif target == "split" or target == "vsplit" then
     local cmd = (target == "split") and "split " or "vsplit "
     local cur = win
     local ok, err = pcall(vim.cmd, cmd .. esc)
-    if not ok then notify.error(target .. " failed: " .. tostring(err)); return false end
+    if not ok then return false, target .. " failed: " .. tostring(err) end
     if opts.keep_focus and api.nvim_win_is_valid(cur) then
       vim.schedule(function()
         if api.nvim_win_is_valid(cur) then
@@ -163,24 +171,22 @@ local function open_path(path, opts)
         end
       end)
     end
-    return true
+    return true, nil
 
   elseif target == "tab" then
     local ok, err = pcall(vim.cmd, "tabedit " .. esc)
-    if not ok then notify.error("tabedit failed: " .. tostring(err)); return false end
-    return true
+    if not ok then return false, "tabedit failed: " .. tostring(err) end
+    return true, nil
 
   elseif target == "background" then
     local ok, err = open_background(path)
     if not ok then
-      notify.error("background open failed: " .. tostring(err))
-      return false
+      return false, "background open failed: " .. tostring(err)
     end
-    return true
+    return true, nil
 
   else
-    notify.warn("unknown open_target: " .. tostring(target))
-    return false
+    return false, "unknown open_target: " .. tostring(target)
   end
 end
 
@@ -192,19 +198,18 @@ end
 ---@param opts FileOps.CycleConfig
 ---@param count integer|nil
 ---@return boolean ok
+---@return string|nil msg
 function M.navigate(dir, mode, opts, count)
   count = validate_count(count)
 
   local files = list_files(dir, opts)
   if #files == 0 then
-    notify.warn("no files in directory")
-    return false
+    return false, "no files in directory"
   end
 
   local cur = api.nvim_buf_get_name(0)
   if not cur or cur == "" then
-    notify.warn("current buffer has no file name")
-    return false
+    return false, "current buffer has no file name"
   end
 
   local ci  = opts.case_insensitive or false
@@ -222,8 +227,7 @@ function M.navigate(dir, mode, opts, count)
   end
 
   if not idx then
-    notify.warn("cannot locate current file in directory listing")
-    return false
+    return false, "cannot locate current file in directory listing"
   end
 
   local n = #files
@@ -238,8 +242,7 @@ function M.navigate(dir, mode, opts, count)
   end
 
   if not target_idx then
-    notify.info(("boundary reached (wrap=false, count=%d)"):format(count))
-    return false
+    return false, ("boundary reached (wrap=false, count=%d)"):format(count)
   end
 
   return open_path(files[target_idx], opts)
