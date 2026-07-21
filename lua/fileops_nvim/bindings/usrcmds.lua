@@ -14,7 +14,7 @@ local config = require("fileops_nvim.config")
 local SUBCMDS = {
   "new", "write", "saveas", "writeto", "mkdir", "touch",
   "rename", "move", "duplicate", "copy", "delete",
-  "next", "prev", "first", "last", "open", "cd", "help",
+  "next", "prev", "first", "last", "open", "path", "cd", "help",
 }
 
 local HELP_TEXT = table.concat({
@@ -34,6 +34,7 @@ local HELP_TEXT = table.concat({
   "  next/prev [target]      navigate directory listing",
   "  first/last [target]     jump to first/last file in directory",
   "  open [target]           reopen current file in split/vsplit/tab/…",
+  "  path [mode]             copy path to clipboard (abs/rel/name/dir)",
   "  cd [scope]              cd to buffer's dir + refresh explorer",
   "  help                    show this message",
   "",
@@ -51,6 +52,8 @@ local CD_SCOPE_MAP = {
 local CYCLE_TARGETS = {
   "%", "replace", "stay", "current", "new", "split", "vsplit", "tab", "bg", "background",
 }
+
+local PATH_MODES = { "abs", "rel", "name", "dir" }
 
 local CYCLE_TARGET_MAP = {
   ["%"]          = "replace",
@@ -272,6 +275,9 @@ local function dispatch(subcmd, fargs, bang, count)
 
     report(cycle.open_current(copts))
 
+  elseif subcmd == "path" then
+    report(file.copy_path(fargs[1]))
+
   elseif subcmd == "help" then
     notify.info(HELP_TEXT)
 
@@ -309,7 +315,7 @@ end
 
 function M.register()
   composer.verb("File", {
-    desc = "Unified file operations (new/write/saveas/writeto/mkdir/touch/rename/move/duplicate/copy/delete/next/prev/first/last/open/cd/help)",
+    desc = "Unified file operations (new/write/saveas/writeto/mkdir/touch/rename/move/duplicate/copy/delete/next/prev/first/last/open/path/cd/help)",
     bang = true,
     count = 0,
     routes = {
@@ -342,6 +348,7 @@ function M.register()
       route("first", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
       route("last", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
       route("open", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
+      route("path", { { name = "mode", type = "STRING", optional = true, enum = PATH_MODES } }),
       route("help"),
     },
   })

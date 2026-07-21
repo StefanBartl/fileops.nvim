@@ -15,10 +15,6 @@
 - **`:File info`** — Dateigröße, Änderungsdatum, Permissions (cross-platform via libuv `fs_stat`)
   Ausgabe als floating window oder in der Statuszeile
 
-- **`:File path [mode]`** — Pfad in die Zwischenablage kopieren
-  Modi: `abs` (absolut), `rel` (relativ zu cwd), `name` (nur Dateiname), `dir` (nur Ordner)
-  Integriert `usrcmds/copy`-Logik direkt im Plugin
-
 ### Bulk Operations
 
 - **`:File bulk rename {pattern} {replacement}`** — Batch-Rename aller Dateien im Verzeichnis

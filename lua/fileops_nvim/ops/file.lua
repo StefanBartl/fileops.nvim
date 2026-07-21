@@ -408,6 +408,39 @@ function M.delete_current(opts)
   return true, (trash and "trashed " or "deleted ") .. fn.fnamemodify(path, ":t")
 end
 
+-- ─── Path ─────────────────────────────────────────────────────────────────────
+
+---Copy the current buffer's file path to the unnamed + system clipboard
+---registers, in the requested `mode`.
+---@param mode "abs"|"rel"|"name"|"dir"|nil  Defaults to "abs".
+---@return boolean ok
+---@return string|nil msg
+function M.copy_path(mode)
+  local b = cur_buf()
+  if not b then return false, "no valid buffer" end
+
+  local p = buf_path(b)
+  if not p then return false, "current buffer has no file name" end
+
+  local out
+  if mode == "rel" then
+    out = fn.fnamemodify(p, ":.")
+  elseif mode == "name" then
+    out = fn.fnamemodify(p, ":t")
+  elseif mode == "dir" then
+    out = fn.fnamemodify(p, ":p:h")
+  elseif mode == nil or mode == "abs" then
+    out = fn.fnamemodify(p, ":p")
+  else
+    return false, "unknown path mode: " .. tostring(mode)
+  end
+
+  fn.setreg('"', out)
+  fn.setreg("+", out)
+
+  return true, "copied path (" .. (mode or "abs") .. "): " .. out
+end
+
 -- ─── Change directory ──────────────────────────────────────────────────────────
 
 ---Refresh known file-explorer plugins so they reflect `dir` as the new root.

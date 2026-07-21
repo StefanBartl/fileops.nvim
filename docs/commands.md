@@ -157,6 +157,24 @@ skips the modified-buffer confirm the same way it does there.
 :File! open              → current file, reloaded, skipping the modified check
 ```
 
+## `:File path [mode]`
+
+Copy the current file's path to the unnamed register and the system
+clipboard (`+`). `[mode]` defaults to `abs`.
+
+| Mode | Result |
+|---|---|
+| `abs` (default) | Absolute path |
+| `rel` | Relative to cwd |
+| `name` | File name only |
+| `dir` | Containing directory only |
+
+```
+:File path              → absolute path
+:File path rel          → path relative to cwd
+:File path name         → just the file name
+```
+
 ## `:File cd [scope]`
 
 Change the working directory to the directory of the current buffer's file,
