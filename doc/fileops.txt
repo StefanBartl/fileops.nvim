@@ -304,13 +304,23 @@ it is always implied when omitted.
 
 :File[!] rename [%] {dest}                                *:File-rename*
   Rename (or move) the current file on disk to `{dest}`. Updates the buffer
-  name. Writes unsaved changes before renaming. Creates parent directories.
-  `!` allows overwriting an existing destination.
+  name and reloads the buffer from disk afterwards (resets signs/
+  diagnostics). Writes unsaved changes before renaming. Creates parent
+  directories. `!` allows overwriting an existing destination.
 
   `%` is optional (current file is always the source): >
     :File rename newname.lua
     :File rename % newname.lua       → same
     :File! rename ../other/file.lua  → overwrite if exists
+<
+
+:File[!] move [%] {dest}                                    *:File-move*
+  Move the current file on disk to `{dest}` (possibly a different
+  directory) and update the buffer name — same underlying rename as
+  |:File-rename|, but the buffer is NOT reloaded: content and undo history
+  stay exactly as they were. Creates parent directories. `!` overwrites. >
+    :File move ../elsewhere/file.lua
+    :File! move % ../elsewhere/file.lua
 <
 
 :File[!] duplicate [%] {dest}                             *:File-duplicate*
@@ -490,7 +500,10 @@ new_file({path}, {opts})                             *fileops.new_file()*
   Set buffer name. {opts}: `{ write?: boolean, bang?: boolean }`.
 
 rename({path}, {opts})                                  *fileops.rename()*
-  Rename current file. {opts}: `{ bang?: boolean }`.
+  Rename current file (reloads buffer). {opts}: `{ bang?: boolean }`.
+
+move({path}, {opts})                                      *fileops.move()*
+  Move current file (no buffer reload). {opts}: `{ bang?: boolean }`.
 
 duplicate({path}, {opts})                            *fileops.duplicate()*
   Copy to new path + open. {opts}: `{ bang?: boolean, open?: boolean }`.
