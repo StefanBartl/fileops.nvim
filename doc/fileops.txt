@@ -320,6 +320,14 @@ it is always implied when omitted.
     :File! duplicate % backup.lua
 <
 
+:File[!] copy [%] {dest}                                       *:File-copy*
+  Copy the current file to `{dest}` using libuv, like |:File-duplicate|, but
+  without opening the copy afterwards. Creates parent directories. `!`
+  overwrites. >
+    :File copy backup.lua
+    :File! copy % backup.lua
+<
+
 :File[!] delete [%]                                       *:File-delete*
   Delete the current file from disk and close the buffer. Uses `uv.fs_unlink`
   (no shell command). If the buffer has unsaved changes, plain `:File delete`
@@ -486,6 +494,9 @@ rename({path}, {opts})                                  *fileops.rename()*
 
 duplicate({path}, {opts})                            *fileops.duplicate()*
   Copy to new path + open. {opts}: `{ bang?: boolean, open?: boolean }`.
+
+copy({path}, {opts})                                      *fileops.copy()*
+  Copy to new path without opening it. {opts}: `{ bang?: boolean }`.
 
 delete_current({opts})                          *fileops.delete_current()*
   Delete current file. {opts}: `{ force?: boolean }`.

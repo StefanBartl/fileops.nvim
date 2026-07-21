@@ -39,6 +39,7 @@ gated by `config.commands` (a single boolean — there is only one command).
 | `:File mkdir` | — | Create parent dirs for current buffer |
 | `:File[!] rename` | `[%] {dest}` | Rename/move file on disk + update buffer |
 | `:File[!] duplicate` | `[%] {dest}` | Copy file to new path and open the copy |
+| `:File[!] copy` | `[%] {dest}` | Copy file to new path without opening it |
 | `:File[!] delete` | `[%]` | Delete file from disk and close buffer |
 | `:[count]File[!] next` | `[target]` | Next file in directory |
 | `:[count]File[!] prev` | `[target]` | Previous file in directory |

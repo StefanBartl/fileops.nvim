@@ -13,7 +13,7 @@ local config = require("fileops_nvim.config")
 
 local SUBCMDS = {
   "new", "write", "saveas", "writeto", "mkdir",
-  "rename", "duplicate", "delete",
+  "rename", "duplicate", "copy", "delete",
   "next", "prev", "cd",
 }
 
@@ -132,6 +132,11 @@ local function dispatch(subcmd, fargs, bang, count)
     if not dest then notify.warn("usage: File[!] duplicate [%] {dest}"); return end
     report(file.duplicate(dest, { bang = bang }))
 
+  elseif subcmd == "copy" then
+    local dest = resolve_dest(fargs)
+    if not dest then notify.warn("usage: File[!] copy [%] {dest}"); return end
+    report(file.copy(dest, { bang = bang }))
+
   elseif subcmd == "delete" then
     report(file.delete_current({ force = bang }))
 
@@ -182,7 +187,7 @@ end
 
 function M.register()
   composer.verb("File", {
-    desc = "Unified file operations (new/write/saveas/writeto/mkdir/rename/duplicate/delete/next/prev/cd)",
+    desc = "Unified file operations (new/write/saveas/writeto/mkdir/rename/duplicate/copy/delete/next/prev/cd)",
     bang = true,
     count = 0,
     routes = {
@@ -196,6 +201,10 @@ function M.register()
         { name = "a2", type = "PATH", optional = true },
       }),
       route("duplicate", {
+        { name = "a1", type = "FILEOPS_DEST_FIRST", optional = true },
+        { name = "a2", type = "PATH", optional = true },
+      }),
+      route("copy", {
         { name = "a1", type = "FILEOPS_DEST_FIRST", optional = true },
         { name = "a2", type = "PATH", optional = true },
       }),
