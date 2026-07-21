@@ -140,6 +140,19 @@ and `!` behaviour as `next`/`prev`.
 :File last vsplit        → jump to the last file, in a vertical split
 ```
 
+## `:File[!] open [target]`
+
+Reopen the current buffer's own path in a different window target, without
+changing which file is shown — e.g. pop the file you're already editing into
+a vertical split or a new tab. Same `[target]` values as `next`/`prev`; `!`
+skips the modified-buffer confirm the same way it does there.
+
+```
+:File open vsplit        → current file, in a vertical split
+:File open tab           → current file, in a new tab
+:File! open              → current file, reloaded, skipping the modified check
+```
+
 ## `:File cd [scope]`
 
 Change the working directory to the directory of the current buffer's file,

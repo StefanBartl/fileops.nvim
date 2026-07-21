@@ -397,6 +397,16 @@ it is always implied when omitted.
   Jump straight to the last file in the current directory listing. See
   |:File-first|.
 
+:File[!] open [target]                                    *:File-open*
+  Reopen the current buffer's own path in a different window target,
+  without changing which file is shown. Same `[target]` values as
+  |:File-next|; `!` skips the modified-buffer confirm the same way it
+  does there. >
+    :File open vsplit
+    :File open tab
+    :File! open
+<
+
 :File cd [scope]                                          *:File-cd*
   Change the working directory to the directory of the current buffer's file,
   then refresh any open file explorer (neo-tree, nvim-tree, netrw) so it tracks
@@ -543,6 +553,9 @@ first({opts})                                            *fileops.first()*
 
 last({opts})                                              *fileops.last()*
   Jump to the last file in the current directory listing.
+
+open({opts})                                              *fileops.open()*
+  Reopen the current buffer's own path in a different window target.
 
 new_file({path}, {opts})                             *fileops.new_file()*
   Set buffer name. {opts}: `{ write?: boolean, bang?: boolean }`.
