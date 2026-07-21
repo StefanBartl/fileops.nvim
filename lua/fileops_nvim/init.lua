@@ -164,6 +164,14 @@ function M.copy_path(mode)
   )
 end
 
+---Show size/mtime/permissions for the current buffer's file.
+---@return boolean ok
+function M.info()
+  return require("fileops_nvim.util.notify").report(
+    require("fileops_nvim.ops.file").info()
+  )
+end
+
 ---Change the working directory to the current buffer's directory and refresh
 ---any open file explorer (neo-tree/nvim-tree/netrw).
 ---@param opts? { scope?: "lcd"|"cd"|"tcd", refresh?: boolean }

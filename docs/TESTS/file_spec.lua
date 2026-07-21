@@ -114,4 +114,13 @@ return function(H)
 
   local bad_ok, bad_msg = file.copy_path("bogus")
   ok(not bad_ok, "copy_path rejects unknown mode: " .. tostring(bad_msg))
+
+  -- info: reports size/mtime/permissions for the current buffer's file
+  local infoed = dir .. "infoed.lua"
+  H.write_file(infoed, "0123456789") -- 10 bytes
+  H.edit(infoed)
+  local iok, imsg = file.info()
+  ok(iok, "info succeeds: " .. tostring(imsg))
+  ok(imsg:find("infoed.lua", 1, true) ~= nil, "info: message includes the file path")
+  ok(imsg:find("10 bytes", 1, true) ~= nil, "info: message includes the byte size")
 end

@@ -175,6 +175,19 @@ clipboard (`+`). `[mode]` defaults to `abs`.
 :File path name         → just the file name
 ```
 
+## `:File info`
+
+Show size, last-modified time, and permissions for the current file, via
+libuv `fs_stat` (works cross-platform, including Windows).
+
+```
+:File info
+→ /home/me/project/init.lua
+  size: 1.2 KiB (1234 bytes)
+  modified: 2026-07-20 14:03:11
+  permissions: 644
+```
+
 ## `:File cd [scope]`
 
 Change the working directory to the directory of the current buffer's file,

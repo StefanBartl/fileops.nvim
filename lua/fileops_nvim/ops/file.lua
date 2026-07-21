@@ -408,6 +408,52 @@ function M.delete_current(opts)
   return true, (trash and "trashed " or "deleted ") .. fn.fnamemodify(path, ":t")
 end
 
+-- ─── Info ─────────────────────────────────────────────────────────────────────
+
+---Human-readable byte size (binary units, e.g. "12.3 KiB").
+---@param bytes integer
+---@return string
+local function human_size(bytes)
+  local units = { "B", "KiB", "MiB", "GiB", "TiB" }
+  local size = bytes
+  local i = 1
+  while size >= 1024 and i < #units do
+    size = size / 1024
+    i = i + 1
+  end
+  if i == 1 then return ("%d %s"):format(size, units[i]) end
+  return ("%.1f %s"):format(size, units[i])
+end
+
+---Return file size/mtime/permissions for the current buffer's file, via
+---libuv `fs_stat` (cross-platform: works on Windows too, though the
+---permission bits there are libuv's synthesized approximation).
+---@return boolean ok
+---@return string|nil msg
+function M.info()
+  local b = cur_buf()
+  if not b then return false, "no valid buffer" end
+
+  local p = buf_path(b)
+  if not p then return false, "current buffer has no file name" end
+
+  local st = uv.fs_stat(p)
+  if not st then return false, "cannot stat file: " .. p end
+
+  local mtime = st.mtime and st.mtime.sec
+  local mtime_str = mtime and os.date("%Y-%m-%d %H:%M:%S", mtime) or "unknown"
+  local perms = st.mode and ("%o"):format(st.mode % 512) or "unknown"
+
+  local lines = {
+    p,
+    ("size: %s (%d bytes)"):format(human_size(st.size), st.size),
+    ("modified: %s"):format(mtime_str),
+    ("permissions: %s"):format(perms),
+  }
+
+  return true, table.concat(lines, "\n")
+end
+
 -- ─── Path ─────────────────────────────────────────────────────────────────────
 
 ---Copy the current buffer's file path to the unnamed + system clipboard

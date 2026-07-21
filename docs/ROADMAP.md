@@ -10,11 +10,6 @@
 - **Aufl isung von Verzeichnis-Tiefe** — optional rekursive Navigation (subdirs einschließen)
   z.B. `root = "buffer_dir_recursive"` als neuer Config-Wert
 
-### File Info
-
-- **`:File info`** — Dateigröße, Änderungsdatum, Permissions (cross-platform via libuv `fs_stat`)
-  Ausgabe als floating window oder in der Statuszeile
-
 ### Bulk Operations
 
 - **`:File bulk rename {pattern} {replacement}`** — Batch-Rename aller Dateien im Verzeichnis

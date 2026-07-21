@@ -14,7 +14,7 @@ local config = require("fileops_nvim.config")
 local SUBCMDS = {
   "new", "write", "saveas", "writeto", "mkdir", "touch",
   "rename", "move", "duplicate", "copy", "delete",
-  "next", "prev", "first", "last", "open", "path", "cd", "help",
+  "next", "prev", "first", "last", "open", "path", "info", "cd", "help",
 }
 
 local HELP_TEXT = table.concat({
@@ -35,6 +35,7 @@ local HELP_TEXT = table.concat({
   "  first/last [target]     jump to first/last file in directory",
   "  open [target]           reopen current file in split/vsplit/tab/…",
   "  path [mode]             copy path to clipboard (abs/rel/name/dir)",
+  "  info                    show size/mtime/permissions for current file",
   "  cd [scope]              cd to buffer's dir + refresh explorer",
   "  help                    show this message",
   "",
@@ -278,6 +279,9 @@ local function dispatch(subcmd, fargs, bang, count)
   elseif subcmd == "path" then
     report(file.copy_path(fargs[1]))
 
+  elseif subcmd == "info" then
+    report(file.info())
+
   elseif subcmd == "help" then
     notify.info(HELP_TEXT)
 
@@ -315,7 +319,7 @@ end
 
 function M.register()
   composer.verb("File", {
-    desc = "Unified file operations (new/write/saveas/writeto/mkdir/touch/rename/move/duplicate/copy/delete/next/prev/first/last/open/path/cd/help)",
+    desc = "Unified file operations (new/write/saveas/writeto/mkdir/touch/rename/move/duplicate/copy/delete/next/prev/first/last/open/path/info/cd/help)",
     bang = true,
     count = 0,
     routes = {
@@ -349,6 +353,7 @@ function M.register()
       route("last", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
       route("open", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
       route("path", { { name = "mode", type = "STRING", optional = true, enum = PATH_MODES } }),
+      route("info"),
       route("help"),
     },
   })
