@@ -25,6 +25,13 @@ return {
     mode              = "permanent", -- "permanent" (fs_unlink) | "trash" (OS trash/recycle bin)
     on_before_delete  = nil,         -- fun(path: string): boolean|nil — return false to abort
   },
+  git_aware = {
+    enable    = false, -- master switch (opt-in — shells out to git); warns/uses git for tracked files
+                        -- on rename/move/duplicate/copy/delete
+    warn_only = true,  -- true: just note tracked-ness in the result message, still use libuv
+                        -- false: use `git mv`/`git rm` instead of libuv for tracked files
+    git_cmd   = "git", -- git executable to use
+  },
   keymaps = {
     cycle  = true,
     delete = true,

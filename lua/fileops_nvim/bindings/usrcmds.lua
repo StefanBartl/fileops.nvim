@@ -228,6 +228,18 @@ local function refresh_flag()
   return not (cfg.explorer and cfg.explorer.refresh_on_change == false)
 end
 
+---git_aware.* opts for rename/move/duplicate/copy/delete, from config.
+---@return { git_aware: boolean, git_warn_only: boolean, git_cmd: string }
+local function git_flags()
+  local cfg = config.get()
+  local gcfg = cfg.git_aware or {}
+  return {
+    git_aware = gcfg.enable == true,
+    git_warn_only = gcfg.warn_only ~= false,
+    git_cmd = gcfg.git_cmd or "git",
+  }
+end
+
 ---Build a bulk-rename plan for the buffer's directory, preview it, and
 ---(on confirmation via `vim.ui.select`) execute it. `!` allows overwriting
 ---existing destinations.
@@ -285,6 +297,7 @@ end
 ---@param count integer   v:count1 equivalent from :N File
 local function dispatch(subcmd, fargs, bang, count)
   local refresh = refresh_flag()
+  local gitopts = git_flags()
 
   if subcmd == "new" then
     if fargs[1] then
@@ -336,53 +349,57 @@ local function dispatch(subcmd, fargs, bang, count)
 
   elseif subcmd == "rename" then
     local dest = resolve_dest(fargs)
+    local ropts = vim.tbl_extend("force", { bang = bang, refresh_explorers = refresh }, gitopts)
     if dest then
-      report(file.rename(dest, { bang = bang, refresh_explorers = refresh }))
+      report(file.rename(dest, ropts))
     else
       prompt_dest("File rename: ", function(d)
-        report(file.rename(d, { bang = bang, refresh_explorers = refresh }))
+        report(file.rename(d, ropts))
       end)
     end
 
   elseif subcmd == "move" then
     local dest = resolve_dest(fargs)
+    local mopts = vim.tbl_extend("force", { bang = bang, refresh_explorers = refresh }, gitopts)
     if dest then
-      report(file.move(dest, { bang = bang, refresh_explorers = refresh }))
+      report(file.move(dest, mopts))
     else
       prompt_dest("File move: ", function(d)
-        report(file.move(d, { bang = bang, refresh_explorers = refresh }))
+        report(file.move(d, mopts))
       end)
     end
 
   elseif subcmd == "duplicate" then
     local dest = resolve_dest(fargs)
+    local dopts = vim.tbl_extend("force", { bang = bang, refresh_explorers = refresh }, gitopts)
     if dest then
-      report(file.duplicate(dest, { bang = bang, refresh_explorers = refresh }))
+      report(file.duplicate(dest, dopts))
     else
       prompt_dest("File duplicate: ", function(d)
-        report(file.duplicate(d, { bang = bang, refresh_explorers = refresh }))
+        report(file.duplicate(d, dopts))
       end)
     end
 
   elseif subcmd == "copy" then
     local dest = resolve_dest(fargs)
+    local copts = vim.tbl_extend("force", { bang = bang, refresh_explorers = refresh }, gitopts)
     if dest then
-      report(file.copy(dest, { bang = bang, refresh_explorers = refresh }))
+      report(file.copy(dest, copts))
     else
       prompt_dest("File copy: ", function(d)
-        report(file.copy(d, { bang = bang, refresh_explorers = refresh }))
+        report(file.copy(d, copts))
       end)
     end
 
   elseif subcmd == "delete" then
     local cfg = config.get()
     local dcfg = cfg.delete or {}
-    report(file.delete_current({
+    report(file.delete_current(vim.tbl_extend("force", {
       force = bang,
       mode = dcfg.mode,
       on_before_delete = dcfg.on_before_delete,
       refresh_explorers = refresh,
-    }))
+    }, gitopts)))
 
   elseif subcmd == "cd" then
     local cfg   = config.get()

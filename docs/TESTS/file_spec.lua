@@ -156,4 +156,52 @@ return function(H)
   eq(#seen, 1, "event still fires when refresh_explorers = false")
 
   vim.api.nvim_del_augroup_by_id(group)
+
+  -- git_aware: warn_only notes tracked-ness without shelling out to mutate;
+  -- warn_only=false actually uses git mv/git rm. Skips cleanly if git isn't usable.
+  local gitdir = H.tmpdir()
+  local function git_run(...)
+    return vim.system({ ... }, { text = true, cwd = gitdir }):wait()
+  end
+  local init_res = git_run("git", "init", "-q")
+  if init_res.code ~= 0 then
+    print("skip  file_spec.lua git_aware section: git not usable")
+  else
+    git_run("git", "config", "user.email", "test@example.com")
+    git_run("git", "config", "user.name", "Test")
+
+    local tracked1 = gitdir .. "tracked1.txt"
+    local tracked2 = gitdir .. "tracked2.txt"
+    H.write_file(tracked1, "hello 1")
+    H.write_file(tracked2, "hello 2")
+    git_run("git", "add", "tracked1.txt", "tracked2.txt")
+    git_run("git", "commit", "-q", "-m", "add tracked1/2.txt")
+
+    -- warn_only (default): still uses libuv, message notes tracked-ness
+    H.edit(tracked1)
+    local renamed_a = gitdir .. "renamed_a.txt"
+    local wok, wmsg = file.rename(renamed_a, { git_aware = true, git_warn_only = true })
+    ok(wok, "git_aware warn_only rename succeeds: " .. tostring(wmsg))
+    ok(wmsg:find("(git-tracked)", 1, true) ~= nil, "warn_only message notes git-tracked: " .. tostring(wmsg))
+    -- libuv rename doesn't update the git index, so the old name shows as deleted
+    local status_a = git_run("git", "status", "--porcelain")
+    ok(status_a.stdout:find("tracked1.txt", 1, true) ~= nil,
+      "warn_only: git index wasn't updated (plain libuv rename)")
+
+    -- warn_only = false: uses git mv, which keeps the index in sync
+    H.edit(tracked2)
+    local renamed_b = gitdir .. "renamed_b.txt"
+    local gok, gmsg = file.rename(renamed_b, { git_aware = true, git_warn_only = false })
+    ok(gok, "git_aware git-mv rename succeeds: " .. tostring(gmsg))
+    ok(gmsg:find("(git mv)", 1, true) ~= nil, "git-mv message notes git mv: " .. tostring(gmsg))
+    local status_b = git_run("git", "status", "--porcelain", "--", "tracked2.txt", "renamed_b.txt")
+    ok(status_b.stdout:match("^R"), "git mv: staged as a rename, not delete+add: " .. tostring(status_b.stdout))
+
+    -- delete: warn_only=false uses git rm
+    H.edit(renamed_b)
+    local dgok, dgmsg = file.delete_current({ force = true, git_aware = true, git_warn_only = false })
+    ok(dgok, "git_aware git-rm delete succeeds: " .. tostring(dgmsg))
+    ok(dgmsg:find("(git rm)", 1, true) ~= nil, "git-rm message notes git rm: " .. tostring(dgmsg))
+    eq(vim.fn.filereadable(renamed_b), 0, "git rm: file removed from disk")
+  end
 end
