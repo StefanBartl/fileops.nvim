@@ -60,6 +60,7 @@ Requires Neovim **0.9+** and [lib.nvim](https://github.com/StefanBartl/lib.nvim)
 | `last` | `[target]` | Jump to the last file in directory |
 | `open` | `[target]` | Reopen the current file in a different window target |
 | `path` | `[mode]` | Copy the current file's path to the clipboard (abs/rel/name/dir) |
+| `info` | — | Show size/mtime/permissions for the current file |
 | `cd` | `[scope]` | Set cwd to buffer's dir + refresh file explorer |
 | `help` | — | Show a short usage overview in the command line |
 

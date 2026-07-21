@@ -9,6 +9,7 @@ fileops.first(opts?)                 -- :File first equivalent
 fileops.last(opts?)                  -- :File last equivalent
 fileops.open(opts?)                  -- :File open equivalent
 fileops.copy_path(mode?)             -- :File path equivalent
+fileops.info()                       -- :File info equivalent
 fileops.new_file(path, opts?)        -- :File new
 fileops.touch(path)                  -- :File touch
 fileops.rename(path, opts?)          -- :File rename

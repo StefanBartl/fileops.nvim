@@ -426,6 +426,12 @@ prompt (<Esc> or an empty answer) is a silent no-op.
     :File path name
 <
 
+:File info                                                *:File-info*
+  Show size, last-modified time, and permissions for the current file,
+  via libuv `fs_stat` (cross-platform, including Windows). >
+    :File info
+<
+
 :File cd [scope]                                          *:File-cd*
   Change the working directory to the directory of the current buffer's file,
   then refresh any open file explorer (neo-tree, nvim-tree, netrw) so it tracks
@@ -579,6 +585,9 @@ open({opts})                                              *fileops.open()*
 copy_path({mode})                                    *fileops.copy_path()*
   Copy the current buffer's file path to the clipboard. `{mode}`: one of
   `"abs"|"rel"|"name"|"dir"`, defaults to `"abs"`.
+
+info()                                                    *fileops.info()*
+  Show size/mtime/permissions for the current buffer's file.
 
 new_file({path}, {opts})                             *fileops.new_file()*
   Set buffer name. {opts}: `{ write?: boolean, bang?: boolean }`.
