@@ -7,6 +7,7 @@ local composer = require("lib.nvim.usercmd.composer")
 local notify = require("fileops_nvim.util.notify")
 local file   = require("fileops_nvim.ops.file")
 local cycle  = require("fileops_nvim.ops.cycle")
+local bulk   = require("fileops_nvim.ops.bulk")
 local config = require("fileops_nvim.config")
 
 -- ─── Subcommand catalogue ─────────────────────────────────────────────────────
@@ -14,7 +15,8 @@ local config = require("fileops_nvim.config")
 local SUBCMDS = {
   "new", "write", "saveas", "writeto", "mkdir", "touch",
   "rename", "move", "duplicate", "copy", "delete",
-  "next", "prev", "first", "last", "open", "path", "info", "cd", "help",
+  "next", "prev", "first", "last", "open", "path", "info",
+  "bulk rename", "cd", "help",
 }
 
 local HELP_TEXT = table.concat({
@@ -36,6 +38,7 @@ local HELP_TEXT = table.concat({
   "  open [target]           reopen current file in split/vsplit/tab/…",
   "  path [mode]             copy path to clipboard (abs/rel/name/dir)",
   "  info                    show size/mtime/permissions for current file",
+  "  bulk rename {pat} {rep} batch-rename files in dir via Lua pattern (preview + confirm)",
   "  cd [scope]              cd to buffer's dir + refresh explorer",
   "  help                    show this message",
   "",
@@ -225,6 +228,56 @@ local function refresh_flag()
   return not (cfg.explorer and cfg.explorer.refresh_on_change == false)
 end
 
+---Build a bulk-rename plan for the buffer's directory, preview it, and
+---(on confirmation via `vim.ui.select`) execute it. `!` allows overwriting
+---existing destinations.
+---@param pattern string|nil
+---@param replacement string|nil
+---@param bang boolean
+local function do_bulk_rename(pattern, replacement, bang)
+  if not pattern then
+    notify.warn("usage: File[!] bulk rename {pattern} {replacement}")
+    return
+  end
+  replacement = replacement or ""
+
+  local dir, dir_err = cycle.get_root_dir({ root = "buffer_dir" })
+  if not dir then
+    notify.warn(dir_err or "cannot determine directory")
+    return
+  end
+
+  local plan, plan_err = bulk.plan(dir, pattern, replacement)
+  if plan_err then
+    notify.error("bulk rename: " .. plan_err)
+    return
+  end
+  if #plan == 0 then
+    notify.info(("bulk rename: no files in %s matched %q"):format(dir, pattern))
+    return
+  end
+
+  local preview = { ("bulk rename: %d file(s) in %s"):format(#plan, dir) }
+  for _, item in ipairs(plan) do
+    preview[#preview + 1] = ("  %s → %s"):format(
+      vim.fn.fnamemodify(item.old, ":t"), vim.fn.fnamemodify(item.new, ":t"))
+  end
+  notify.info(table.concat(preview, "\n"))
+
+  local confirm_choice = ("Rename %d file(s)"):format(#plan)
+  vim.ui.select({ confirm_choice, "Cancel" }, {
+    prompt = "[fileops] Confirm bulk rename?",
+  }, function(choice)
+    if choice ~= confirm_choice then return end
+    local renamed, err = bulk.execute(plan, { bang = bang, refresh_explorers = refresh_flag() })
+    if err then
+      notify.error(("bulk rename: %d/%d renamed, first failure: %s"):format(renamed, #plan, err))
+    else
+      notify.info(("bulk rename: %d file(s) renamed"):format(renamed))
+    end
+  end)
+end
+
 ---Dispatch a parsed command to the appropriate operation.
 ---@param subcmd string
 ---@param fargs string[]  Arguments after the subcommand.
@@ -367,6 +420,9 @@ local function dispatch(subcmd, fargs, bang, count)
   elseif subcmd == "info" then
     report(file.info())
 
+  elseif subcmd == "bulk_rename" then
+    do_bulk_rename(fargs[1], fargs[2], bang)
+
   elseif subcmd == "help" then
     notify.info(HELP_TEXT)
 
@@ -404,7 +460,7 @@ end
 
 function M.register()
   composer.verb("File", {
-    desc = "Unified file operations (new/write/saveas/writeto/mkdir/touch/rename/move/duplicate/copy/delete/next/prev/first/last/open/path/info/cd/help)",
+    desc = "Unified file operations (new/write/saveas/writeto/mkdir/touch/rename/move/duplicate/copy/delete/next/prev/first/last/open/path/info/bulk rename/cd/help)",
     bang = true,
     count = 0,
     routes = {
@@ -445,6 +501,16 @@ function M.register()
       route("open", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
       route("path", { { name = "mode", type = "STRING", optional = true, enum = PATH_MODES } }),
       route("info"),
+      {
+        path = { "bulk", "rename" },
+        args = {
+          { name = "pattern", type = "STRING" },
+          { name = "replacement", type = "STRING", optional = true },
+        },
+        run = function(ctx)
+          dispatch("bulk_rename", fargs_of(ctx), ctx.bang, 1)
+        end,
+      },
       route("help"),
     },
   })

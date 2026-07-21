@@ -58,11 +58,12 @@ end
 ---Notify listeners that a file op changed the tree: always emits a
 ---`User FileopsChanged` autocmd (so any plugin/user config can react), and
 ---additionally reloads neo-tree/nvim-tree in place unless
----`opts.refresh_explorers == false`.
+---`opts.refresh_explorers == false`. Exported (not just local) so other ops
+---modules (e.g. `ops.bulk`) can reuse it for the same behavior.
 ---@param action string  e.g. "touch", "rename", "move", "duplicate", "copy", "delete", "new", "mkdir".
 ---@param path string    Absolute path the op acted on (its resulting location for renames/moves).
 ---@param opts? { refresh_explorers?: boolean }
-local function notify_change(action, path, opts)
+function M.notify_change(action, path, opts)
   opts = opts or {}
   pcall(api.nvim_exec_autocmds, "User", {
     pattern = "FileopsChanged",
@@ -113,7 +114,7 @@ function M.edit_new(path, opts)
     if not wok then return false, "write failed: " .. tostring(werr) end
   end
 
-  notify_change("new", abs, opts)
+  M.notify_change("new", abs, opts)
   return true, "created " .. abs
 end
 
@@ -135,7 +136,7 @@ function M.save_as(path, opts)
   local ok, err = pcall(vim.cmd, cmd .. esc)
   if not ok then return false, "saveas failed: " .. tostring(err) end
 
-  notify_change("saveas", abs, opts)
+  M.notify_change("saveas", abs, opts)
   return true, "saved as " .. abs
 end
 
@@ -157,7 +158,7 @@ function M.write_to(path, opts)
   local ok, err = pcall(vim.cmd, cmd .. esc)
   if not ok then return false, "write to failed: " .. tostring(err) end
 
-  notify_change("writeto", abs, opts)
+  M.notify_change("writeto", abs, opts)
   return true, "written to " .. abs
 end
 
@@ -171,7 +172,7 @@ function M.mk_parent(opts)
   local p = buf_path(b)
   if not p then return false, "current buffer has no file name" end
   local ok, msg = M.ensure_parent(p)
-  if ok then notify_change("mkdir", p, opts) end
+  if ok then M.notify_change("mkdir", p, opts) end
   return ok, msg
 end
 
@@ -206,7 +207,7 @@ function M.touch(path, opts)
   end
   uv.fs_close(fd)
 
-  notify_change("touch", abs, opts)
+  M.notify_change("touch", abs, opts)
   return true, "touched " .. abs
 end
 
@@ -266,7 +267,7 @@ local function move_or_rename(new_path, opts)
     pcall(vim.cmd, "edit")  -- reload from disk so signs/diagnostics reset
   end
 
-  notify_change(action, abs, opts)
+  M.notify_change(action, abs, opts)
   return true, (action .. "d %s → %s"):format(fn.fnamemodify(old, ":t"), fn.fnamemodify(abs, ":t"))
 end
 
@@ -348,7 +349,7 @@ function M.duplicate(new_path, opts)
     pcall(vim.cmd, "edit " .. esc)
   end
 
-  notify_change(verb == "copied" and "copy" or "duplicate", abs, opts)
+  M.notify_change(verb == "copied" and "copy" or "duplicate", abs, opts)
   return true, ("%s %s → %s"):format(verb, fn.fnamemodify(src, ":t"), fn.fnamemodify(abs, ":t"))
 end
 
@@ -457,7 +458,7 @@ function M.delete_current(opts)
     pcall(api.nvim_buf_delete, b, { force = opts.force or false })
   end
 
-  notify_change("delete", path, opts)
+  M.notify_change("delete", path, opts)
   return true, (trash and "trashed " or "deleted ") .. fn.fnamemodify(path, ":t")
 end
 

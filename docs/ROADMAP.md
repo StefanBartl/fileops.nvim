@@ -2,11 +2,6 @@
 
 ## Geplante Features
 
-### Bulk Operations
-
-- **`:File bulk rename {pattern} {replacement}`** — Batch-Rename aller Dateien im Verzeichnis
-  via lua-Regex; Vorschau-Modus mit Bestätigungsdialog
-
 ### Integration
 
 - **Git-Awareness** — Warnung wenn Datei git-tracked ist bei rename/delete/duplicate;

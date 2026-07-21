@@ -61,6 +61,7 @@ local specs = {
   "config_spec.lua",
   "cycle_spec.lua",
   "file_spec.lua",
+  "bulk_spec.lua",
 }
 
 local failed = 0
