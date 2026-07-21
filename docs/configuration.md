@@ -12,6 +12,7 @@ require("fileops_nvim").setup({
     root                = "buffer_dir", -- "buffer_dir"|"cwd"
     confirm_on_modified = true,         -- vim.ui.select prompt when buffer is modified
     case_insensitive    = true,         -- Case-insensitive sort and comparison
+    pattern             = nil,          -- Glob filter (e.g. "*.lua"), overridable via :File next's [glob] arg
   },
   -- Options for :File cd
   cd = {

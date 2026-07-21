@@ -115,13 +115,19 @@ deletion by returning `false` (e.g. to warn about git-tracked files).
 :File! delete     (delete + force-close a modified buffer)
 ```
 
-## `:[count]File[!] next [target]` / `:[count]File[!] prev [target]`
+## `:[count]File[!] next [target] [glob]` / `:[count]File[!] prev [target] [glob]`
 
-Navigate to the next / previous file in the current directory.
+Navigate to the next / previous file in the current directory. An optional
+trailing `[glob]` (e.g. `*.lua`) narrows the directory listing to matching
+file names before navigating — everything else (wrap, hidden files, sort
+order) works the same as unfiltered navigation. Matching uses
+`vim.fn.glob2regpat`.
 
 ```
 :File next               → next file, configured open_target
 :File next vsplit        → in a vertical split
+:File next *.lua         → next file matching *.lua
+:File next vsplit *.lua  → in a vertical split, matching *.lua
 :2File next              → skip 2 files
 :File! next              → bypass modified-buffer confirm
 ```
@@ -136,6 +142,10 @@ Navigate to the next / previous file in the current directory.
 | `vsplit` | Vertical split |
 | `tab` | New tab |
 | `bg` or `background` | Load into buffer list without switching |
+
+If the first argument isn't one of the target keywords above, it's treated
+as the glob pattern instead (so `:File next *.lua` works without needing to
+name a target first).
 
 ## `:File[!] first [target]` / `:File[!] last [target]`
 

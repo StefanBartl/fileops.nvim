@@ -15,6 +15,7 @@
 ---@field root?                FileOps.CycleRoot    Which directory to list.
 ---@field confirm_on_modified? boolean              Prompt when current buffer is modified.
 ---@field case_insensitive?    boolean              Sort and compare paths case-insensitively.
+---@field pattern?             string|nil           Glob filter (e.g. "*.lua") applied to file names; matched via `vim.fn.glob2regpat`. Default: nil (no filter).
 
 ---@class FileOps.CdConfig
 ---@field scope?             FileOps.CdScope  cd scope: window (lcd), tab (tcd), global (cd).

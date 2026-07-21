@@ -31,7 +31,7 @@ local HELP_TEXT = table.concat({
   "  duplicate [%] {dest}    copy + open the copy (! overwrites)",
   "  copy [%] {dest}         copy without opening (! overwrites)",
   "  delete [%]              delete + close buffer (! force-closes)",
-  "  next/prev [target]      navigate directory listing",
+  "  next/prev [target] [glob]  navigate directory listing, optionally filtered",
   "  first/last [target]     jump to first/last file in directory",
   "  open [target]           reopen current file in split/vsplit/tab/…",
   "  path [mode]             copy path to clipboard (abs/rel/name/dir)",
@@ -111,21 +111,54 @@ composer.register_type("FILEOPS_PATH", {
   complete = complete_from_bufdir,
 })
 
+-- `next`/`prev` accept an optional glob filter (e.g. `:File next *.lua`) in
+-- the same slot a target keyword would go — so this slot can't be a strict
+-- enum. Validation always passes; completion still offers the known target
+-- keywords as a prefix match.
+composer.register_type("FILEOPS_CYCLE_ARG", {
+  validate = function(raw) return true, raw, nil end,
+  complete = function(arg_lead)
+    if arg_lead == "" then return vim.deepcopy(CYCLE_TARGETS) end
+    local out = {}
+    for _, t in ipairs(CYCLE_TARGETS) do
+      if t:sub(1, #arg_lead) == arg_lead then out[#out + 1] = t end
+    end
+    return out
+  end,
+})
+
 -- ─── Dispatch ─────────────────────────────────────────────────────────────────
 
 local report = notify.report
 
+---Split next/prev's two optional args into a resolved target + glob
+---pattern. Since the first slot may be either a target keyword or a glob
+---filter (`:File next *.lua`), a recognized target keyword there shifts the
+---pattern to the second slot; anything else is treated as the pattern
+---itself (and a second arg, if present, is ignored).
+---@param a1 string|nil
+---@param a2 string|nil
+---@return string|nil target
+---@return string|nil pattern
+local function resolve_cycle_args(a1, a2)
+  local target = a1 and CYCLE_TARGET_MAP[a1:lower()]
+  if target then return target, a2 end
+  return nil, a1
+end
+
 ---Run the file-cycle navigate with opts from config + per-call overrides.
 ---@param direction FileOps.Direction
----@param target_arg string|nil
+---@param a1 string|nil  Target keyword or glob pattern (see `resolve_cycle_args`).
+---@param a2 string|nil  Glob pattern, when `a1` was a target keyword.
 ---@param count integer
 ---@param bang boolean
-local function do_cycle(direction, target_arg, count, bang)
+local function do_cycle(direction, a1, a2, count, bang)
   local cfg   = config.get()
   local copts = vim.deepcopy(cfg.cycle or {})
 
-  local target = target_arg and CYCLE_TARGET_MAP[target_arg:lower()]
+  local target, pattern = resolve_cycle_args(a1, a2)
   if target then copts.open_target = target end
+  if pattern and pattern ~= "" then copts.pattern = pattern end
 
   if bang then copts.confirm_on_modified = false end
 
@@ -306,10 +339,10 @@ local function dispatch(subcmd, fargs, bang, count)
     report(file.cd_here({ scope = scope, refresh = cd_refresh }))
 
   elseif subcmd == "next" then
-    do_cycle("next", fargs[1], count, bang)
+    do_cycle("next", fargs[1], fargs[2], count, bang)
 
   elseif subcmd == "prev" then
-    do_cycle("prev", fargs[1], count, bang)
+    do_cycle("prev", fargs[1], fargs[2], count, bang)
 
   elseif subcmd == "first" then
     do_jump("first", fargs[1], bang)
@@ -399,8 +432,14 @@ function M.register()
       }),
       route("delete"),
       route("cd", { { name = "scope", type = "STRING", optional = true, enum = CD_SCOPES } }),
-      route("next", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
-      route("prev", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
+      route("next", {
+        { name = "a1", type = "FILEOPS_CYCLE_ARG", optional = true },
+        { name = "a2", type = "STRING", optional = true },
+      }),
+      route("prev", {
+        { name = "a1", type = "FILEOPS_CYCLE_ARG", optional = true },
+        { name = "a2", type = "STRING", optional = true },
+      }),
       route("first", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
       route("last", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
       route("open", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),

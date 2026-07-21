@@ -49,6 +49,16 @@ function M.get_root_dir(opts)
   return (dir ~= "") and dir or nil, (dir == "") and "cannot resolve buffer directory" or nil
 end
 
+---Whether `name` matches a glob `pattern` (converted via `glob2regpat`).
+---No pattern means everything matches.
+---@param name string
+---@param pattern string|nil
+---@return boolean
+local function matches_pattern(name, pattern)
+  if not pattern or pattern == "" then return true end
+  return fn.match(name, fn.glob2regpat(pattern)) ~= -1
+end
+
 ---List regular, filtered files in `dir` sorted alphabetically.
 ---@param dir string
 ---@param opts FileOps.CycleConfig
@@ -68,7 +78,7 @@ local function list_files(dir, opts)
       is_file = (st and st.type == "file") or false
     end
     local hidden = name:sub(1, 1) == "."
-    if is_file and (opts.include_hidden or not hidden) then
+    if is_file and (opts.include_hidden or not hidden) and matches_pattern(name, opts.pattern) then
       acc[#acc + 1] = canon(dir .. "/" .. name, opts.follow_symlinks)
     end
   end
