@@ -290,10 +290,14 @@ A single command that dispatches to all file operations.
 `%` as a scope argument explicitly refers to the current buffer's file;
 it is always implied when omitted.
 
+Every `{path}`/`{dest}` argument below is itself optional: omit it and the
+command opens a |vim.ui.input()| prompt instead of erroring. Cancelling the
+prompt (<Esc> or an empty answer) is a silent no-op.
+
 ------------------------------------------------------------------------------
 5.1 Subcommands                                              *fileops-subcmds*
 
-:File new {path}                                          *:File-new*
+:File new [path]                                          *:File-new*
   Set the current buffer's file name to `{path}`. Creates parent directories
   automatically. Does NOT write the buffer to disk.
 
@@ -302,29 +306,29 @@ it is always implied when omitted.
     :File new ~/projects/foo/bar.lua
 <
 
-:File[!] write {path}                                     *:File-write*
+:File[!] write [path]                                     *:File-write*
   Like |:File-new| but also writes the buffer to disk immediately. `!`
   overwrites an existing file (`:write!`).
 
-:File[!] saveas {path}                                    *:File-saveas*
+:File[!] saveas [path]                                    *:File-saveas*
   Save the buffer under `{path}` (equivalent to `:saveas`). Buffer name
   changes to the new path. Creates parent directories. `!` overwrites.
 
-:File[!] writeto {path}                                   *:File-writeto*
+:File[!] writeto [path]                                   *:File-writeto*
   Write a copy of the buffer to `{path}` without changing the buffer's name.
   Creates parent directories. `!` overwrites.
 
 :File mkdir                                               *:File-mkdir*
   Create the parent directory hierarchy for the current buffer's file.
 
-:File touch {path}                                        *:File-touch*
+:File touch [path]                                        *:File-touch*
   Create an empty file at `{path}` if it doesn't already exist yet (creates
   parent directories). Real `touch` semantics: an existing file is left
   untouched, never truncated. Doesn't require or open a buffer. >
     :File touch notes/todo.md
 <
 
-:File[!] rename [%] {dest}                                *:File-rename*
+:File[!] rename [%] [dest]                                *:File-rename*
   Rename (or move) the current file on disk to `{dest}`. Updates the buffer
   name and reloads the buffer from disk afterwards (resets signs/
   diagnostics). Writes unsaved changes before renaming. Creates parent
@@ -336,7 +340,7 @@ it is always implied when omitted.
     :File! rename ../other/file.lua  → overwrite if exists
 <
 
-:File[!] move [%] {dest}                                    *:File-move*
+:File[!] move [%] [dest]                                    *:File-move*
   Move the current file on disk to `{dest}` (possibly a different
   directory) and update the buffer name — same underlying rename as
   |:File-rename|, but the buffer is NOT reloaded: content and undo history
@@ -345,14 +349,14 @@ it is always implied when omitted.
     :File! move % ../elsewhere/file.lua
 <
 
-:File[!] duplicate [%] {dest}                             *:File-duplicate*
+:File[!] duplicate [%] [dest]                             *:File-duplicate*
   Copy the current file to `{dest}` using libuv and open the copy. Creates
   parent directories. `!` overwrites. >
     :File duplicate backup.lua
     :File! duplicate % backup.lua
 <
 
-:File[!] copy [%] {dest}                                       *:File-copy*
+:File[!] copy [%] [dest]                                       *:File-copy*
   Copy the current file to `{dest}` using libuv, like |:File-duplicate|, but
   without opening the copy afterwards. Creates parent directories. `!`
   overwrites. >

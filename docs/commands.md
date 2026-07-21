@@ -7,7 +7,11 @@
 `!` overrides safety checks (existing-file guard, modified-buffer confirm).
 `%` is an optional explicit "current file" scope — always implied when omitted.
 
-## `:File new {path}`
+Every `{path}`/`{dest}` argument below is itself optional: omit it and the
+command opens a `vim.ui.input` prompt instead of erroring. Cancelling the
+prompt (`<Esc>` or an empty answer) is a silent no-op, same as `vim.ui.input`.
+
+## `:File new [path]`
 
 Set the current buffer's file name to `{path}`. Creates parent directories.
 Does **not** write the buffer to disk.
@@ -16,17 +20,17 @@ Does **not** write the buffer to disk.
 :File new lua/mymodule/init.lua
 ```
 
-## `:File[!] write {path}`
+## `:File[!] write [path]`
 
 Like `new` but also writes the buffer to disk immediately. `!` overwrites an
 existing file (`:write!`).
 
-## `:File[!] saveas {path}`
+## `:File[!] saveas [path]`
 
 Save the buffer under `{path}` (`:saveas`-equivalent). Buffer name changes.
 `!` overwrites an existing file.
 
-## `:File[!] writeto {path}`
+## `:File[!] writeto [path]`
 
 Write a copy of the buffer to `{path}` without changing the buffer's name.
 `!` overwrites an existing file.
@@ -36,7 +40,7 @@ Write a copy of the buffer to `{path}` without changing the buffer's name.
 Create the parent directory hierarchy for the current buffer's file. This
 runs automatically before every save too — see [Autocommands](autocommands.md).
 
-## `:File touch {path}`
+## `:File touch [path]`
 
 Create an empty file at `{path}` if it doesn't already exist yet (creates
 parent directories). Real `touch` semantics: an existing file is left
@@ -46,7 +50,7 @@ untouched, never truncated. Doesn't require or open a buffer.
 :File touch notes/todo.md
 ```
 
-## `:File[!] rename [%] {dest}`
+## `:File[!] rename [%] [dest]`
 
 Rename (or move) the current file on disk to `{dest}`. Updates the buffer
 name and **reloads the buffer from disk** afterwards (resets signs/
@@ -59,7 +63,7 @@ existing destination.
 :File! rename ../moved.lua    (overwrite if exists)
 ```
 
-## `:File[!] move [%] {dest}`
+## `:File[!] move [%] [dest]`
 
 Move the current file on disk to `{dest}` (possibly a different directory)
 and update the buffer name — same underlying rename as `rename`, but the
@@ -71,7 +75,7 @@ were. `!` overwrites an existing destination.
 :File! move % ../elsewhere/file.lua
 ```
 
-## `:File[!] duplicate [%] {dest}`
+## `:File[!] duplicate [%] [dest]`
 
 Copy the current file to `{dest}` and open the copy. `!` overwrites.
 
@@ -80,7 +84,7 @@ Copy the current file to `{dest}` and open the copy. `!` overwrites.
 :File! duplicate % backup.lua
 ```
 
-## `:File[!] copy [%] {dest}`
+## `:File[!] copy [%] [dest]`
 
 Copy the current file to `{dest}` using libuv, like `duplicate`, but without
 opening the copy afterwards. `!` overwrites.
