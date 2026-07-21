@@ -154,6 +154,16 @@ function M.delete_current(opts)
   )
 end
 
+---Copy the current buffer's file path to the unnamed + system clipboard
+---registers.
+---@param mode? "abs"|"rel"|"name"|"dir"  Defaults to "abs".
+---@return boolean ok
+function M.copy_path(mode)
+  return require("fileops_nvim.util.notify").report(
+    require("fileops_nvim.ops.file").copy_path(mode)
+  )
+end
+
 ---Change the working directory to the current buffer's directory and refresh
 ---any open file explorer (neo-tree/nvim-tree/netrw).
 ---@param opts? { scope?: "lcd"|"cd"|"tcd", refresh?: boolean }

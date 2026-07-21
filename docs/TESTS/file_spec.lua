@@ -89,4 +89,29 @@ return function(H)
   ok(dok2, "delete_current: on_before_delete=true proceeds: " .. tostring(dmsg2))
   eq(vim.fn.filereadable(deletable), 0, "delete_current: file actually deleted")
   eq(seen_path, vim.fn.fnamemodify(deletable, ":p"), "delete_current: hook received the file path")
+
+  -- copy_path: writes the requested representation to the unnamed register
+  local pathed = dir .. "pathed.lua"
+  H.write_file(pathed, "-- pathed")
+  H.edit(pathed)
+
+  local abs_ok = file.copy_path("abs")
+  ok(abs_ok, "copy_path abs succeeds")
+  eq(vim.fn.getreg('"'), vim.fn.fnamemodify(pathed, ":p"), "copy_path abs: register holds absolute path")
+
+  local name_ok = file.copy_path("name")
+  ok(name_ok, "copy_path name succeeds")
+  eq(vim.fn.getreg('"'), "pathed.lua", "copy_path name: register holds file name only")
+
+  local dir_ok = file.copy_path("dir")
+  ok(dir_ok, "copy_path dir succeeds")
+  eq(vim.fn.getreg('"'), vim.fn.fnamemodify(pathed, ":p:h"), "copy_path dir: register holds containing directory")
+
+  -- default mode (no arg) behaves like "abs"
+  local default_ok = file.copy_path(nil)
+  ok(default_ok, "copy_path with no mode succeeds")
+  eq(vim.fn.getreg('"'), vim.fn.fnamemodify(pathed, ":p"), "copy_path nil: defaults to abs")
+
+  local bad_ok, bad_msg = file.copy_path("bogus")
+  ok(not bad_ok, "copy_path rejects unknown mode: " .. tostring(bad_msg))
 end

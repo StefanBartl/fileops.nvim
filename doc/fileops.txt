@@ -411,6 +411,21 @@ prompt (<Esc> or an empty answer) is a silent no-op.
     :File! open
 <
 
+:File path [mode]                                         *:File-path*
+  Copy the current file's path to the unnamed register and the system
+  clipboard (`+`). `[mode]` defaults to `abs`.
+
+    `abs`   (default)  absolute path
+    `rel`              relative to cwd
+    `name`             file name only
+    `dir`              containing directory only
+
+  Examples: >
+    :File path
+    :File path rel
+    :File path name
+<
+
 :File cd [scope]                                          *:File-cd*
   Change the working directory to the directory of the current buffer's file,
   then refresh any open file explorer (neo-tree, nvim-tree, netrw) so it tracks
@@ -560,6 +575,10 @@ last({opts})                                              *fileops.last()*
 
 open({opts})                                              *fileops.open()*
   Reopen the current buffer's own path in a different window target.
+
+copy_path({mode})                                    *fileops.copy_path()*
+  Copy the current buffer's file path to the clipboard. `{mode}`: one of
+  `"abs"|"rel"|"name"|"dir"`, defaults to `"abs"`.
 
 new_file({path}, {opts})                             *fileops.new_file()*
   Set buffer name. {opts}: `{ write?: boolean, bang?: boolean }`.
