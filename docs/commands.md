@@ -57,6 +57,16 @@ Copy the current file to `{dest}` and open the copy. `!` overwrites.
 :File! duplicate % backup.lua
 ```
 
+## `:File[!] copy [%] {dest}`
+
+Copy the current file to `{dest}` using libuv, like `duplicate`, but without
+opening the copy afterwards. `!` overwrites.
+
+```
+:File copy backup.lua
+:File! copy % backup.lua
+```
+
 ## `:File[!] delete [%]`
 
 Delete the current file from disk using libuv and close the buffer. If the

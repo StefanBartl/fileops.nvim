@@ -76,6 +76,16 @@ function M.duplicate(new_path, opts)
   )
 end
 
+---Copy the current buffer's file to a new path without opening the copy.
+---@param new_path string
+---@param opts? { bang?: boolean }
+---@return boolean ok
+function M.copy(new_path, opts)
+  return require("fileops_nvim.util.notify").report(
+    require("fileops_nvim.ops.file").copy(new_path, opts)
+  )
+end
+
 ---Delete the current file from disk and close the buffer.
 ---@param opts? { force?: boolean }
 ---@return boolean ok

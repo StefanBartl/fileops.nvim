@@ -50,6 +50,7 @@ Requires Neovim **0.9+** and [lib.nvim](https://github.com/StefanBartl/lib.nvim)
 | `mkdir` | — | Create parent dirs for current buffer |
 | `rename` | `[%] {dest}` | Rename/move file on disk + update buffer |
 | `duplicate` | `[%] {dest}` | Copy file to new path and open the copy |
+| `copy` | `[%] {dest}` | Copy file to new path without opening it |
 | `delete` | `[%]` | Delete file from disk and close buffer (`!` force-closes if modified) |
 | `next` | `[target]` | Next file in directory |
 | `prev` | `[target]` | Previous file in directory |

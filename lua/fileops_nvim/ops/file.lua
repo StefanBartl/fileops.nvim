@@ -187,12 +187,13 @@ end
 
 ---Copy the current buffer's file to `new_path` and open the duplicate.
 ---@param new_path string
----@param opts? { bang?: boolean, open?: boolean }
+---@param opts? { bang?: boolean, open?: boolean, verb?: string }
 ---@return boolean ok
 ---@return string|nil msg
 function M.duplicate(new_path, opts)
   opts = opts or {}
   local open = opts.open ~= false  -- open by default
+  local verb = opts.verb or "duplicated"
 
   local b = cur_buf()
   if not b then return false, "no valid buffer" end
@@ -230,7 +231,21 @@ function M.duplicate(new_path, opts)
     pcall(vim.cmd, "edit " .. esc)
   end
 
-  return true, ("duplicated %s → %s"):format(fn.fnamemodify(src, ":t"), fn.fnamemodify(abs, ":t"))
+  return true, ("%s %s → %s"):format(verb, fn.fnamemodify(src, ":t"), fn.fnamemodify(abs, ":t"))
+end
+
+-- ─── Copy ─────────────────────────────────────────────────────────────────────
+
+---Copy the current buffer's file to `new_path` without opening the copy.
+---Silent counterpart to `M.duplicate` — same validation and libuv copy, just
+---`opts.open` forced off.
+---@param new_path string
+---@param opts? { bang?: boolean }
+---@return boolean ok
+---@return string|nil msg
+function M.copy(new_path, opts)
+  opts = opts or {}
+  return M.duplicate(new_path, { bang = opts.bang, open = false, verb = "copied" })
 end
 
 -- ─── Delete ───────────────────────────────────────────────────────────────────

@@ -7,9 +7,6 @@
 - **`:File move {dest}`** — Datei in anderes Verzeichnis verschieben ohne Buffer-Name-Änderung
   (writeto-Logik + alten Buffer umhängen); Unterschied zu `rename`: kein Neuladen
 
-- **`:File copy {dest}`** — wie `duplicate`, aber ohne automatisches Öffnen
-  (stille Kopie); nützlich für Backup-Workflows
-
 - **`:File open [target]`** — aktuellen Puffer-Pfad in neuem Target öffnen
   (z.B. `:File open vsplit` → aktuelle Datei in vsplit öffnen)
 
@@ -74,4 +71,9 @@
   (nicht nur relativ zu cwd) für `rename`, `duplicate`, `new`
 
 ---
+
+## Erledigt
+
+- **`:File copy {dest}`** — wie `duplicate`, aber ohne automatisches Öffnen
+  (stille Kopie); implementiert als dünner Wrapper um `duplicate(open=false)`.
 
