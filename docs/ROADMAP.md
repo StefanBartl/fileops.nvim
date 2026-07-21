@@ -39,9 +39,6 @@
 
 ### DX / UX
 
-- **Input-Prompt für fehlende Argumente** — wenn `:File rename` ohne Ziel aufgerufen wird,
-  `vim.ui.input` öffnen statt Fehlermeldung
-
 - **Relativer Pfad-Completion** — Completion relativ zum aktuellen Buffer-Verzeichnis
   (nicht nur relativ zu cwd) für `rename`, `duplicate`, `new`
 

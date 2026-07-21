@@ -43,16 +43,16 @@ Requires Neovim **0.9+** and [lib.nvim](https://github.com/StefanBartl/lib.nvim)
 
 | Subcommand | Args | Description |
 |---|---|---|
-| `new` | `{path}` | Set buffer name (creates parent dirs, no write) |
-| `write` | `{path}` | Set buffer name and write to disk (`!` overwrites existing) |
-| `saveas` | `{path}` | Save-as, buffer name changes (creates parents) |
-| `writeto` | `{path}` | Write a copy, buffer name stays (creates parents) |
+| `new` | `[path]` | Set buffer name (creates parent dirs, no write) |
+| `write` | `[path]` | Set buffer name and write to disk (`!` overwrites existing) |
+| `saveas` | `[path]` | Save-as, buffer name changes (creates parents) |
+| `writeto` | `[path]` | Write a copy, buffer name stays (creates parents) |
 | `mkdir` | — | Create parent dirs for current buffer |
-| `touch` | `{path}` | Create an empty file if it doesn't exist yet |
-| `rename` | `[%] {dest}` | Rename file on disk + update buffer (reloads) |
-| `move` | `[%] {dest}` | Move file on disk + update buffer (no reload) |
-| `duplicate` | `[%] {dest}` | Copy file to new path and open the copy |
-| `copy` | `[%] {dest}` | Copy file to new path without opening it |
+| `touch` | `[path]` | Create an empty file if it doesn't exist yet |
+| `rename` | `[%] [dest]` | Rename file on disk + update buffer (reloads) |
+| `move` | `[%] [dest]` | Move file on disk + update buffer (no reload) |
+| `duplicate` | `[%] [dest]` | Copy file to new path and open the copy |
+| `copy` | `[%] [dest]` | Copy file to new path without opening it |
 | `delete` | `[%]` | Delete file from disk and close buffer (`!` force-closes if modified) |
 | `next` | `[target]` | Next file in directory |
 | `prev` | `[target]` | Previous file in directory |
@@ -64,6 +64,8 @@ Requires Neovim **0.9+** and [lib.nvim](https://github.com/StefanBartl/lib.nvim)
 
 `!` overrides safety checks (existing-file guard, modified-buffer confirm).
 `%` is an optional explicit "current file" scope — always implied when omitted.
+Every `[path]`/`[dest]` argument is optional: omit it and a `vim.ui.input`
+prompt opens instead of an error.
 
 Verify your setup any time with:
 
