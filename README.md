@@ -61,7 +61,7 @@ Requires Neovim **0.9+** and [lib.nvim](https://github.com/StefanBartl/lib.nvim)
 Verify your setup any time with:
 
 ```
-:checkhealth fileops_nvim
+:checkhealth fileops
 ```
 
 ---

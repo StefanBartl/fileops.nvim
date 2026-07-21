@@ -27,7 +27,7 @@ All cycle keymaps respect `v:count1`.
 Disable or remap a single key without touching the rest of the family:
 
 ```lua
-require("fileops_nvim").setup({
+require("fileops").setup({
   keymaps = {
     lhs = {
       next_replace = false,       -- disable just <leader>nf

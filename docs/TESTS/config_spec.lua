@@ -2,7 +2,7 @@
 
 return function(H)
   local eq, ok = H.eq, H.ok
-  local config = require("fileops_nvim.config")
+  local config = require("fileops.config")
 
   -- defaults
   config.setup({})

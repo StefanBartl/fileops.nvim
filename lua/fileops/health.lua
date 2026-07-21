@@ -1,4 +1,4 @@
----@module 'fileops_nvim.health'
+---@module 'fileops.health'
 local M = {}
 
 local function ok(msg)
@@ -14,7 +14,7 @@ local function start(msg)
 end
 
 function M.check()
-  start("fileops_nvim")
+  start("fileops")
 
   -- Neovim version
   if vim.fn.has("nvim-0.9") == 1 then
@@ -46,10 +46,10 @@ function M.check()
   end
 
   -- guard flag
-  if vim.g.loaded_fileops_nvim then
-    ok("plugin loaded (vim.g.loaded_fileops_nvim = " .. tostring(vim.g.loaded_fileops_nvim) .. ")")
+  if vim.g.loaded_fileops then
+    ok("plugin loaded (vim.g.loaded_fileops = " .. tostring(vim.g.loaded_fileops) .. ")")
   else
-    warn("plugin guard not set — call require('fileops_nvim').setup() in your config")
+    warn("plugin guard not set — call require('fileops').setup() in your config")
   end
 
   -- treesitter (optional, not required)
@@ -70,14 +70,14 @@ function M.check()
   else
     warn("lib.nvim not found — :File will fail to register; install \"StefanBartl/lib.nvim\"")
   end
-  if require("fileops_nvim.util.notify").using_lib() then
+  if require("fileops.util.notify").using_lib() then
     ok("lib.nvim.notify in use (styled notifications)")
   else
     ok("lib.nvim.notify not in use — falling back to native vim.notify")
   end
 
   -- which-key (optional, groups the <leader>n / <leader>p prefixes)
-  if require("fileops_nvim.bindings.which_key").available() then
+  if require("fileops.bindings.which_key").available() then
     ok('which-key detected (<leader>n / <leader>p grouped)')
   else
     ok("which-key not found — mappings still carry their own descriptions")

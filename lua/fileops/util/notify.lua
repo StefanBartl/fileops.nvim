@@ -1,4 +1,4 @@
----@module 'fileops_nvim.util.notify'
+---@module 'fileops.util.notify'
 ---"[fileops] " prefixed vim.notify wrapper; upgrades to lib.nvim's notifier
 ---when lib.nvim is installed. Soft dependency only: falls back to plain
 ---vim.notify when lib.nvim is absent — fileops.nvim stays fully standalone.

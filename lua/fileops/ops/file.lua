@@ -1,4 +1,4 @@
----@module 'fileops_nvim.ops.file'
+---@module 'fileops.ops.file'
 ---File create / rename / duplicate / delete operations.
 ---All ops validate API handles and use libuv for I/O (no shell injection).
 ---

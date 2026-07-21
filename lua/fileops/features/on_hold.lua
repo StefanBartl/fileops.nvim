@@ -1,4 +1,4 @@
----@module 'fileops_nvim.features.on_hold'
+---@module 'fileops.features.on_hold'
 ---Ambient, mode-aware line-diff preview on CursorHold/CursorHoldI.
 ---Prefers gitsigns' `preview_hunk_inline()` when available; otherwise falls
 ---back to rendering the previous committed content of the current line as
@@ -13,7 +13,7 @@ local autocmd = require("lib.nvim.autocmd")
 local M = {}
 
 ---@type integer  Namespace for the fallback EOL/right-aligned virtual text
-local NS = api.nvim_create_namespace("fileops_nvim_on_hold_preview")
+local NS = api.nvim_create_namespace("fileops_on_hold_preview")
 
 ---Clear this feature's virtual text in a buffer.
 ---@param buf integer
@@ -31,7 +31,7 @@ local function augroup(name)
   -- than lib.nvim.autocmd.group(): that helper caches groups by name and
   -- skips the clear on subsequent calls, which would stack duplicate
   -- autocmds if setup() ever re-runs.
-  return api.nvim_create_augroup("fileops_nvim_on_hold_" .. name, { clear = true })
+  return api.nvim_create_augroup("fileops_on_hold_" .. name, { clear = true })
 end
 
 ---@param s string
