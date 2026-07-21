@@ -302,6 +302,13 @@ it is always implied when omitted.
 :File mkdir                                               *:File-mkdir*
   Create the parent directory hierarchy for the current buffer's file.
 
+:File touch {path}                                        *:File-touch*
+  Create an empty file at `{path}` if it doesn't already exist yet (creates
+  parent directories). Real `touch` semantics: an existing file is left
+  untouched, never truncated. Doesn't require or open a buffer. >
+    :File touch notes/todo.md
+<
+
 :File[!] rename [%] {dest}                                *:File-rename*
   Rename (or move) the current file on disk to `{dest}`. Updates the buffer
   name and reloads the buffer from disk afterwards (resets signs/
@@ -498,6 +505,9 @@ prev({opts}, {count})                                     *fileops.prev()*
 
 new_file({path}, {opts})                             *fileops.new_file()*
   Set buffer name. {opts}: `{ write?: boolean, bang?: boolean }`.
+
+touch({path})                                            *fileops.touch()*
+  Create an empty file if it doesn't already exist. No buffer required.
 
 rename({path}, {opts})                                  *fileops.rename()*
   Rename current file (reloads buffer). {opts}: `{ bang?: boolean }`.

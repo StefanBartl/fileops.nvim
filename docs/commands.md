@@ -36,6 +36,16 @@ Write a copy of the buffer to `{path}` without changing the buffer's name.
 Create the parent directory hierarchy for the current buffer's file. This
 runs automatically before every save too — see [Autocommands](autocommands.md).
 
+## `:File touch {path}`
+
+Create an empty file at `{path}` if it doesn't already exist yet (creates
+parent directories). Real `touch` semantics: an existing file is left
+untouched, never truncated. Doesn't require or open a buffer.
+
+```
+:File touch notes/todo.md
+```
+
 ## `:File[!] rename [%] {dest}`
 
 Rename (or move) the current file on disk to `{dest}`. Updates the buffer

@@ -37,6 +37,7 @@ gated by `config.commands` (a single boolean — there is only one command).
 | `:File[!] saveas` | `{path}` | Save-as, buffer name changes |
 | `:File[!] writeto` | `{path}` | Write a copy, buffer name stays |
 | `:File mkdir` | — | Create parent dirs for current buffer |
+| `:File touch` | `{path}` | Create an empty file if it doesn't exist yet |
 | `:File[!] rename` | `[%] {dest}` | Rename file on disk + update buffer (reloads) |
 | `:File[!] move` | `[%] {dest}` | Move file on disk + update buffer (no reload) |
 | `:File[!] duplicate` | `[%] {dest}` | Copy file to new path and open the copy |
