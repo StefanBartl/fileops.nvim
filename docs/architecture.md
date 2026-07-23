@@ -17,7 +17,6 @@ lua/fileops/
   util/
     notify.lua            "[fileops] " prefixed notifier; upgrades to
                            lib.nvim.notify when lib.nvim is installed
-    platform.lua           libuv delete/copy/rename/mkdir_p (no shell)
   ops/
     cycle.lua              Directory listing, indexing, navigation, open_path
     file.lua               Create, rename, duplicate, delete operations
@@ -33,7 +32,11 @@ docs/
 ```
 
 All file I/O uses `vim.uv` (libuv) — no shell, no injection risk, fully
-cross-platform. `lib.nvim` is a **soft, guarded** dependency (see
-[Requirements](installation.md#requirements)): if present, `lib.nvim.notify`
-is used for notifications; otherwise fileops.nvim falls back to plain
-`vim.notify` and runs fully standalone.
+cross-platform. `lib.nvim` is a **required** dependency (see
+[Requirements](installation.md#requirements)): it supplies the `:File`
+command layer (`lib.nvim.usercmd.composer`), the injection-safe file
+primitives behind create/rename/duplicate/delete (`lib.nvim.cross.fs.mutate`),
+and background buffer opening (`lib.nvim.buffer.open_background`). Only
+notifications are a genuinely soft, cosmetic fallback: if `lib.nvim.notify`
+is present it is used for styling; otherwise fileops.nvim falls back to
+plain `vim.notify`.

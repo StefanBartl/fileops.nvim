@@ -75,13 +75,26 @@ packer.nvim / pckr.nvim: >lua
       include_hidden      = false,
       wrap                = true,
       follow_symlinks     = true,
-      root                = "buffer_dir",
+      root                = "buffer_dir", -- or "cwd"|"buffer_dir_recursive"|"cwd_recursive"
       confirm_on_modified = true,
       case_insensitive    = true,
+      pattern             = nil,
     },
     cd = {
       scope             = "window",
       refresh_explorers = true,
+    },
+    explorer = {
+      refresh_on_change = true,
+    },
+    delete = {
+      mode             = "permanent",  -- "permanent"|"trash"
+      on_before_delete = nil,          -- fun(path): boolean|nil
+    },
+    git_aware = {
+      enable    = false,
+      warn_only = true,
+      git_cmd   = "git",
     },
     keymaps = {
       cycle  = true,
@@ -148,7 +161,10 @@ cycle.follow_symlinks ~
   Use `uv.fs_realpath` for path canonicalisation. Default: `true`.
 
 cycle.root ~
-  `"buffer_dir"` or `"cwd"` — directory to scan. Default: `"buffer_dir"`.
+  `"buffer_dir"`, `"cwd"`, `"buffer_dir_recursive"` or `"cwd_recursive"` —
+  directory to scan. The `_recursive` variants also walk subdirectories
+  (symlinked directories are never descended into, so a symlink cycle can't
+  cause an infinite walk). Default: `"buffer_dir"`.
 
 cycle.confirm_on_modified ~
   Show a `vim.ui.select` prompt when the buffer has unsaved changes and
@@ -157,6 +173,11 @@ cycle.confirm_on_modified ~
 cycle.case_insensitive ~
   Sort and compare filenames case-insensitively. Default: `true`.
 
+cycle.pattern ~
+  Glob filter (e.g. `"*.lua"`) applied to file names before navigating,
+  matched via `glob2regpat()`. Overridable per-call via |:File-next|'s
+  `[glob]` argument. Default: `nil` (no filter).
+
 cd.scope ~
   `"window"` (`:lcd`), `"tab"` (`:tcd`) or `"global"` (`:cd`) — scope of the
   directory change for `:File cd`. Default: `"window"`.
@@ -164,6 +185,38 @@ cd.scope ~
 cd.refresh_explorers ~
   After changing directory, refresh an open neo-tree, nvim-tree or netrw so it
   tracks the new root. Default: `true`.
+
+explorer.refresh_on_change ~
+  Reload neo-tree/nvim-tree in place (no root change) after any file op that
+  changes the tree: new/write/saveas/writeto/mkdir/touch/rename/move/
+  duplicate/copy/delete. A `User FileopsChanged` autocmd fires regardless of
+  this setting. See |fileops-autocmds|. Default: `true`.
+
+delete.mode ~
+  `"permanent"` (`uv.fs_unlink` via lib.nvim.cross.fs.mutate) or `"trash"`
+  (OS trash/recycle bin via lib.nvim.fs.trash — Windows Recycle Bin, macOS
+  Finder, Linux `gio trash`/`trash-put`). Default: `"permanent"`.
+
+delete.on_before_delete ~
+  `fun(path: string): boolean|nil` called right before a file is deleted (by
+  |:File-delete| or `fileops.delete_current()`); return `false` to abort
+  (nothing is deleted, the buffer is untouched). Useful for a git-tracked-file
+  warning. Default: `nil`.
+
+git_aware.enable ~
+  Master switch for git-tracked-file awareness on rename/move/duplicate/copy/
+  delete. Opt-in — shells out to `git ls-files` to check tracked-ness.
+  Default: `false`.
+
+git_aware.warn_only ~
+  `true`: just note tracked-ness in the op's result message, still use
+  libuv/`uv.fs_unlink` underneath. `false`: use `git mv` for rename/move and
+  `git rm` for delete instead (delete only applies this when
+  `delete.mode == "permanent"` — trashing a file is a different operation
+  than `git rm`). Default: `true`.
+
+git_aware.git_cmd ~
+  Git executable to use. Default: `"git"`.
 
 keymaps.cycle ~
   Master switch: register the `<leader>nf` / `<leader>pf` family.
@@ -275,10 +328,25 @@ A single command that dispatches to all file operations.
 `%` as a scope argument explicitly refers to the current buffer's file;
 it is always implied when omitted.
 
+Every `{path}`/`{dest}` argument below is itself optional: omit it and the
+command opens a |vim.ui.input()| prompt instead of erroring. Cancelling the
+prompt (<Esc> or an empty answer) is a silent no-op.
+
+Tab-completion for these arguments is relative to the current buffer's
+directory, not Neovim's cwd — `:File rename <Tab>` browses files next to the
+one you're editing. Input starting with `~`, `/`, or a Windows drive letter
+is left alone (treated as already absolute).
+
+|:File-rename|/|:File-move|/|:File-duplicate|/|:File-copy|/|:File-delete| are
+git-aware when `git_aware.enable = true` (opt-in — see |fileops-config|): by
+default they just note in the result message that the file is tracked; with
+`git_aware.warn_only = false`, rename/move use `git mv` and delete uses
+`git rm` instead of a plain filesystem op, keeping the git index in sync.
+
 ------------------------------------------------------------------------------
 5.1 Subcommands                                              *fileops-subcmds*
 
-:File new {path}                                          *:File-new*
+:File new [path]                                          *:File-new*
   Set the current buffer's file name to `{path}`. Creates parent directories
   automatically. Does NOT write the buffer to disk.
 
@@ -287,25 +355,33 @@ it is always implied when omitted.
     :File new ~/projects/foo/bar.lua
 <
 
-:File[!] write {path}                                     *:File-write*
+:File[!] write [path]                                     *:File-write*
   Like |:File-new| but also writes the buffer to disk immediately. `!`
   overwrites an existing file (`:write!`).
 
-:File[!] saveas {path}                                    *:File-saveas*
+:File[!] saveas [path]                                    *:File-saveas*
   Save the buffer under `{path}` (equivalent to `:saveas`). Buffer name
   changes to the new path. Creates parent directories. `!` overwrites.
 
-:File[!] writeto {path}                                   *:File-writeto*
+:File[!] writeto [path]                                   *:File-writeto*
   Write a copy of the buffer to `{path}` without changing the buffer's name.
   Creates parent directories. `!` overwrites.
 
 :File mkdir                                               *:File-mkdir*
   Create the parent directory hierarchy for the current buffer's file.
 
-:File[!] rename [%] {dest}                                *:File-rename*
+:File touch [path]                                        *:File-touch*
+  Create an empty file at `{path}` if it doesn't already exist yet (creates
+  parent directories). Real `touch` semantics: an existing file is left
+  untouched, never truncated. Doesn't require or open a buffer. >
+    :File touch notes/todo.md
+<
+
+:File[!] rename [%] [dest]                                *:File-rename*
   Rename (or move) the current file on disk to `{dest}`. Updates the buffer
-  name. Writes unsaved changes before renaming. Creates parent directories.
-  `!` allows overwriting an existing destination.
+  name and reloads the buffer from disk afterwards (resets signs/
+  diagnostics). Writes unsaved changes before renaming. Creates parent
+  directories. `!` allows overwriting an existing destination.
 
   `%` is optional (current file is always the source): >
     :File rename newname.lua
@@ -313,33 +389,122 @@ it is always implied when omitted.
     :File! rename ../other/file.lua  → overwrite if exists
 <
 
-:File[!] duplicate [%] {dest}                             *:File-duplicate*
+:File[!] move [%] [dest]                                    *:File-move*
+  Move the current file on disk to `{dest}` (possibly a different
+  directory) and update the buffer name — same underlying rename as
+  |:File-rename|, but the buffer is NOT reloaded: content and undo history
+  stay exactly as they were. Creates parent directories. `!` overwrites. >
+    :File move ../elsewhere/file.lua
+    :File! move % ../elsewhere/file.lua
+<
+
+:File[!] duplicate [%] [dest]                             *:File-duplicate*
   Copy the current file to `{dest}` using libuv and open the copy. Creates
   parent directories. `!` overwrites. >
     :File duplicate backup.lua
     :File! duplicate % backup.lua
 <
 
+:File[!] copy [%] [dest]                                       *:File-copy*
+  Copy the current file to `{dest}` using libuv, like |:File-duplicate|, but
+  without opening the copy afterwards. Creates parent directories. `!`
+  overwrites. >
+    :File copy backup.lua
+    :File! copy % backup.lua
+<
+
 :File[!] delete [%]                                       *:File-delete*
   Delete the current file from disk and close the buffer. Uses `uv.fs_unlink`
-  (no shell command). If the buffer has unsaved changes, plain `:File delete`
-  refuses (nothing is deleted); `!` deletes and force-closes. >
+  by default (no shell command), or the OS trash/recycle bin when
+  `delete.mode = "trash"` — see |fileops-config|. If the buffer has unsaved
+  changes, plain `:File delete` refuses (nothing is deleted); `!` deletes and
+  force-closes. If `delete.on_before_delete` is set, it runs first and can
+  abort the deletion by returning `false`. >
     :File delete
     :File delete %     → identical
     :File! delete      → delete + force-close a modified buffer
 <
 
-:[count]File[!] next [target]                             *:File-next*
-  Open the next file in the current directory. >
+:[count]File[!] next [target] [glob]                      *:File-next*
+  Open the next file in the current directory. An optional trailing `[glob]`
+  (e.g. `*.lua`, matched via `glob2regpat()`) narrows the listing before
+  navigating. If the first argument isn't a recognized target keyword, it is
+  treated as `[glob]` instead — so `:File next *.lua` works without naming a
+  target first. >
     :File next              → next file, configured open_target
     :File next vsplit       → open in vertical split
+    :File next *.lua        → next file matching *.lua
+    :File next vsplit *.lua → open in vertical split, matching *.lua
     :2File next             → skip 2 files
     :File! next             → bypass modified-buffer prompt
 <
 
-:[count]File[!] prev [target]                             *:File-prev*
+:[count]File[!] prev [target] [glob]                      *:File-prev*
   Open the previous file in the current directory. Same options as
   |:File-next|.
+
+:File[!] first [target]                                  *:File-first*
+  Jump straight to the first file in the current directory listing
+  (alphabetical, respecting `cycle.include_hidden`/`cycle.case_insensitive`),
+  instead of stepping one at a time with |:File-next|. Same `[target]`
+  values and `!` behaviour as |:File-next|. >
+    :File first
+    :File last vsplit
+<
+
+:File[!] last [target]                                    *:File-last*
+  Jump straight to the last file in the current directory listing. See
+  |:File-first|.
+
+:File[!] open [target]                                    *:File-open*
+  Reopen the current buffer's own path in a different window target,
+  without changing which file is shown. Same `[target]` values as
+  |:File-next|; `!` skips the modified-buffer confirm the same way it
+  does there. >
+    :File open vsplit
+    :File open tab
+    :File! open
+<
+
+:File path [mode]                                         *:File-path*
+  Copy the current file's path to the unnamed register and the system
+  clipboard (`+`). `[mode]` defaults to `abs`.
+
+    `abs`   (default)  absolute path
+    `rel`              relative to cwd
+    `name`             file name only
+    `dir`              containing directory only
+
+  Examples: >
+    :File path
+    :File path rel
+    :File path name
+<
+
+:File info                                                *:File-info*
+  Show size, last-modified time, and permissions for the current file,
+  via libuv `fs_stat` (cross-platform, including Windows). >
+    :File info
+<
+
+:File[!] bulk rename {pattern} {replacement}              *:File-bulk-rename*
+  Batch-rename every regular file directly inside the current buffer's
+  directory (no recursion) whose name changes under
+  `name:gsub(pattern, replacement)` — a Lua pattern, not a glob, applied to
+  the file name only. Files the pattern doesn't match, or that `gsub` leaves
+  unchanged, are left alone.
+
+  Shows a preview of every `old -> new` pair, then asks for confirmation via
+  |vim.ui.select()| before touching disk. `!` allows overwriting existing
+  destinations; without it a conflicting destination is skipped and
+  reported (other files in the batch still get renamed). Any open buffer
+  pointing at a renamed file is re-pointed at the new path (no reload — same
+  as |:File-move|), and each successful rename fires the usual
+  `User FileopsChanged` event (see |fileops-autocmds|). >
+    :File bulk rename ^draft_ final_
+    :File bulk rename %.txt$ .md
+    :File! bulk rename ^old_ new_
+<
 
 :File cd [scope]                                          *:File-cd*
   Change the working directory to the directory of the current buffer's file,
@@ -354,6 +519,10 @@ it is always implied when omitted.
     :File cd
     :File cd global
 <
+
+:File help                                                *:File-help*
+  Show a short usage overview for every subcommand directly in the command
+  line, without opening this helpfile.
 
 ------------------------------------------------------------------------------
 5.2 Navigation targets                                       *fileops-targets*
@@ -455,6 +624,24 @@ conflict_marks (`BufWinEnter`/`BufWinLeave`) ~
   <
   See |fileops-config| for the `conflict_marks.*` option list.
 
+User FileopsChanged ~
+  Fired on every op that changes the file tree (`new`, `write`, `saveas`,
+  `writeto`, `mkdir`, `touch`, `rename`, `move`, `duplicate`, `copy`,
+  `delete`), so any plugin or user config can react — not just the two tree
+  explorers fileops.nvim knows about directly. >lua
+    vim.api.nvim_create_autocmd("User", {
+      pattern = "FileopsChanged",
+      callback = function(ev)
+        -- ev.data = { action = "rename"|"move"|..., path = "/abs/path" }
+        vim.notify(ev.data.action .. ": " .. ev.data.path)
+      end,
+    })
+  <
+  fileops.nvim itself also reloads neo-tree/nvim-tree in place after these
+  ops (no root change, unlike |:File-cd|), gated by
+  `explorer.refresh_on_change` (default `true`) — the event fires regardless
+  of that setting.
+
 ==============================================================================
 8. WHICH-KEY                                                *fileops-whichkey*
 
@@ -478,17 +665,43 @@ next({opts}, {count})                                     *fileops.next()*
 prev({opts}, {count})                                     *fileops.prev()*
   Open the previous file.
 
+first({opts})                                            *fileops.first()*
+  Jump to the first file in the current directory listing.
+
+last({opts})                                              *fileops.last()*
+  Jump to the last file in the current directory listing.
+
+open({opts})                                              *fileops.open()*
+  Reopen the current buffer's own path in a different window target.
+
+copy_path({mode})                                    *fileops.copy_path()*
+  Copy the current buffer's file path to the clipboard. `{mode}`: one of
+  `"abs"|"rel"|"name"|"dir"`, defaults to `"abs"`.
+
+info()                                                    *fileops.info()*
+  Show size/mtime/permissions for the current buffer's file.
+
 new_file({path}, {opts})                             *fileops.new_file()*
   Set buffer name. {opts}: `{ write?: boolean, bang?: boolean }`.
 
+touch({path})                                            *fileops.touch()*
+  Create an empty file if it doesn't already exist. No buffer required.
+
 rename({path}, {opts})                                  *fileops.rename()*
-  Rename current file. {opts}: `{ bang?: boolean }`.
+  Rename current file (reloads buffer). {opts}: `{ bang?: boolean }`.
+
+move({path}, {opts})                                      *fileops.move()*
+  Move current file (no buffer reload). {opts}: `{ bang?: boolean }`.
 
 duplicate({path}, {opts})                            *fileops.duplicate()*
   Copy to new path + open. {opts}: `{ bang?: boolean, open?: boolean }`.
 
+copy({path}, {opts})                                      *fileops.copy()*
+  Copy to new path without opening it. {opts}: `{ bang?: boolean }`.
+
 delete_current({opts})                          *fileops.delete_current()*
-  Delete current file. {opts}: `{ force?: boolean }`.
+  Delete current file. {opts}: `{ force?: boolean, mode?: "trash"|
+  "permanent", on_before_delete?: fun(path): boolean|nil }`.
 
 cd_here({opts})                                      *fileops.cd_here()*
   Change directory to the buffer's directory and refresh open explorers.

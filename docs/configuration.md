@@ -9,14 +9,32 @@ require("fileops").setup({
     include_hidden      = false,        -- Include dot-files in directory listing
     wrap                = true,         -- Wrap around at directory boundary
     follow_symlinks     = true,         -- Resolve symlinks for comparisons
-    root                = "buffer_dir", -- "buffer_dir"|"cwd"
+    root                = "buffer_dir", -- "buffer_dir"|"cwd"|"buffer_dir_recursive"|"cwd_recursive"
     confirm_on_modified = true,         -- vim.ui.select prompt when buffer is modified
     case_insensitive    = true,         -- Case-insensitive sort and comparison
+    pattern             = nil,          -- Glob filter (e.g. "*.lua"), overridable via :File next's [glob] arg
   },
   -- Options for :File cd
   cd = {
     scope             = "window", -- "window" (:lcd) | "tab" (:tcd) | "global" (:cd)
     refresh_explorers = true,     -- Refresh neo-tree/nvim-tree/netrw after cd
+  },
+  -- Refresh tree explorers after any file op that changes the tree
+  explorer = {
+    refresh_on_change = true, -- reload neo-tree/nvim-tree after create/rename/move/duplicate/copy/delete
+                               -- (a `User FileopsChanged` autocmd fires either way)
+  },
+  -- Options for :File[!] delete
+  delete = {
+    mode             = "permanent", -- "permanent" (fs_unlink) | "trash" (OS trash/recycle bin)
+    on_before_delete = nil,         -- fun(path: string): boolean|nil — return false to abort
+  },
+  -- Git-tracked-file awareness for rename/move/duplicate/copy/delete
+  git_aware = {
+    enable    = false, -- master switch (opt-in — shells out to `git ls-files`)
+    warn_only = true,  -- true: note tracked-ness in the result message only, still use libuv
+                        -- false: use `git mv`/`git rm` for tracked files (delete: only when mode = "permanent")
+    git_cmd   = "git",
   },
   keymaps = {
     cycle  = true,   -- master switch: <leader>nf/pf family

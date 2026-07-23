@@ -2,7 +2,7 @@
 ---@module 'fileops.@types'
 
 ---@alias FileOps.OpenTarget "replace"|"current"|"split"|"vsplit"|"tab"|"background"
----@alias FileOps.CycleRoot  "buffer_dir"|"cwd"
+---@alias FileOps.CycleRoot  "buffer_dir"|"cwd"|"buffer_dir_recursive"|"cwd_recursive"
 ---@alias FileOps.Direction  "next"|"prev"
 ---@alias FileOps.CdScope    "window"|"tab"|"global"
 
@@ -12,13 +12,30 @@
 ---@field include_hidden?      boolean              Include dot-files.
 ---@field wrap?                boolean              Wrap at directory boundary.
 ---@field follow_symlinks?     boolean              Resolve symlinks for comparisons.
----@field root?                FileOps.CycleRoot    Which directory to list.
+---@field root?                FileOps.CycleRoot    Which directory to list; the "_recursive" variants also walk subdirectories (symlinked dirs are never descended into).
 ---@field confirm_on_modified? boolean              Prompt when current buffer is modified.
 ---@field case_insensitive?    boolean              Sort and compare paths case-insensitively.
+---@field pattern?             string|nil           Glob filter (e.g. "*.lua") applied to file names; matched via `vim.fn.glob2regpat`. Default: nil (no filter).
 
 ---@class FileOps.CdConfig
 ---@field scope?             FileOps.CdScope  cd scope: window (lcd), tab (tcd), global (cd).
 ---@field refresh_explorers? boolean          Refresh neo-tree/nvim-tree/netrw after cd.
+
+---@class FileOps.ExplorerConfig
+---@field refresh_on_change? boolean  Refresh neo-tree/nvim-tree after any file op that changes the tree (create/rename/move/duplicate/copy/delete). Default: true. Also emits a `User FileopsChanged` autocmd regardless of this setting.
+
+---@alias FileOps.DeleteMode "permanent"|"trash"
+
+---@class FileOps.DeleteConfig
+---@field mode?              FileOps.DeleteMode  "permanent" (fs_unlink) or "trash" (OS trash/recycle bin). Default: "permanent".
+---@field on_before_delete?  fun(path: string): boolean|nil  Called before deletion; return `false` to abort. Default: nil.
+
+---@class FileOps.GitAwareConfig
+--- Warns (or, opt-in, uses `git mv`/`git rm`) when rename/move/duplicate/copy/delete
+--- act on a git-tracked file. Tracked-ness is checked synchronously via `git ls-files`.
+---@field enable?    boolean  Master switch. Default: false (opt-in — shells out to git).
+---@field warn_only? boolean  true: just note tracked-ness in the result message, still use libuv. false: use `git mv`/`git rm` for tracked files (delete only applies this when `delete.mode == "permanent"`). Default: true.
+---@field git_cmd?   string   Git executable to use. Default: "git".
 
 ---@class FileOps.KeymapLhs
 ---@field next_replace?    string|false  Next file, replace buffer.
@@ -77,6 +94,9 @@
 ---@class FileOps.Config
 ---@field cycle?          FileOps.CycleConfig          File-cycle options.
 ---@field cd?             FileOps.CdConfig             Change-directory options.
+---@field explorer?       FileOps.ExplorerConfig       Tree-explorer refresh options.
+---@field delete?         FileOps.DeleteConfig         Delete-mode and pre-delete hook options.
+---@field git_aware?      FileOps.GitAwareConfig       Git-tracked-file warnings/git mv/git rm (default: disabled; opt-in).
 ---@field keymaps?        FileOps.KeymapConfig         Keymap registration flags.
 ---@field commands?       boolean                      Register all user commands (default: true).
 ---@field auto_mkdir?     FileOps.AutoMkdirConfig      Auto-create parent dirs before writing (default: enabled).

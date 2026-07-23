@@ -35,7 +35,7 @@ end
 ---@return string|nil dir
 ---@return string|nil err
 function M.get_root_dir(opts)
-  if opts.root == "cwd" then
+  if opts.root == "cwd" or opts.root == "cwd_recursive" then
     local cwd = fn.getcwd()
     return (type(cwd) == "string" and cwd ~= "") and cwd or nil,
            (type(cwd) ~= "string" or cwd == "") and "getcwd() failed" or nil
@@ -49,29 +49,84 @@ function M.get_root_dir(opts)
   return (dir ~= "") and dir or nil, (dir == "") and "cannot resolve buffer directory" or nil
 end
 
----List regular, filtered files in `dir` sorted alphabetically.
+---Whether `name` matches a glob `pattern` (converted via `glob2regpat`).
+---No pattern means everything matches.
+---@param name string
+---@param pattern string|nil
+---@return boolean
+local function matches_pattern(name, pattern)
+  if not pattern or pattern == "" then return true end
+  return fn.match(name, fn.glob2regpat(pattern)) ~= -1
+end
+
+---Classify a `vim.fs.dir` entry, falling back to `fs_stat` when the
+---iterator itself couldn't determine the type (e.g. some network mounts).
+---@param full string  Absolute-ish path to the entry.
+---@param t string|nil  Type reported by `vim.fs.dir` ("file"|"directory"|nil).
+---@return boolean is_file
+---@return boolean is_dir
+local function classify_entry(full, t)
+  if t == "file" then return true, false end
+  if t == "directory" then return false, true end
+  local st = uv.fs_stat and uv.fs_stat(fn.fnamemodify(full, ":p"))
+  if not st then return false, false end
+  return st.type == "file", st.type == "directory"
+end
+
+---Recursively collect matching files under `dir` into `acc`. Symlinked
+---directories are never descended into, so a symlink cycle can't cause an
+---infinite walk.
+---@param dir string
+---@param opts FileOps.CycleConfig
+---@param acc string[]
+local function collect_recursive(dir, opts, acc)
+  local ok, iter = pcall(vim.fs.dir, dir)
+  if not ok then return end
+  for name, t in iter do
+    local hidden = name:sub(1, 1) == "."
+    if opts.include_hidden or not hidden then
+      local full = dir .. "/" .. name
+      local is_file, is_dir = classify_entry(full, t)
+      if is_file and matches_pattern(name, opts.pattern) then
+        acc[#acc + 1] = canon(full, opts.follow_symlinks)
+      elseif is_dir then
+        local lst = uv.fs_lstat and uv.fs_lstat(full)
+        local is_symlink = lst and lst.type == "link"
+        if not is_symlink then
+          collect_recursive(full, opts, acc)
+        end
+      end
+    end
+  end
+end
+
+---List regular, filtered files in `dir` sorted alphabetically. Recurses
+---into subdirectories when `opts.root` is `"buffer_dir_recursive"` or
+---`"cwd_recursive"`.
 ---@param dir string
 ---@param opts FileOps.CycleConfig
 ---@return string[]  Absolute, canonicalized paths.
 local function list_files(dir, opts)
   local acc = {}
   local ci = opts.case_insensitive
-  local ok, err_or_iter = pcall(vim.fs.dir, dir)
-  if not ok then
-    -- dir does not exist or is not readable; return empty list
-    return acc
-  end
-  for name, t in err_or_iter do
-    local is_file = (t == "file")
-    if not is_file and t == nil then
-      local st = uv.fs_stat and uv.fs_stat(fn.fnamemodify(dir .. "/" .. name, ":p"))
-      is_file = (st and st.type == "file") or false
+
+  if opts.root == "buffer_dir_recursive" or opts.root == "cwd_recursive" then
+    collect_recursive(dir, opts, acc)
+  else
+    local ok, err_or_iter = pcall(vim.fs.dir, dir)
+    if not ok then
+      -- dir does not exist or is not readable; return empty list
+      return acc
     end
-    local hidden = name:sub(1, 1) == "."
-    if is_file and (opts.include_hidden or not hidden) then
-      acc[#acc + 1] = canon(dir .. "/" .. name, opts.follow_symlinks)
+    for name, t in err_or_iter do
+      local is_file = classify_entry(dir .. "/" .. name, t)
+      local hidden = name:sub(1, 1) == "."
+      if is_file and (opts.include_hidden or not hidden) and matches_pattern(name, opts.pattern) then
+        acc[#acc + 1] = canon(dir .. "/" .. name, opts.follow_symlinks)
+      end
     end
   end
+
   table.sort(acc, function(a, b)
     return ci and (a:lower() < b:lower()) or (a < b)
   end)
@@ -108,7 +163,7 @@ end
 ---@param opts FileOps.CycleConfig
 ---@return boolean ok
 ---@return string|nil msg
-local function open_path(path, opts)
+function M.open_path(path, opts)
   if type(path) ~= "string" or path == "" then return false, "empty path" end
 
   local win = api.nvim_get_current_win()
@@ -245,7 +300,36 @@ function M.navigate(dir, mode, opts, count)
     return false, ("boundary reached (wrap=false, count=%d)"):format(count)
   end
 
-  return open_path(files[target_idx], opts)
+  return M.open_path(files[target_idx], opts)
+end
+
+---Jump straight to the first or last file in the directory listing.
+---@param dir string  Root directory (from get_root_dir).
+---@param edge "first"|"last"
+---@param opts FileOps.CycleConfig
+---@return boolean ok
+---@return string|nil msg
+function M.jump_edge(dir, edge, opts)
+  local files = list_files(dir, opts)
+  if #files == 0 then
+    return false, "no files in directory"
+  end
+
+  local target_idx = (edge == "last") and #files or 1
+  return M.open_path(files[target_idx], opts)
+end
+
+---Reopen the current buffer's own path in a different window target
+---(split/vsplit/tab/background/…), without changing which file is shown.
+---@param opts FileOps.CycleConfig
+---@return boolean ok
+---@return string|nil msg
+function M.open_current(opts)
+  local name = api.nvim_buf_get_name(0)
+  if not name or name == "" then
+    return false, "current buffer has no file name"
+  end
+  return M.open_path(name, opts)
 end
 
 return M
