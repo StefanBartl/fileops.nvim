@@ -43,20 +43,32 @@ Requires Neovim **0.9+** and [lib.nvim](https://github.com/StefanBartl/lib.nvim)
 
 | Subcommand | Args | Description |
 |---|---|---|
-| `new` | `{path}` | Set buffer name (creates parent dirs, no write) |
-| `write` | `{path}` | Set buffer name and write to disk (`!` overwrites existing) |
-| `saveas` | `{path}` | Save-as, buffer name changes (creates parents) |
-| `writeto` | `{path}` | Write a copy, buffer name stays (creates parents) |
+| `new` | `[path]` | Set buffer name (creates parent dirs, no write) |
+| `write` | `[path]` | Set buffer name and write to disk (`!` overwrites existing) |
+| `saveas` | `[path]` | Save-as, buffer name changes (creates parents) |
+| `writeto` | `[path]` | Write a copy, buffer name stays (creates parents) |
 | `mkdir` | — | Create parent dirs for current buffer |
-| `rename` | `[%] {dest}` | Rename/move file on disk + update buffer |
-| `duplicate` | `[%] {dest}` | Copy file to new path and open the copy |
+| `touch` | `[path]` | Create an empty file if it doesn't exist yet |
+| `rename` | `[%] [dest]` | Rename file on disk + update buffer (reloads) |
+| `move` | `[%] [dest]` | Move file on disk + update buffer (no reload) |
+| `duplicate` | `[%] [dest]` | Copy file to new path and open the copy |
+| `copy` | `[%] [dest]` | Copy file to new path without opening it |
 | `delete` | `[%]` | Delete file from disk and close buffer (`!` force-closes if modified) |
-| `next` | `[target]` | Next file in directory |
-| `prev` | `[target]` | Previous file in directory |
+| `next` | `[target] [glob]` | Next file in directory, optionally filtered (e.g. `*.lua`) |
+| `prev` | `[target] [glob]` | Previous file in directory, optionally filtered |
+| `first` | `[target]` | Jump to the first file in directory |
+| `last` | `[target]` | Jump to the last file in directory |
+| `open` | `[target]` | Reopen the current file in a different window target |
+| `path` | `[mode]` | Copy the current file's path to the clipboard (abs/rel/name/dir) |
+| `info` | — | Show size/mtime/permissions for the current file |
+| `bulk rename` | `{pattern} {replacement}` | Batch-rename files in the directory via a Lua pattern (preview + confirm; `!` overwrites) |
 | `cd` | `[scope]` | Set cwd to buffer's dir + refresh file explorer |
+| `help` | — | Show a short usage overview in the command line |
 
 `!` overrides safety checks (existing-file guard, modified-buffer confirm).
 `%` is an optional explicit "current file" scope — always implied when omitted.
+Every `[path]`/`[dest]` argument is optional: omit it and a `vim.ui.input`
+prompt opens instead of an error.
 
 Verify your setup any time with:
 

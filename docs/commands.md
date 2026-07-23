@@ -7,7 +7,22 @@
 `!` overrides safety checks (existing-file guard, modified-buffer confirm).
 `%` is an optional explicit "current file" scope — always implied when omitted.
 
-## `:File new {path}`
+Every `{path}`/`{dest}` argument below is itself optional: omit it and the
+command opens a `vim.ui.input` prompt instead of erroring. Cancelling the
+prompt (`<Esc>` or an empty answer) is a silent no-op, same as `vim.ui.input`.
+
+Tab-completion for these arguments is relative to the **current buffer's
+directory**, not Neovim's cwd — `:File rename <Tab>` browses files next to
+the one you're editing. Input starting with `~`, `/`, or a Windows drive
+letter is left alone (treated as already absolute).
+
+`rename`/`move`/`duplicate`/`copy`/`delete` are git-aware when
+`git_aware.enable = true` (opt-in — see [Configuration](configuration.md)):
+by default they just note in the result message that the file is tracked;
+with `git_aware.warn_only = false`, rename/move use `git mv` and delete uses
+`git rm` instead of a plain filesystem op, so the git index stays in sync.
+
+## `:File new [path]`
 
 Set the current buffer's file name to `{path}`. Creates parent directories.
 Does **not** write the buffer to disk.
@@ -16,17 +31,17 @@ Does **not** write the buffer to disk.
 :File new lua/mymodule/init.lua
 ```
 
-## `:File[!] write {path}`
+## `:File[!] write [path]`
 
 Like `new` but also writes the buffer to disk immediately. `!` overwrites an
 existing file (`:write!`).
 
-## `:File[!] saveas {path}`
+## `:File[!] saveas [path]`
 
 Save the buffer under `{path}` (`:saveas`-equivalent). Buffer name changes.
 `!` overwrites an existing file.
 
-## `:File[!] writeto {path}`
+## `:File[!] writeto [path]`
 
 Write a copy of the buffer to `{path}` without changing the buffer's name.
 `!` overwrites an existing file.
@@ -36,11 +51,22 @@ Write a copy of the buffer to `{path}` without changing the buffer's name.
 Create the parent directory hierarchy for the current buffer's file. This
 runs automatically before every save too — see [Autocommands](autocommands.md).
 
-## `:File[!] rename [%] {dest}`
+## `:File touch [path]`
+
+Create an empty file at `{path}` if it doesn't already exist yet (creates
+parent directories). Real `touch` semantics: an existing file is left
+untouched, never truncated. Doesn't require or open a buffer.
+
+```
+:File touch notes/todo.md
+```
+
+## `:File[!] rename [%] [dest]`
 
 Rename (or move) the current file on disk to `{dest}`. Updates the buffer
-name. Writes unsaved changes before renaming. `!` overwrites an existing
-destination.
+name and **reloads the buffer from disk** afterwards (resets signs/
+diagnostics). Writes unsaved changes before renaming. `!` overwrites an
+existing destination.
 
 ```
 :File rename newname.lua
@@ -48,7 +74,19 @@ destination.
 :File! rename ../moved.lua    (overwrite if exists)
 ```
 
-## `:File[!] duplicate [%] {dest}`
+## `:File[!] move [%] [dest]`
+
+Move the current file on disk to `{dest}` (possibly a different directory)
+and update the buffer name — same underlying rename as `rename`, but the
+buffer is **not** reloaded: content and undo history stay exactly as they
+were. `!` overwrites an existing destination.
+
+```
+:File move ../elsewhere/file.lua
+:File! move % ../elsewhere/file.lua
+```
+
+## `:File[!] duplicate [%] [dest]`
 
 Copy the current file to `{dest}` and open the copy. `!` overwrites.
 
@@ -57,11 +95,25 @@ Copy the current file to `{dest}` and open the copy. `!` overwrites.
 :File! duplicate % backup.lua
 ```
 
+## `:File[!] copy [%] [dest]`
+
+Copy the current file to `{dest}` using libuv, like `duplicate`, but without
+opening the copy afterwards. `!` overwrites.
+
+```
+:File copy backup.lua
+:File! copy % backup.lua
+```
+
 ## `:File[!] delete [%]`
 
-Delete the current file from disk using libuv and close the buffer. If the
-buffer has unsaved changes, plain `:File delete` refuses (nothing is deleted);
-`!` deletes the file and force-closes the buffer.
+Delete the current file from disk and close the buffer. Uses libuv by
+default (`delete.mode = "permanent"`), or the OS trash/recycle bin when
+`delete.mode = "trash"` — see [Configuration](configuration.md). If the
+buffer has unsaved changes, plain `:File delete` refuses (nothing is
+deleted); `!` deletes the file and force-closes the buffer. If
+`delete.on_before_delete` is configured, it runs first and can abort the
+deletion by returning `false` (e.g. to warn about git-tracked files).
 
 ```
 :File delete
@@ -69,13 +121,19 @@ buffer has unsaved changes, plain `:File delete` refuses (nothing is deleted);
 :File! delete     (delete + force-close a modified buffer)
 ```
 
-## `:[count]File[!] next [target]` / `:[count]File[!] prev [target]`
+## `:[count]File[!] next [target] [glob]` / `:[count]File[!] prev [target] [glob]`
 
-Navigate to the next / previous file in the current directory.
+Navigate to the next / previous file in the current directory. An optional
+trailing `[glob]` (e.g. `*.lua`) narrows the directory listing to matching
+file names before navigating — everything else (wrap, hidden files, sort
+order) works the same as unfiltered navigation. Matching uses
+`vim.fn.glob2regpat`.
 
 ```
 :File next               → next file, configured open_target
 :File next vsplit        → in a vertical split
+:File next *.lua         → next file matching *.lua
+:File next vsplit *.lua  → in a vertical split, matching *.lua
 :2File next              → skip 2 files
 :File! next              → bypass modified-buffer confirm
 ```
@@ -90,6 +148,92 @@ Navigate to the next / previous file in the current directory.
 | `vsplit` | Vertical split |
 | `tab` | New tab |
 | `bg` or `background` | Load into buffer list without switching |
+
+If the first argument isn't one of the target keywords above, it's treated
+as the glob pattern instead (so `:File next *.lua` works without needing to
+name a target first).
+
+Set `cycle.root = "buffer_dir_recursive"` (or `"cwd_recursive"`) to also walk
+subdirectories instead of listing just the top-level directory — see
+[Configuration](configuration.md).
+
+## `:File[!] first [target]` / `:File[!] last [target]`
+
+Jump straight to the first / last file in the current directory listing
+(alphabetical, respecting `cycle.include_hidden`/`cycle.case_insensitive`),
+instead of stepping one at a time with `next`/`prev`. Same `[target]` values
+and `!` behaviour as `next`/`prev`.
+
+```
+:File first              → jump to the first file
+:File last vsplit        → jump to the last file, in a vertical split
+```
+
+## `:File[!] open [target]`
+
+Reopen the current buffer's own path in a different window target, without
+changing which file is shown — e.g. pop the file you're already editing into
+a vertical split or a new tab. Same `[target]` values as `next`/`prev`; `!`
+skips the modified-buffer confirm the same way it does there.
+
+```
+:File open vsplit        → current file, in a vertical split
+:File open tab           → current file, in a new tab
+:File! open              → current file, reloaded, skipping the modified check
+```
+
+## `:File path [mode]`
+
+Copy the current file's path to the unnamed register and the system
+clipboard (`+`). `[mode]` defaults to `abs`.
+
+| Mode | Result |
+|---|---|
+| `abs` (default) | Absolute path |
+| `rel` | Relative to cwd |
+| `name` | File name only |
+| `dir` | Containing directory only |
+
+```
+:File path              → absolute path
+:File path rel          → path relative to cwd
+:File path name         → just the file name
+```
+
+## `:File info`
+
+Show size, last-modified time, and permissions for the current file, via
+libuv `fs_stat` (works cross-platform, including Windows).
+
+```
+:File info
+→ /home/me/project/init.lua
+  size: 1.2 KiB (1234 bytes)
+  modified: 2026-07-20 14:03:11
+  permissions: 644
+```
+
+## `:File[!] bulk rename {pattern} {replacement}`
+
+Batch-rename every regular file directly inside the current buffer's
+directory (no recursion) whose name changes under
+`name:gsub(pattern, replacement)` — a **Lua pattern**, not a glob, applied
+to the file name only (not the full path). Files the pattern doesn't match,
+or that `gsub` leaves unchanged, are left alone.
+
+Shows a preview of every `old → new` pair via `notify.info`, then asks for
+confirmation via `vim.ui.select` before touching disk. `!` allows
+overwriting existing destinations; without it, a conflicting destination is
+skipped and reported (other files in the batch still get renamed). Any open
+buffer pointing at a renamed file is re-pointed at the new path (no
+reload — same as `:File move`), and each successful rename fires the usual
+`notify_change`/`User FileopsChanged` (see [Autocommands](autocommands.md)).
+
+```
+:File bulk rename ^draft_ final_     → draft_1.md → final_1.md, draft_2.md → final_2.md, …
+:File bulk rename %.txt$ .md         → note.txt → note.md
+:File! bulk rename ^old_ new_        → overwrites existing new_* files
+```
 
 ## `:File cd [scope]`
 
@@ -108,3 +252,8 @@ the new root. Optional `[scope]` overrides `cd.scope` for this call.
 | `window` | `:lcd` | Window-local working directory (default) |
 | `tab` | `:tcd` | Tab-local working directory |
 | `global` | `:cd` | Global working directory |
+
+## `:File help`
+
+Show a short usage overview for every subcommand directly in the command
+line (via `notify.info`), without opening `:h fileops`.

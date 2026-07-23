@@ -9,6 +9,8 @@ return function(H)
   local d = config.get()
   eq(d.cycle.open_target, "replace", "default cycle.open_target")
   eq(d.cd.scope, "window", "default cd.scope")
+  eq(d.delete.mode, "permanent", "default delete.mode")
+  eq(d.delete.on_before_delete, nil, "default delete.on_before_delete")
   eq(d.keymaps.cycle, true, "default keymaps.cycle")
   eq(d.keymaps.lhs.next_replace, "<leader>nf", "default keymaps.lhs.next_replace")
   ok(type(d.keymaps.lhs) == "table", "keymaps.lhs is a table")
@@ -32,6 +34,13 @@ return function(H)
   eq(o.cd.scope, "global", "override nested cd.scope")
   -- untouched sibling keeps its default
   eq(o.cd.refresh_explorers, true, "untouched sibling key keeps default")
+
+  -- delete.mode override + on_before_delete hook is passed through as-is
+  local hook = function() return true end
+  config.setup({ delete = { mode = "trash", on_before_delete = hook } })
+  local dd = config.get()
+  eq(dd.delete.mode, "trash", "override delete.mode")
+  eq(dd.delete.on_before_delete, hook, "override delete.on_before_delete")
 
   -- nested keymaps.lhs deep-merge: only the touched key changes
   config.setup({ keymaps = { lhs = { next_replace = false, delete = "<leader>XX" } } })

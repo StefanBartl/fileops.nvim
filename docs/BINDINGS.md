@@ -32,17 +32,27 @@ gated by `config.commands` (a single boolean — there is only one command).
 
 | Command | Args | Description |
 |---|---|---|
-| `:File new` | `{path}` | Set buffer name (creates parent dirs, no write) |
-| `:File[!] write` | `{path}` | Set buffer name and write to disk |
-| `:File[!] saveas` | `{path}` | Save-as, buffer name changes |
-| `:File[!] writeto` | `{path}` | Write a copy, buffer name stays |
+| `:File new` | `[path]` | Set buffer name (creates parent dirs, no write) |
+| `:File[!] write` | `[path]` | Set buffer name and write to disk |
+| `:File[!] saveas` | `[path]` | Save-as, buffer name changes |
+| `:File[!] writeto` | `[path]` | Write a copy, buffer name stays |
 | `:File mkdir` | — | Create parent dirs for current buffer |
-| `:File[!] rename` | `[%] {dest}` | Rename/move file on disk + update buffer |
-| `:File[!] duplicate` | `[%] {dest}` | Copy file to new path and open the copy |
+| `:File touch` | `[path]` | Create an empty file if it doesn't exist yet |
+| `:File[!] rename` | `[%] [dest]` | Rename file on disk + update buffer (reloads) |
+| `:File[!] move` | `[%] [dest]` | Move file on disk + update buffer (no reload) |
+| `:File[!] duplicate` | `[%] [dest]` | Copy file to new path and open the copy |
+| `:File[!] copy` | `[%] [dest]` | Copy file to new path without opening it |
 | `:File[!] delete` | `[%]` | Delete file from disk and close buffer |
-| `:[count]File[!] next` | `[target]` | Next file in directory |
-| `:[count]File[!] prev` | `[target]` | Previous file in directory |
+| `:[count]File[!] next` | `[target] [glob]` | Next file in directory, optionally filtered (e.g. `*.lua`) |
+| `:[count]File[!] prev` | `[target] [glob]` | Previous file in directory, optionally filtered |
+| `:File[!] first` | `[target]` | Jump to the first file in directory |
+| `:File[!] last` | `[target]` | Jump to the last file in directory |
+| `:File[!] open` | `[target]` | Reopen the current file in a different window target |
+| `:File path` | `[mode]` | Copy the current file's path to the clipboard (abs/rel/name/dir) |
+| `:File info` | — | Show size/mtime/permissions for the current file |
+| `:File[!] bulk rename` | `{pattern} {replacement}` | Batch-rename files in the directory via a Lua pattern (preview + confirm) |
 | `:File cd` | `[scope]` | Set cwd to buffer's dir + refresh file explorer |
+| `:File help` | — | Show a short usage overview in the command line |
 
 Full reference: [README.md § Command reference](../README.md#command-reference)
 or `:h fileops-command`.
