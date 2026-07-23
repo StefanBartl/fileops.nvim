@@ -32,6 +32,13 @@ return {
                         -- false: use `git mv`/`git rm` instead of libuv for tracked files
     git_cmd   = "git", -- git executable to use
   },
+  session_compat = {
+    enable = true, -- after rename/move, resave the active `:mksession` session
+                    -- (v:this_session) so it doesn't point at a stale path;
+                    -- no-op when no session is active. Other session managers
+                    -- (possession.nvim, sessions.nvim, ...) can hook the
+                    -- `User FileopsChanged` autocmd instead (see explorer.*).
+  },
   keymaps = {
     cycle  = true,
     delete = true,

@@ -83,11 +83,11 @@ function M.check()
     ok("which-key not found — mappings still carry their own descriptions")
   end
 
-  -- git executable (used by the on_hold feature)
+  -- git executable (used by on_hold, and by git_aware when opted in)
   if vim.fn.executable("git") == 1 then
-    ok("git executable found (required for on_hold)")
+    ok("git executable found (required for on_hold; used by git_aware when enabled)")
   else
-    warn("git executable not found — on_hold will be a silent no-op")
+    warn("git executable not found — on_hold will be a silent no-op, git_aware will fail if enabled")
   end
 
   -- gitsigns.nvim (optional, on_hold prefers its inline hunk preview)

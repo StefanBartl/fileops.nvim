@@ -222,7 +222,7 @@ end
 ---`rename` resets signs/diagnostics via a fresh `:edit`, `move` leaves the
 ---buffer's content/undo history untouched.
 ---@param new_path string  New path (may be relative or use ~).
----@param opts? { bang?: boolean, reload?: boolean, action?: string, git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string }
+---@param opts? { bang?: boolean, reload?: boolean, action?: string, git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string, session_compat?: boolean }
 ---@return boolean ok
 ---@return string|nil msg
 local function move_or_rename(new_path, opts)
@@ -282,6 +282,18 @@ local function move_or_rename(new_path, opts)
   end
 
   M.notify_change(action, abs, opts)
+
+  -- Keep an active `:mksession` session pointed at the new path instead of a
+  -- now-stale one. `v:this_session` is set by Vim/Neovim itself whenever a
+  -- session was loaded or saved; resaving it is a no-op when none is active.
+  -- The session file must be passed explicitly: bare `:mksession!` ignores
+  -- `v:this_session` and writes `./Session.vim` in the cwd instead.
+  -- Third-party session managers (possession.nvim, sessions.nvim, ...) can
+  -- react to the `User FileopsChanged` autocmd fired just above instead.
+  if opts.session_compat and vim.v.this_session ~= "" then
+    pcall(vim.cmd, "mksession! " .. fn.fnameescape(vim.v.this_session))
+  end
+
   local suffix = tracked and (used_git and " (git mv)" or " (git-tracked)") or ""
   return true, (action .. "d %s → %s%s"):format(
     fn.fnamemodify(old, ":t"), fn.fnamemodify(abs, ":t"), suffix)
@@ -290,7 +302,7 @@ end
 ---Rename the file of the current buffer on disk and update the buffer name.
 ---Reloads the buffer from disk afterwards (resets signs/diagnostics).
 ---@param new_path string  New path (may be relative or use ~).
----@param opts? { bang?: boolean, refresh_explorers?: boolean, git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string }
+---@param opts? { bang?: boolean, refresh_explorers?: boolean, git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string, session_compat?: boolean }
 ---@return boolean ok
 ---@return string|nil msg
 function M.rename(new_path, opts)
@@ -299,6 +311,7 @@ function M.rename(new_path, opts)
     bang = opts.bang, reload = true, action = "rename",
     refresh_explorers = opts.refresh_explorers,
     git_aware = opts.git_aware, git_warn_only = opts.git_warn_only, git_cmd = opts.git_cmd,
+    session_compat = opts.session_compat,
   })
 end
 
@@ -307,7 +320,7 @@ end
 ---NOT reloaded from disk afterwards — its content and undo history stay
 ---exactly as they were, only the on-disk location and buffer name change.
 ---@param new_path string  New path (may be relative or use ~).
----@param opts? { bang?: boolean, refresh_explorers?: boolean, git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string }
+---@param opts? { bang?: boolean, refresh_explorers?: boolean, git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string, session_compat?: boolean }
 ---@return boolean ok
 ---@return string|nil msg
 function M.move(new_path, opts)
@@ -316,6 +329,7 @@ function M.move(new_path, opts)
     bang = opts.bang, reload = false, action = "move",
     refresh_explorers = opts.refresh_explorers,
     git_aware = opts.git_aware, git_warn_only = opts.git_warn_only, git_cmd = opts.git_cmd,
+    session_compat = opts.session_compat,
   })
 end
 

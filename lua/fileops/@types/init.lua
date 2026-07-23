@@ -37,6 +37,13 @@
 ---@field warn_only? boolean  true: just note tracked-ness in the result message, still use libuv. false: use `git mv`/`git rm` for tracked files (delete only applies this when `delete.mode == "permanent"`). Default: true.
 ---@field git_cmd?   string   Git executable to use. Default: "git".
 
+---@class FileOps.SessionCompatConfig
+--- After `:File rename`/`:File move`, resave the active `:mksession` session
+--- (`v:this_session`) so it doesn't keep pointing at the old path. No-op when
+--- no session is active. Other session managers (possession.nvim,
+--- sessions.nvim, ...) can hook the `User FileopsChanged` autocmd instead.
+---@field enable? boolean  Master switch. Default: true.
+
 ---@class FileOps.KeymapLhs
 ---@field next_replace?    string|false  Next file, replace buffer.
 ---@field prev_replace?    string|false  Previous file, replace buffer.
@@ -97,6 +104,7 @@
 ---@field explorer?       FileOps.ExplorerConfig       Tree-explorer refresh options.
 ---@field delete?         FileOps.DeleteConfig         Delete-mode and pre-delete hook options.
 ---@field git_aware?      FileOps.GitAwareConfig       Git-tracked-file warnings/git mv/git rm (default: disabled; opt-in).
+---@field session_compat? FileOps.SessionCompatConfig  Resave the active :mksession session after rename/move (default: enabled).
 ---@field keymaps?        FileOps.KeymapConfig         Keymap registration flags.
 ---@field commands?       boolean                      Register all user commands (default: true).
 ---@field auto_mkdir?     FileOps.AutoMkdirConfig      Auto-create parent dirs before writing (default: enabled).

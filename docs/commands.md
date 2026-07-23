@@ -22,6 +22,11 @@ by default they just note in the result message that the file is tracked;
 with `git_aware.warn_only = false`, rename/move use `git mv` and delete uses
 `git rm` instead of a plain filesystem op, so the git index stays in sync.
 
+`rename`/`move` also resave the active `:mksession` session (`v:this_session`)
+by default (`session_compat.enable`, see [Configuration](configuration.md)),
+so it doesn't keep pointing at the old path. A no-op when no session is
+active.
+
 ## `:File new [path]`
 
 Set the current buffer's file name to `{path}`. Creates parent directories.

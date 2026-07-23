@@ -17,9 +17,13 @@ lua/fileops/
   util/
     notify.lua            "[fileops] " prefixed notifier; upgrades to
                            lib.nvim.notify when lib.nvim is installed
+    git.lua                Argv-only git helpers (is_tracked/mv/rm) for git_aware
   ops/
-    cycle.lua              Directory listing, indexing, navigation, open_path
-    file.lua               Create, rename, duplicate, delete operations
+    cycle.lua              Directory listing, indexing, navigation, open_path,
+                            jump_edge (first/last)
+    file.lua               Create/rename/move/duplicate/copy/delete/touch/
+                            info/copy_path operations
+    bulk.lua                Bulk-rename plan (pure) + execute
   features/
     on_hold.lua             Ambient CursorHold line-diff preview
     conflict_marks.lua      Conflict-marker highlighting
