@@ -240,6 +240,14 @@ local function git_flags()
   }
 end
 
+---Whether rename/move should resave the active `:mksession` session
+---(`session_compat.enable`, default true).
+---@return boolean
+local function session_compat_flag()
+  local cfg = config.get()
+  return not (cfg.session_compat and cfg.session_compat.enable == false)
+end
+
 ---Build a bulk-rename plan for the buffer's directory, preview it, and
 ---(on confirmation via `vim.ui.select`) execute it. `!` allows overwriting
 ---existing destinations.
@@ -349,7 +357,8 @@ local function dispatch(subcmd, fargs, bang, count)
 
   elseif subcmd == "rename" then
     local dest = resolve_dest(fargs)
-    local ropts = vim.tbl_extend("force", { bang = bang, refresh_explorers = refresh }, gitopts)
+    local ropts = vim.tbl_extend("force",
+      { bang = bang, refresh_explorers = refresh, session_compat = session_compat_flag() }, gitopts)
     if dest then
       report(file.rename(dest, ropts))
     else
@@ -360,7 +369,8 @@ local function dispatch(subcmd, fargs, bang, count)
 
   elseif subcmd == "move" then
     local dest = resolve_dest(fargs)
-    local mopts = vim.tbl_extend("force", { bang = bang, refresh_explorers = refresh }, gitopts)
+    local mopts = vim.tbl_extend("force",
+      { bang = bang, refresh_explorers = refresh, session_compat = session_compat_flag() }, gitopts)
     if dest then
       report(file.move(dest, mopts))
     else

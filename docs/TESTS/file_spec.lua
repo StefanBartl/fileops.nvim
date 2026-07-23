@@ -204,4 +204,54 @@ return function(H)
     ok(dgmsg:find("(git rm)", 1, true) ~= nil, "git-rm message notes git rm: " .. tostring(dgmsg))
     eq(vim.fn.filereadable(renamed_b), 0, "git rm: file removed from disk")
   end
+
+  -- session_compat: rename/move resave the active `:mksession` session
+  -- (v:this_session) only when opts.session_compat = true AND a session is
+  -- active; otherwise it's a no-op. Restores v:this_session afterwards so
+  -- this doesn't leak into specs that run after this one.
+  do
+    local prev_session = vim.v.this_session
+    local sess_dir = H.tmpdir()
+    local sess_file = sess_dir .. "Session.vim"
+
+    -- no active session: session_compat = true is a silent no-op, not an error
+    vim.v.this_session = ""
+    local a = dir .. "sess_a.lua"
+    H.write_file(a, "-- a")
+    H.edit(a)
+    local sok1 = file.rename(dir .. "sess_a2.lua", { session_compat = true })
+    ok(sok1, "rename with session_compat=true but no active session still succeeds")
+    eq(vim.v.this_session, "", "no active session: v:this_session stays empty")
+
+    -- active session + session_compat = true: resaves, new path lands in the file
+    H.edit(dir .. "sess_a2.lua")
+    vim.cmd("mksession! " .. vim.fn.fnameescape(sess_file))
+    eq(vim.v.this_session, vim.fn.fnamemodify(sess_file, ":p"), "setup: mksession! sets v:this_session")
+
+    local sess_b_old = dir .. "sess_b.lua"
+    H.write_file(sess_b_old, "-- b")
+    H.edit(sess_b_old)
+    vim.cmd("mksession! " .. vim.fn.fnameescape(sess_file)) -- capture sess_b as part of the session
+
+    local sess_b_new = dir .. "sess_b_renamed.lua"
+    local sok2, smsg2 = file.rename(sess_b_new, { session_compat = true })
+    ok(sok2, "rename with session_compat=true succeeds: " .. tostring(smsg2))
+
+    local resaved = table.concat(vim.fn.readfile(sess_file), "\n")
+    ok(resaved:find("sess_b_renamed.lua", 1, true) ~= nil,
+      "session_compat=true: resaved session references the new path")
+    ok(resaved:find("/sess_b.lua", 1, true) == nil and resaved:find("\\sess_b.lua", 1, true) == nil,
+      "session_compat=true: resaved session no longer references the old path")
+
+    -- session_compat unset/false: leaves the session file untouched
+    local before = table.concat(vim.fn.readfile(sess_file), "\n")
+    H.edit(sess_b_new)
+    local sess_c_new = dir .. "sess_c_renamed.lua"
+    local sok3 = file.rename(sess_c_new, {})
+    ok(sok3, "rename without session_compat still succeeds")
+    local after = table.concat(vim.fn.readfile(sess_file), "\n")
+    eq(after, before, "session_compat unset: session file left untouched")
+
+    vim.v.this_session = prev_session
+  end
 end

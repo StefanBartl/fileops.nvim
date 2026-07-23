@@ -75,6 +75,13 @@ gated by `config.auto_mkdir.enable` / `config.on_hold.enable` /
 `config.auto_mkdir.skip_remote` (default `true`) skips buffers whose name
 matches `config.auto_mkdir.detect_remote_pattern` (e.g. `ssh://`, `http://`).
 
+Every tree-changing op (new/write/saveas/writeto/mkdir/touch/rename/move/
+duplicate/copy/delete) also fires a `User FileopsChanged` autocmd
+(`{action, path}`), unconditionally — see
+[Autocommands § User FileopsChanged](autocommands.md#user-fileopschanged).
+`rename`/`move` additionally resave the active `:mksession` session by
+default (`config.session_compat.enable`).
+
 ## Which-key groups
 
 Registered by [`bindings/which_key.lua`](../lua/fileops/bindings/which_key.lua)

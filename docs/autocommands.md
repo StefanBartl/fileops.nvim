@@ -70,4 +70,10 @@ fileops.nvim itself also reloads neo-tree/nvim-tree in place after these ops
 (no root change, unlike `:File cd`), gated by `config.explorer.refresh_on_change`
 (default `true`) — the event fires regardless of that setting.
 
+`rename`/`move` additionally resave the active `:mksession` session
+(`v:this_session`) by default — see `session_compat` in
+[Configuration](configuration.md). Other session managers (possession.nvim,
+[sessions.nvim](https://github.com/StefanBartl/sessions.nvim), ...) can hook
+the `User FileopsChanged` event above instead of relying on `v:this_session`.
+
 See [Configuration](configuration.md) for the full option list.

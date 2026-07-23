@@ -36,6 +36,11 @@ require("fileops").setup({
                         -- false: use `git mv`/`git rm` for tracked files (delete: only when mode = "permanent")
     git_cmd   = "git",
   },
+  -- Resave the active `:mksession` session after rename/move
+  session_compat = {
+    enable = true, -- no-op when v:this_session is empty (no active session);
+                    -- other session managers can hook `User FileopsChanged` instead
+  },
   keymaps = {
     cycle  = true,   -- master switch: <leader>nf/pf family
     delete = true,   -- master switch: <leader>dcf

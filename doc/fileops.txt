@@ -1,7 +1,7 @@
 *fileops.txt*  File operations for Neovim                           *fileops.nvim*
 
 Author:   Stefan Bartl
-Version:  0.3.0
+Version:  0.4.0
 
 ==============================================================================
 CONTENTS                                                    *fileops-contents*
@@ -95,6 +95,9 @@ packer.nvim / pckr.nvim: >lua
       enable    = false,
       warn_only = true,
       git_cmd   = "git",
+    },
+    session_compat = {
+      enable = true,
     },
     keymaps = {
       cycle  = true,
@@ -217,6 +220,13 @@ git_aware.warn_only ~
 
 git_aware.git_cmd ~
   Git executable to use. Default: `"git"`.
+
+session_compat.enable ~
+  After |:File-rename|/|:File-move|, resave the active `:mksession` session
+  (`v:this_session`) so it doesn't keep pointing at the old path. No-op when
+  no session is active. Other session managers (possession.nvim,
+  sessions.nvim, ...) can hook the `User FileopsChanged` autocmd instead —
+  see |fileops-autocmds|. Default: `true`.
 
 keymaps.cycle ~
   Master switch: register the `<leader>nf` / `<leader>pf` family.
@@ -342,6 +352,9 @@ git-aware when `git_aware.enable = true` (opt-in — see |fileops-config|): by
 default they just note in the result message that the file is tracked; with
 `git_aware.warn_only = false`, rename/move use `git mv` and delete uses
 `git rm` instead of a plain filesystem op, keeping the git index in sync.
+
+|:File-rename|/|:File-move| also resave the active `:mksession` session by
+default (`session_compat.enable`, see |fileops-config|).
 
 ------------------------------------------------------------------------------
 5.1 Subcommands                                              *fileops-subcmds*
@@ -713,11 +726,13 @@ cd_here({opts})                                      *fileops.cd_here()*
 `:File` provides context-aware tab completion:
 
   `:File <Tab>`           → lists all subcommands
-  `:File next <Tab>`      → lists navigation targets
+  `:File next <Tab>`      → lists navigation targets (and accepts a glob)
   `:File cd <Tab>`        → lists cd scopes (window/tab/global)
-  `:File rename <Tab>`    → lists "%" and file paths
-  `:File new <Tab>`       → file path completion
-  (all path-taking subcmds use native file completion)
+  `:File path <Tab>`      → lists path modes (abs/rel/name/dir)
+  `:File rename <Tab>`    → lists "%" and file paths, relative to buffer dir
+  `:File new <Tab>`       → file path completion, relative to buffer dir
+  (all path-taking subcmds complete relative to the current buffer's
+  directory, not cwd — see |fileops-command|)
 
 ==============================================================================
 11. HEALTH CHECK                                              *fileops-health*
@@ -735,7 +750,7 @@ Checks:
   - `lib.nvim` detected (required — the `:File` command layer)
   - `lib.nvim.notify` in use (optional — cosmetic notification styling only)
   - `which-key` integration status (optional)
-  - `git` executable found (required for on_hold)
+  - `git` executable found (required for on_hold; used by git_aware when enabled)
   - `gitsigns.nvim` found (optional; on_hold prefers its inline preview)
 
 ==============================================================================
@@ -755,10 +770,11 @@ Checks:
     health.lua               checkhealth provider
     util/
       notify.lua             "[fileops] " notifier; soft lib.nvim.notify use
-      platform.lua           libuv file ops (no shell, cross-platform)
+      git.lua                argv-only git helpers for the git_aware feature
     ops/
-      cycle.lua              directory listing, navigate, open_path
-      file.lua               create, rename, duplicate, delete
+      cycle.lua              directory listing, navigate, open_path, jump_edge
+      file.lua               create/rename/move/duplicate/copy/delete/touch/info/…
+      bulk.lua               bulk-rename plan + execute
     features/
       on_hold.lua            ambient CursorHold line-diff preview
       conflict_marks.lua     conflict-marker highlighting
