@@ -63,6 +63,7 @@ local specs = {
   "file_spec.lua",
   "bulk_spec.lua",
   "git_spec.lua",
+  "usrcmds_spec.lua",
 }
 
 local failed = 0

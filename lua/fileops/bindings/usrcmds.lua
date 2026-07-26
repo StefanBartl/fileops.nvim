@@ -209,16 +209,19 @@ local function resolve_dest(fargs)
   return fargs[1]    -- :File rename dest  (% implied)
 end
 
----Prompt for a missing path argument via vim.ui.input instead of erroring.
+---Prompt for a missing path argument via kit.input instead of erroring.
 ---Calls `cb(input)` once a non-empty value is entered; a cancelled/empty
 ---prompt is a silent no-op (matches vim.ui.input's own convention).
 ---@param prompt_label string
 ---@param cb fun(input: string)
 local function prompt_dest(prompt_label, cb)
-  vim.ui.input({ prompt = prompt_label }, function(input)
-    if not input or input == "" then return end
-    cb(input)
-  end)
+  require("lib.nvim.ui.kit").input({
+    title = prompt_label,
+    on_submit = function(input)
+      if not input or input == "" then return end
+      cb(input)
+    end,
+  })
 end
 
 ---Whether tree-explorer refresh is enabled per `config.explorer.refresh_on_change`.
