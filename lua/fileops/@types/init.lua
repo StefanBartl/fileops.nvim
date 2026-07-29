@@ -44,6 +44,16 @@
 --- sessions.nvim, ...) can hook the `User FileopsChanged` autocmd instead.
 ---@field enable? boolean  Master switch. Default: true.
 
+---@class FileOps.RetryConfig
+--- How hard rename/move/copy/delete retry a *transient sharing* failure
+--- (`EBUSY`/`EPERM`/`EACCES`). On Windows those are routinely returned for a
+--- file another process has open without `FILE_SHARE_DELETE` — an AV scanner,
+--- the search indexer, OneDrive, a directory watcher — and the file is
+--- perfectly renameable a moment later. On POSIX they mean what they say, so
+--- retrying is off by default there.
+---@field attempts?   integer  Total tries, including the first. Default: 6 on Windows, 1 elsewhere.
+---@field backoff_ms? integer  Base delay; doubles each round (60/120/240/…). Default: 60.
+
 ---@class FileOps.KeymapLhs
 ---@field next_replace?    string|false  Next file, replace buffer.
 ---@field prev_replace?    string|false  Previous file, replace buffer.
@@ -105,6 +115,7 @@
 ---@field delete?         FileOps.DeleteConfig         Delete-mode and pre-delete hook options.
 ---@field git_aware?      FileOps.GitAwareConfig       Git-tracked-file warnings/git mv/git rm (default: disabled; opt-in).
 ---@field session_compat? FileOps.SessionCompatConfig  Resave the active :mksession session after rename/move (default: enabled).
+---@field retry?          FileOps.RetryConfig          Retry budget for transient Windows sharing violations on rename/move/copy/delete.
 ---@field keymaps?        FileOps.KeymapConfig         Keymap registration flags.
 ---@field commands?       boolean                      Register all user commands (default: true).
 ---@field auto_mkdir?     FileOps.AutoMkdirConfig      Auto-create parent dirs before writing (default: enabled).

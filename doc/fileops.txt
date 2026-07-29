@@ -221,6 +221,22 @@ git_aware.warn_only ~
 git_aware.git_cmd ~
   Git executable to use. Default: `"git"`.
 
+retry.attempts ~
+  How many times |:File-rename|/|:File-move|/|:File-duplicate|/|:File-copy|/
+  |:File-delete| try a filesystem op that failed with a transient sharing
+  violation (`EBUSY`/`EPERM`/`EACCES`), counting the first attempt. On
+  Windows those codes usually mean another process has the file open for a
+  moment (antivirus, search indexer, OneDrive, a directory watcher) and the
+  op succeeds a few hundred milliseconds later; on other platforms they mean
+  what they say, so retrying is pointless there.
+  Default: `6` on Windows, `1` elsewhere.
+
+retry.backoff_ms ~
+  Base delay between attempts, doubling each round (60/120/240/480/960ms),
+  so the default budget spends at most ~1.9s before reporting the failure.
+  Each attempt fires `User FileopsRetry` first, letting a plugin release its
+  own handle on the path — see |fileops-autocmds|. Default: `60`.
+
 session_compat.enable ~
   After |:File-rename|/|:File-move|, resave the active `:mksession` session
   (`v:this_session`) so it doesn't keep pointing at the old path. No-op when
@@ -346,6 +362,13 @@ Tab-completion for these arguments is relative to the current buffer's
 directory, not Neovim's cwd — `:File rename <Tab>` browses files next to the
 one you're editing. Input starting with `~`, `/`, or a Windows drive letter
 is left alone (treated as already absolute).
+
+For |:File-rename|/|:File-move|/|:File-duplicate|/|:File-copy|, a typed
+relative destination is resolved the same way: against the current file's
+directory, so `:File rename NEW.md` renames in place instead of dropping the
+file into Neovim's cwd. The create commands (|:File-new|, |:File-write|,
+|:File-saveas|, |:File-writeto|, |:File-touch|) still resolve relative paths
+against the cwd, like Vim's own |:write|.
 
 |:File-rename|/|:File-move|/|:File-duplicate|/|:File-copy|/|:File-delete| are
 git-aware when `git_aware.enable = true` (opt-in — see |fileops-config|): by
@@ -499,6 +522,30 @@ default (`session_compat.enable`, see |fileops-config|).
   via libuv `fs_stat` (cross-platform, including Windows). >
     :File info
 <
+
+:File lock [path]                                         *:File-lock*
+  Diagnose an `EBUSY`/`EPERM`/`EACCES` failure: is the file locked right now,
+  and which process holds it? Defaults to the current buffer's file. Run it
+  right after a rename/move/delete failed. >
+    :File lock
+<
+  The report names the path, tries a live rename probe, and lists the
+  holding processes via the Windows Restart Manager (no administrator rights
+  needed). It also goes to |:messages|, so it survives the notification
+  timeout and can be copied into a bug report.
+
+  Reading it: a foreign process in the holder list (antivirus, search
+  indexer, OneDrive) is the cause and no retry can fix it; `nvim` itself
+  means a handle leaked inside this Neovim, e.g. a file watcher that was
+  never closed; an empty list with a failing probe means a kernel-level lock
+  the Restart Manager doesn't track; and a successful probe means the lock
+  was transient and has already passed — which is what `retry.attempts`
+  exists for (see |fileops-config|).
+
+  An open buffer is never the cause: Neovim closes a file after reading it
+  and keeps only its swap file open. Holder lookup is Windows-only; the
+  rename probe works everywhere. Implemented in `lib.nvim.cross.fs.lock` so
+  other plugins report the same findings in the same words.
 
 :File[!] bulk rename {pattern} {replacement}              *:File-bulk-rename*
   Batch-rename every regular file directly inside the current buffer's
@@ -654,6 +701,25 @@ User FileopsChanged ~
   ops (no root change, unlike |:File-cd|), gated by
   `explorer.refresh_on_change` (default `true`) — the event fires regardless
   of that setting.
+
+User FileopsRetry ~
+  Fired before each retry of a filesystem op that failed with a transient
+  sharing violation (`EBUSY`/`EPERM`/`EACCES` — another process holding the
+  file open; an open Neovim buffer is never the cause, Neovim closes the file
+  after reading it and only keeps its swap file open). >lua
+    vim.api.nvim_create_autocmd("User", {
+      pattern = "FileopsRetry",
+      callback = function(ev)
+        -- ev.data = { path = "/abs/path", attempt = 1, err = "EBUSY: …" }
+        -- Close your own handle on ev.data.path here.
+      end,
+    })
+  <
+  The wait between attempts runs the event loop, so a handle released in this
+  callback is actually gone by the next try. This matters because retrying is
+  useless against a handle held inside *this* Neovim: a file watcher that
+  never calls `handle:close()` still holds the file on the last attempt.
+  See `retry.*` in |fileops-config| for the budget.
 
 ==============================================================================
 8. WHICH-KEY                                                *fileops-whichkey*

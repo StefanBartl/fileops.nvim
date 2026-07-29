@@ -15,7 +15,7 @@ local config = require("fileops.config")
 local SUBCMDS = {
   "new", "write", "saveas", "writeto", "mkdir", "touch",
   "rename", "move", "duplicate", "copy", "delete",
-  "next", "prev", "first", "last", "open", "path", "info",
+  "next", "prev", "first", "last", "open", "path", "info", "lock",
   "bulk rename", "cd", "help",
 }
 
@@ -38,6 +38,7 @@ local HELP_TEXT = table.concat({
   "  open [target]           reopen current file in split/vsplit/tab/…",
   "  path [mode]             copy path to clipboard (abs/rel/name/dir)",
   "  info                    show size/mtime/permissions for current file",
+  "  lock [path]             who holds this file open (Windows EBUSY/EPERM diagnosis)",
   "  bulk rename {pat} {rep} batch-rename files in dir via Lua pattern (preview + confirm)",
   "  cd [scope]              cd to buffer's dir + refresh explorer",
   "  help                    show this message",
@@ -243,6 +244,15 @@ local function git_flags()
   }
 end
 
+---`retry.*` opts for the filesystem mutations, from config. Folded into the
+---same table as `git_flags()` by every caller, so it returns the wrapper key
+---the ops layer expects rather than the bare fields.
+---@return { retry: FileOps.RetryConfig }
+local function retry_flags()
+  local cfg = config.get()
+  return { retry = cfg.retry or {} }
+end
+
 ---Whether rename/move should resave the active `:mksession` session
 ---(`session_compat.enable`, default true).
 ---@return boolean
@@ -308,7 +318,9 @@ end
 ---@param count integer   v:count1 equivalent from :N File
 local function dispatch(subcmd, fargs, bang, count)
   local refresh = refresh_flag()
-  local gitopts = git_flags()
+  -- Git-awareness and the retry budget travel together: both apply to exactly
+  -- the five subcommands that mutate the filesystem.
+  local mutopts = vim.tbl_extend("force", git_flags(), retry_flags())
 
   if subcmd == "new" then
     if fargs[1] then
@@ -361,7 +373,7 @@ local function dispatch(subcmd, fargs, bang, count)
   elseif subcmd == "rename" then
     local dest = resolve_dest(fargs)
     local ropts = vim.tbl_extend("force",
-      { bang = bang, refresh_explorers = refresh, session_compat = session_compat_flag() }, gitopts)
+      { bang = bang, refresh_explorers = refresh, session_compat = session_compat_flag() }, mutopts)
     if dest then
       report(file.rename(dest, ropts))
     else
@@ -373,7 +385,7 @@ local function dispatch(subcmd, fargs, bang, count)
   elseif subcmd == "move" then
     local dest = resolve_dest(fargs)
     local mopts = vim.tbl_extend("force",
-      { bang = bang, refresh_explorers = refresh, session_compat = session_compat_flag() }, gitopts)
+      { bang = bang, refresh_explorers = refresh, session_compat = session_compat_flag() }, mutopts)
     if dest then
       report(file.move(dest, mopts))
     else
@@ -384,7 +396,7 @@ local function dispatch(subcmd, fargs, bang, count)
 
   elseif subcmd == "duplicate" then
     local dest = resolve_dest(fargs)
-    local dopts = vim.tbl_extend("force", { bang = bang, refresh_explorers = refresh }, gitopts)
+    local dopts = vim.tbl_extend("force", { bang = bang, refresh_explorers = refresh }, mutopts)
     if dest then
       report(file.duplicate(dest, dopts))
     else
@@ -395,7 +407,7 @@ local function dispatch(subcmd, fargs, bang, count)
 
   elseif subcmd == "copy" then
     local dest = resolve_dest(fargs)
-    local copts = vim.tbl_extend("force", { bang = bang, refresh_explorers = refresh }, gitopts)
+    local copts = vim.tbl_extend("force", { bang = bang, refresh_explorers = refresh }, mutopts)
     if dest then
       report(file.copy(dest, copts))
     else
@@ -412,7 +424,7 @@ local function dispatch(subcmd, fargs, bang, count)
       mode = dcfg.mode,
       on_before_delete = dcfg.on_before_delete,
       refresh_explorers = refresh,
-    }, gitopts)))
+    }, mutopts)))
 
   elseif subcmd == "cd" then
     local cfg   = config.get()
@@ -449,6 +461,15 @@ local function dispatch(subcmd, fargs, bang, count)
 
   elseif subcmd == "info" then
     report(file.info())
+
+  elseif subcmd == "lock" then
+    file.diagnose_lock(function(ok_, msg)
+      -- The report is a multi-line block meant to be read and pasted into a
+      -- bug report, so it goes to :messages as well — a notification alone
+      -- would time out before it can be copied.
+      if ok_ then print(msg) end
+      report(ok_, msg)
+    end, fargs[1])
 
   elseif subcmd == "bulk_rename" then
     do_bulk_rename(fargs[1], fargs[2], bang)
@@ -490,7 +511,7 @@ end
 
 function M.register()
   composer.verb("File", {
-    desc = "Unified file operations (new/write/saveas/writeto/mkdir/touch/rename/move/duplicate/copy/delete/next/prev/first/last/open/path/info/bulk rename/cd/help)",
+    desc = "Unified file operations (new/write/saveas/writeto/mkdir/touch/rename/move/duplicate/copy/delete/next/prev/first/last/open/path/info/lock/bulk rename/cd/help)",
     bang = true,
     count = 0,
     routes = {
@@ -531,6 +552,7 @@ function M.register()
       route("open", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
       route("path", { { name = "mode", type = "STRING", optional = true, enum = PATH_MODES } }),
       route("info"),
+      route("lock", { { name = "path", type = "FILEOPS_PATH", optional = true } }),
       {
         path = { "bulk", "rename" },
         args = {

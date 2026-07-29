@@ -76,4 +76,30 @@ fileops.nvim itself also reloads neo-tree/nvim-tree in place after these ops
 [sessions.nvim](https://github.com/StefanBartl/sessions.nvim), ...) can hook
 the `User FileopsChanged` event above instead of relying on `v:this_session`.
 
+## `User FileopsRetry`
+
+On Windows a rename/copy/delete can fail with `EBUSY`/`EPERM`/`EACCES`
+because some process still holds the file open — an antivirus scan, the
+search indexer, OneDrive, a directory watcher. (An open Neovim buffer is
+*not* one of them: Neovim closes the file after reading it and only keeps
+its swap file open.) fileops retries such a failure a few times with an
+escalating backoff, and fires `User FileopsRetry` before each new attempt:
+
+```lua
+vim.api.nvim_create_autocmd("User", {
+  pattern = "FileopsRetry",
+  callback = function(ev)
+    -- ev.data = { path = "/abs/path", attempt = 1, err = "EBUSY: …" }
+    -- Close your own handle on ev.data.path here — the wait between attempts
+    -- runs the event loop, so a handle released now is gone by the next try.
+  end,
+})
+```
+
+This exists because a retry is useless against a handle held inside *this*
+Neovim: a file watcher that never calls `handle:close()` will still be
+holding the file on attempt six. Plugins that watch paths should use this
+event to let go. See `retry` in [Configuration](configuration.md) for the
+attempt budget.
+
 See [Configuration](configuration.md) for the full option list.

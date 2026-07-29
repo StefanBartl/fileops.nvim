@@ -16,6 +16,12 @@ directory**, not Neovim's cwd — `:File rename <Tab>` browses files next to
 the one you're editing. Input starting with `~`, `/`, or a Windows drive
 letter is left alone (treated as already absolute).
 
+For `rename`/`move`/`duplicate`/`copy`, a **typed** relative destination is
+resolved the same way: against the current file's directory, so
+`:File rename NEW.md` renames in place instead of dropping the file into
+Neovim's cwd. The create commands (`new`/`write`/`saveas`/`writeto`/`touch`)
+still resolve relative paths against the cwd, like Vim's own `:write`.
+
 `rename`/`move`/`duplicate`/`copy`/`delete` are git-aware when
 `git_aware.enable = true` (opt-in — see [Configuration](configuration.md)):
 by default they just note in the result message that the file is tracked;
@@ -217,6 +223,40 @@ libuv `fs_stat` (works cross-platform, including Windows).
   modified: 2026-07-20 14:03:11
   permissions: 644
 ```
+
+## `:File lock [path]`
+
+Diagnose a `EBUSY` / `EPERM` / `EACCES` failure: is the file locked *right
+now*, and which process is holding it? Defaults to the current buffer's file.
+Run it right after a rename/move/delete failed.
+
+```
+:File lock
+→ path:   C:\repos\notes\00_Notes.md
+  exists: yes
+
+  rename probe:
+    NOT renameable: EBUSY: resource busy or locked: …
+
+  handle holders (Windows Restart Manager):
+    pid 21096  pwsh  [PowerShell 7]
+```
+
+The report also goes to `:messages`, so it can be copied into a bug report
+after the notification times out.
+
+| Probe | Holders | Meaning |
+|---|---|---|
+| not renameable | a foreign process | That process is the cause — an antivirus scan, the search indexer, OneDrive. |
+| not renameable | `nvim` itself | A handle leaked inside this Neovim (a watcher that was never closed); no retry can outwait it. |
+| not renameable | none | A kernel-level lock not registered with the Restart Manager. |
+| renameable | any | The lock was transient and is already gone — what the `retry` budget exists for. |
+
+An open buffer is never the cause: Neovim closes a file after reading it and
+keeps only its swap file open. Holder lookup is Windows-only (it uses the
+Restart Manager API, no administrator rights needed); the rename probe works
+everywhere. The implementation lives in `lib.nvim.cross.fs.lock` so other
+plugins report the same findings in the same words.
 
 ## `:File[!] bulk rename {pattern} {replacement}`
 

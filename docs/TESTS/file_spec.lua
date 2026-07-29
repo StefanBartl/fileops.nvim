@@ -49,6 +49,72 @@ return function(H)
   local mok3 = file.move(dest2, { bang = true })
   ok(mok3, "move! overwrites existing destination")
 
+  -- rename with a bare name resolves against the *file's* directory, not the
+  -- cwd — otherwise editing a file from elsewhere in the tree silently moves
+  -- it into the cwd instead of renaming it in place.
+  do
+    local elsewhere = H.tmpdir()
+    local rel_src = dir .. "rel_src.lua"
+    H.write_file(rel_src, "-- rel")
+    H.edit(rel_src)
+
+    local prev_cwd = vim.fn.getcwd()
+    vim.cmd("cd " .. vim.fn.fnameescape(elsewhere))
+    local rok, rmsg = file.rename("rel_dest.lua")
+    vim.cmd("cd " .. vim.fn.fnameescape(prev_cwd))
+
+    ok(rok, "rename with a relative name succeeds: " .. tostring(rmsg))
+    eq(vim.fn.filereadable(dir .. "rel_dest.lua"), 1,
+      "rename: relative destination lands next to the source file")
+    eq(vim.fn.filereadable(elsewhere .. "rel_dest.lua"), 0,
+      "rename: relative destination is NOT resolved against the cwd")
+    eq(vim.fn.filereadable(rel_src), 0, "rename: source file no longer exists")
+  end
+
+  -- A Windows sharing violation can't be provoked from inside this process
+  -- (libuv opens files with FILE_SHARE_DELETE), so the retry contract is
+  -- checked by swapping the primitive: fileops must hand its configured
+  -- budget plus an on_retry hook down to lib.nvim, and must not surrender a
+  -- bare "EBUSY" to the user.
+  do
+    local fsops = require("lib.nvim.cross.fs.mutate")
+    local real_rename = fsops.rename_file
+
+    local seen_opts, calls, retry_events = nil, 0, 0
+    local aug = vim.api.nvim_create_augroup("FileopsRetrySpec", { clear = true })
+    vim.api.nvim_create_autocmd("User", {
+      group = aug, pattern = "FileopsRetry",
+      callback = function() retry_events = retry_events + 1 end,
+    })
+
+    fsops.rename_file = function(_, _, o)
+      seen_opts = o
+      calls = calls + 1
+      -- Mimic lib.nvim's own retry loop closely enough to prove the hook runs.
+      for attempt = 1, (o and o.attempts or 1) - 1 do
+        if o.on_retry then o.on_retry(attempt, "EBUSY: resource busy or locked") end
+      end
+      return false, "EBUSY: resource busy or locked"
+    end
+
+    local busy = dir .. "busy.lua"
+    H.write_file(busy, "-- busy")
+    H.edit(busy)
+    local bok, bmsg = file.rename(dir .. "busy_renamed.lua",
+      { retry = { attempts = 4, backoff_ms = 10 } })
+
+    fsops.rename_file = real_rename
+    vim.api.nvim_del_augroup_by_id(aug)
+
+    ok(not bok, "rename reports failure when the filesystem keeps saying EBUSY")
+    eq(calls, 1, "rename delegates to lib.nvim's retrying primitive")
+    eq(seen_opts and seen_opts.attempts, 4, "rename passes the configured attempt budget down")
+    eq(seen_opts and seen_opts.backoff_ms, 10, "rename passes the configured backoff down")
+    eq(retry_events, 3, "each retry fires a User FileopsRetry event so listeners can drop handles")
+    ok(tostring(bmsg):find("another process is holding the file open", 1, true) ~= nil,
+      "EBUSY is explained rather than surfaced as a bare libuv code: " .. tostring(bmsg))
+  end
+
   -- touch: creates a 0-byte file, doesn't need a buffer
   local touched = dir .. "touched.lua"
   eq(vim.fn.filereadable(touched), 0, "setup: touch target does not exist yet")

@@ -36,6 +36,12 @@ require("fileops").setup({
                         -- false: use `git mv`/`git rm` for tracked files (delete: only when mode = "permanent")
     git_cmd   = "git",
   },
+  -- How hard rename/move/copy/delete retry a transient sharing violation
+  -- (EBUSY/EPERM/EACCES — another process holding the file open)
+  retry = {
+    attempts   = 6,  -- total tries incl. the first; 1 on non-Windows (there the errors are real)
+    backoff_ms = 60, -- doubles each round: 60/120/240/480/960 → ~1.9s worst case
+  },
   -- Resave the active `:mksession` session after rename/move
   session_compat = {
     enable = true, -- no-op when v:this_session is empty (no active session);

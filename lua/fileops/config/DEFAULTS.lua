@@ -1,6 +1,10 @@
 ---@module 'fileops.config.DEFAULTS'
 ---Immutable default configuration. Deep-merged with user opts in config/init.lua.
 
+-- Retrying a sharing violation only pays off on Windows, where it is usually
+-- a scanner/indexer/watcher holding the file for a moment. See FileOps.RetryConfig.
+local is_windows = vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1
+
 ---@type FileOps.Config
 return {
   cycle = {
@@ -31,6 +35,13 @@ return {
     warn_only = true,  -- true: just note tracked-ness in the result message, still use libuv
                         -- false: use `git mv`/`git rm` instead of libuv for tracked files
     git_cmd   = "git", -- git executable to use
+  },
+  retry = {
+    -- 6 tries with a doubling 60ms backoff spends at most ~1.9s before giving
+    -- up — long enough to outlast a scanner pass, short enough that a genuinely
+    -- locked file still reports back while you're looking at the screen.
+    attempts   = is_windows and 6 or 1,
+    backoff_ms = 60,
   },
   session_compat = {
     enable = true, -- after rename/move, resave the active `:mksession` session

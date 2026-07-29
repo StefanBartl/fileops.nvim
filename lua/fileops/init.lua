@@ -172,6 +172,18 @@ function M.info()
   )
 end
 
+---Diagnose who holds a file open when a mutation fails with a sharing
+---violation (`EBUSY`/`EPERM`/`EACCES`). Asynchronous — the holder lookup
+---spawns a helper process — so the result arrives via `cb` instead of a
+---return value.
+---@param cb? fun(ok: boolean, msg: string)  Defaults to reporting via notify.
+---@param path? string  Defaults to the current buffer's file.
+function M.diagnose_lock(cb, path)
+  require("fileops.ops.file").diagnose_lock(cb or function(ok, msg)
+    require("fileops.util.notify").report(ok, msg)
+  end, path)
+end
+
 ---Change the working directory to the current buffer's directory and refresh
 ---any open file explorer (neo-tree/nvim-tree/netrw).
 ---@param opts? { scope?: "lcd"|"cd"|"tcd", refresh?: boolean }

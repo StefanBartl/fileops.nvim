@@ -32,13 +32,86 @@ local function buf_path(bufnr)
   return (type(p) == "string" and p ~= "") and p or nil
 end
 
+---Whether `p` already denotes an absolute location (POSIX root, Windows
+---drive letter or UNC share). `~` is not checked here — `fn.expand` has
+---already turned it into an absolute path by the time this is called.
+---@param p string
+---@return boolean
+local function is_absolute(p)
+  return p:match("^/") ~= nil
+      or p:match("^\\") ~= nil
+      or p:match("^%a:[\\/]") ~= nil
+end
+
 ---Expand and validate a user-supplied path.
+---
+---`base` anchors *relative* input. Ops that act on the current buffer's file
+---pass that file's directory, so `:File rename NEW.md` means "same folder,
+---new name" — which is both what the command reads like and what the
+---bufdir-relative completion in `bindings.usrcmds` offers. Without a base,
+---a relative path resolves against Neovim's cwd, which for a buffer opened
+---from elsewhere in the tree silently lands the file in a different folder.
 ---@param raw string
+---@param base? string  Directory to resolve relative input against.
 ---@return string|nil abs  Absolute path, or nil on error.
-local function resolve_path(raw)
+local function resolve_path(raw, base)
   if type(raw) ~= "string" or raw == "" then return nil end
-  local abs = fn.fnamemodify(fn.expand(raw), ":p")
+  local exp = fn.expand(raw)
+  if exp == "" then return nil end
+  if base and base ~= "" and not is_absolute(exp) then
+    exp = base .. "/" .. exp
+  end
+  local abs = fn.fnamemodify(exp, ":p")
   return (abs ~= "") and abs or nil
+end
+
+---Build the `lib.nvim.cross.fs.mutate` retry options for a mutation on
+---`path`. Beyond the attempt budget, the `on_retry` hook does the two things
+---that make retrying worthwhile at all — waiting alone cannot outlast a
+---handle held inside this very Neovim process:
+---
+---  1. Releases neo-tree's leaked `fs_event` handles on the path via
+---     `lib.nvim.neotree.watch`. Neo-tree only ever `:stop()`s those, never
+---     `:close()`s them, so on Windows the directory stays open at the OS
+---     level until the GC runs. A no-op when that guard isn't installed.
+---  2. Fires `User FileopsRetry`, so any other plugin can drop its own
+---     handle. `lib.nvim` waits with `vim.wait`, which keeps the event loop
+---     running — libuv closes handles on the next tick, so a handle released
+---     here really is gone by the following attempt.
+---@param path string  Path the mutation acts on.
+---@param retry? FileOps.RetryConfig
+---@return table
+local function retry_opts(path, retry)
+  retry = retry or {}
+  return {
+    attempts = retry.attempts,
+    backoff_ms = retry.backoff_ms,
+    on_retry = function(attempt, err)
+      pcall(function() require("lib.nvim.neotree.watch").release(path) end)
+      pcall(api.nvim_exec_autocmds, "User", {
+        pattern = "FileopsRetry",
+        data = { path = path, attempt = attempt, err = err },
+      })
+    end,
+  }
+end
+
+---libuv reports a Windows sharing violation as `EBUSY`/`EPERM`/`EACCES`.
+---Once the retry budget is spent, the bare code is a dead end for the user,
+---so name the actual situation: some *other* process holds the file open. An
+---open Neovim buffer is never the cause — Neovim closes the file after
+---reading it and only keeps its swap file open.
+---@param err string|nil
+---@return string
+local function explain_fs_error(err)
+  local msg = tostring(err)
+  local code = msg:match("^(%u+):")
+  if code == "EBUSY" or code == "EPERM" or code == "EACCES" then
+    return msg .. " — another process is holding the file open"
+        .. " (virus scanner, search indexer, OneDrive, a file watcher);"
+        .. " the open buffer itself is not the cause"
+  end
+  return msg
 end
 
 -- ─── Explorer refresh / change events ──────────────────────────────────────────
@@ -222,7 +295,7 @@ end
 ---`rename` resets signs/diagnostics via a fresh `:edit`, `move` leaves the
 ---buffer's content/undo history untouched.
 ---@param new_path string  New path (may be relative or use ~).
----@param opts? { bang?: boolean, reload?: boolean, action?: string, git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string, session_compat?: boolean }
+---@param opts? { bang?: boolean, reload?: boolean, action?: string, git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string, session_compat?: boolean, retry?: FileOps.RetryConfig }
 ---@return boolean ok
 ---@return string|nil msg
 local function move_or_rename(new_path, opts)
@@ -240,7 +313,7 @@ local function move_or_rename(new_path, opts)
     return false, "source file does not exist or is not readable: " .. old
   end
 
-  local abs = resolve_path(new_path)
+  local abs = resolve_path(new_path, fn.fnamemodify(old, ":p:h"))
   if not abs then return false, "invalid destination: " .. tostring(new_path) end
 
   if fn.filereadable(abs) == 1 and not opts.bang then
@@ -268,9 +341,9 @@ local function move_or_rename(new_path, opts)
   end
 
   if not used_git then
-    local ok, err = fsops.rename_file(old, abs)
+    local ok, err = fsops.rename_file(old, abs, retry_opts(old, opts.retry))
     if not ok then
-      return false, action .. " failed: " .. tostring(err)
+      return false, action .. " failed: " .. explain_fs_error(err)
     end
   end
 
@@ -302,7 +375,7 @@ end
 ---Rename the file of the current buffer on disk and update the buffer name.
 ---Reloads the buffer from disk afterwards (resets signs/diagnostics).
 ---@param new_path string  New path (may be relative or use ~).
----@param opts? { bang?: boolean, refresh_explorers?: boolean, git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string, session_compat?: boolean }
+---@param opts? { bang?: boolean, refresh_explorers?: boolean, git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string, session_compat?: boolean, retry?: FileOps.RetryConfig }
 ---@return boolean ok
 ---@return string|nil msg
 function M.rename(new_path, opts)
@@ -311,7 +384,7 @@ function M.rename(new_path, opts)
     bang = opts.bang, reload = true, action = "rename",
     refresh_explorers = opts.refresh_explorers,
     git_aware = opts.git_aware, git_warn_only = opts.git_warn_only, git_cmd = opts.git_cmd,
-    session_compat = opts.session_compat,
+    session_compat = opts.session_compat, retry = opts.retry,
   })
 end
 
@@ -320,7 +393,7 @@ end
 ---NOT reloaded from disk afterwards — its content and undo history stay
 ---exactly as they were, only the on-disk location and buffer name change.
 ---@param new_path string  New path (may be relative or use ~).
----@param opts? { bang?: boolean, refresh_explorers?: boolean, git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string, session_compat?: boolean }
+---@param opts? { bang?: boolean, refresh_explorers?: boolean, git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string, session_compat?: boolean, retry?: FileOps.RetryConfig }
 ---@return boolean ok
 ---@return string|nil msg
 function M.move(new_path, opts)
@@ -329,7 +402,7 @@ function M.move(new_path, opts)
     bang = opts.bang, reload = false, action = "move",
     refresh_explorers = opts.refresh_explorers,
     git_aware = opts.git_aware, git_warn_only = opts.git_warn_only, git_cmd = opts.git_cmd,
-    session_compat = opts.session_compat,
+    session_compat = opts.session_compat, retry = opts.retry,
   })
 end
 
@@ -340,7 +413,7 @@ end
 ---the new file just isn't tracked yet); `opts.git_aware` only adds a note
 ---to the returned message so the caller can warn if it wants to.
 ---@param new_path string
----@param opts? { bang?: boolean, open?: boolean, verb?: string, refresh_explorers?: boolean, git_aware?: boolean, git_cmd?: string }
+---@param opts? { bang?: boolean, open?: boolean, verb?: string, refresh_explorers?: boolean, git_aware?: boolean, git_cmd?: string, retry?: FileOps.RetryConfig }
 ---@return boolean ok
 ---@return string|nil msg
 function M.duplicate(new_path, opts)
@@ -358,7 +431,7 @@ function M.duplicate(new_path, opts)
     return false, "source file does not exist: " .. src
   end
 
-  local abs = resolve_path(new_path)
+  local abs = resolve_path(new_path, fn.fnamemodify(src, ":p:h"))
   if not abs then return false, "invalid destination: " .. tostring(new_path) end
 
   if fn.filereadable(abs) == 1 and not opts.bang then
@@ -374,9 +447,9 @@ function M.duplicate(new_path, opts)
     if not ok then return false, "save failed before duplicate: " .. tostring(err) end
   end
 
-  local ok, err = fsops.copy_file(src, abs)
+  local ok, err = fsops.copy_file(src, abs, retry_opts(src, opts.retry))
   if not ok then
-    return false, "copy failed: " .. tostring(err)
+    return false, "copy failed: " .. explain_fs_error(err)
   end
 
   if open then
@@ -397,7 +470,7 @@ end
 ---Silent counterpart to `M.duplicate` — same validation and libuv copy, just
 ---`opts.open` forced off.
 ---@param new_path string
----@param opts? { bang?: boolean, refresh_explorers?: boolean, git_aware?: boolean, git_cmd?: string }
+---@param opts? { bang?: boolean, refresh_explorers?: boolean, git_aware?: boolean, git_cmd?: string, retry?: FileOps.RetryConfig }
 ---@return boolean ok
 ---@return string|nil msg
 function M.copy(new_path, opts)
@@ -405,7 +478,7 @@ function M.copy(new_path, opts)
   return M.duplicate(new_path, {
     bang = opts.bang, open = false, verb = "copied",
     refresh_explorers = opts.refresh_explorers,
-    git_aware = opts.git_aware, git_cmd = opts.git_cmd,
+    git_aware = opts.git_aware, git_cmd = opts.git_cmd, retry = opts.retry,
   })
 end
 
@@ -455,7 +528,7 @@ end
 ---applies when `opts.mode` is `"permanent"` (or unset) — trashing a file is
 ---a different operation than `git rm`, so trash mode always uses the trash
 ---path and just notes tracked-ness in the message.
----@param opts? { force?: boolean, mode?: "trash"|"permanent", on_before_delete?: fun(path: string): boolean|nil, refresh_explorers?: boolean, git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string }
+---@param opts? { force?: boolean, mode?: "trash"|"permanent", on_before_delete?: fun(path: string): boolean|nil, refresh_explorers?: boolean, git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string, retry?: FileOps.RetryConfig }
 ---@return boolean ok
 ---@return string|nil msg
 function M.delete_current(opts)
@@ -487,6 +560,8 @@ function M.delete_current(opts)
   local used_git = false
   local ok, err
 
+  local ropts = retry_opts(path, opts.retry)
+
   if trash then
     ok, err = require("lib.nvim.fs.trash").trash_blocking(path)
   elseif tracked and not opts.git_warn_only then
@@ -494,13 +569,13 @@ function M.delete_current(opts)
     used_git = ok
     if not ok then
       -- Fall back to a plain delete rather than leaving the file untouched.
-      ok, err = fsops.delete_file(path)
+      ok, err = fsops.delete_file(path, ropts)
     end
   else
-    ok, err = fsops.delete_file(path)
+    ok, err = fsops.delete_file(path, ropts)
   end
   if not ok then
-    return false, (trash and "trash failed: " or "delete failed: ") .. tostring(err)
+    return false, (trash and "trash failed: " or "delete failed: ") .. explain_fs_error(err)
   end
 
   -- Close the buffer (force already implied by the guard above for modified ones).
@@ -514,6 +589,35 @@ function M.delete_current(opts)
   M.notify_change("delete", path, opts)
   local suffix = tracked and (used_git and " (git rm)" or " (git-tracked)") or ""
   return true, (trash and "trashed " or "deleted ") .. fn.fnamemodify(path, ":t") .. suffix
+end
+
+-- ─── Lock diagnosis ───────────────────────────────────────────────────────────
+
+---Diagnose why a mutation on the current buffer's file fails with a sharing
+---violation: is it locked *right now*, and which process holds it?
+---
+---Asynchronous, because the holder lookup spawns a helper process — hence a
+---callback instead of this module's usual `(ok, msg)` return. The heavy
+---lifting lives in `lib.nvim.cross.fs.lock`, so filetree.nvim and any other
+---consumer report the same findings in the same words.
+---@param cb fun(ok: boolean, msg: string)
+---@param path? string  Defaults to the current buffer's file.
+function M.diagnose_lock(cb, path)
+  if not path or path == "" then
+    local b = cur_buf()
+    if not b then return cb(false, "no valid buffer") end
+    path = buf_path(b)
+    if not path then return cb(false, "current buffer has no file name") end
+  end
+
+  local ok_lock, lock = pcall(require, "lib.nvim.cross.fs.lock")
+  if not ok_lock then
+    return cb(false, "lib.nvim.cross.fs.lock unavailable — update lib.nvim")
+  end
+
+  lock.report(path, function(lines)
+    cb(true, table.concat(lines, "\n"))
+  end)
 end
 
 -- ─── Info ─────────────────────────────────────────────────────────────────────
