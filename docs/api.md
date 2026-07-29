@@ -9,7 +9,7 @@ fileops.first(opts?)                 -- :File first equivalent
 fileops.last(opts?)                  -- :File last equivalent
 fileops.open(opts?)                  -- :File open equivalent
 fileops.copy_path(mode?)             -- :File path equivalent
-fileops.diagnose_lock(cb?, path?) -- :File lock equivalent (async; cb(ok, report))
+fileops.diagnose_lock(cb?, path?) -- :File lockinfo equivalent (async; cb(ok, report))
 fileops.info()                       -- :File info equivalent
 fileops.new_file(path, opts?)        -- :File new
 fileops.touch(path)                  -- :File touch

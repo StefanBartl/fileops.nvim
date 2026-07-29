@@ -15,7 +15,7 @@ local config = require("fileops.config")
 local SUBCMDS = {
   "new", "write", "saveas", "writeto", "mkdir", "touch",
   "rename", "move", "duplicate", "copy", "delete",
-  "next", "prev", "first", "last", "open", "path", "info", "lock",
+  "next", "prev", "first", "last", "open", "path", "info", "lockinfo",
   "bulk rename", "cd", "help",
 }
 
@@ -38,7 +38,7 @@ local HELP_TEXT = table.concat({
   "  open [target]           reopen current file in split/vsplit/tab/…",
   "  path [mode]             copy path to clipboard (abs/rel/name/dir)",
   "  info                    show size/mtime/permissions for current file",
-  "  lock [path]             who holds this file open (Windows EBUSY/EPERM diagnosis)",
+  "  lockinfo [path]         who holds this file open (Windows EBUSY/EPERM diagnosis)",
   "  bulk rename {pat} {rep} batch-rename files in dir via Lua pattern (preview + confirm)",
   "  cd [scope]              cd to buffer's dir + refresh explorer",
   "  help                    show this message",
@@ -462,7 +462,7 @@ local function dispatch(subcmd, fargs, bang, count)
   elseif subcmd == "info" then
     report(file.info())
 
-  elseif subcmd == "lock" then
+  elseif subcmd == "lockinfo" then
     file.diagnose_lock(function(ok_, msg)
       -- The report is a multi-line block meant to be read and pasted into a
       -- bug report, so it goes to :messages as well — a notification alone
@@ -511,7 +511,7 @@ end
 
 function M.register()
   composer.verb("File", {
-    desc = "Unified file operations (new/write/saveas/writeto/mkdir/touch/rename/move/duplicate/copy/delete/next/prev/first/last/open/path/info/lock/bulk rename/cd/help)",
+    desc = "Unified file operations (new/write/saveas/writeto/mkdir/touch/rename/move/duplicate/copy/delete/next/prev/first/last/open/path/info/lockinfo/bulk rename/cd/help)",
     bang = true,
     count = 0,
     routes = {
@@ -552,7 +552,7 @@ function M.register()
       route("open", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
       route("path", { { name = "mode", type = "STRING", optional = true, enum = PATH_MODES } }),
       route("info"),
-      route("lock", { { name = "path", type = "FILEOPS_PATH", optional = true } }),
+      route("lockinfo", { { name = "path", type = "FILEOPS_PATH", optional = true } }),
       {
         path = { "bulk", "rename" },
         args = {

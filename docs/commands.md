@@ -224,14 +224,14 @@ libuv `fs_stat` (works cross-platform, including Windows).
   permissions: 644
 ```
 
-## `:File lock [path]`
+## `:File lockinfo [path]`
 
 Diagnose a `EBUSY` / `EPERM` / `EACCES` failure: is the file locked *right
 now*, and which process is holding it? Defaults to the current buffer's file.
 Run it right after a rename/move/delete failed.
 
 ```
-:File lock
+:File lockinfo
 → path:   C:\repos\notes\00_Notes.md
   exists: yes
 

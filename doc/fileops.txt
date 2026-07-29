@@ -523,11 +523,11 @@ default (`session_compat.enable`, see |fileops-config|).
     :File info
 <
 
-:File lock [path]                                         *:File-lock*
+:File lockinfo [path]                                 *:File-lockinfo*
   Diagnose an `EBUSY`/`EPERM`/`EACCES` failure: is the file locked right now,
   and which process holds it? Defaults to the current buffer's file. Run it
   right after a rename/move/delete failed. >
-    :File lock
+    :File lockinfo
 <
   The report names the path, tries a live rename probe, and lists the
   holding processes via the Windows Restart Manager (no administrator rights
