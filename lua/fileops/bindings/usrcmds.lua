@@ -262,7 +262,7 @@ local function session_compat_flag()
 end
 
 ---Build a bulk-rename plan for the buffer's directory, preview it, and
----(on confirmation via `vim.ui.select`) execute it. `!` allows overwriting
+---(on confirmation via `kit.confirm`) execute it. `!` allows overwriting
 ---existing destinations.
 ---@param pattern string|nil
 ---@param replacement string|nil
@@ -298,17 +298,19 @@ local function do_bulk_rename(pattern, replacement, bang)
   notify.info(table.concat(preview, "\n"))
 
   local confirm_choice = ("Rename %d file(s)"):format(#plan)
-  vim.ui.select({ confirm_choice, "Cancel" }, {
-    prompt = "[fileops] Confirm bulk rename?",
-  }, function(choice)
-    if choice ~= confirm_choice then return end
-    local renamed, err = bulk.execute(plan, { bang = bang, refresh_explorers = refresh_flag() })
-    if err then
-      notify.error(("bulk rename: %d/%d renamed, first failure: %s"):format(renamed, #plan, err))
-    else
-      notify.info(("bulk rename: %d file(s) renamed"):format(renamed))
-    end
-  end)
+  require("lib.nvim.ui.kit").confirm({
+    question = "[fileops] Confirm bulk rename?",
+    choices = { confirm_choice, "Cancel" },
+    on_answer = function(choice)
+      if choice ~= confirm_choice then return end
+      local renamed, err = bulk.execute(plan, { bang = bang, refresh_explorers = refresh_flag() })
+      if err then
+        notify.error(("bulk rename: %d/%d renamed, first failure: %s"):format(renamed, #plan, err))
+      else
+        notify.info(("bulk rename: %d file(s) renamed"):format(renamed))
+      end
+    end,
+  })
 end
 
 ---Dispatch a parsed command to the appropriate operation.

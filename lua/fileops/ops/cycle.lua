@@ -6,7 +6,7 @@
 ---relay regardless of outcome, and the caller (the UI/binding layer) decides
 ---whether/how to notify it. The one exception is the "unsaved changes"
 ---confirm dialog inside `open_path`, which is itself an interactive UI flow
----(vim.ui.select) with no synchronous caller to report back to.
+---(kit.confirm) with no synchronous caller to report back to.
 local M = {}
 
 local notify = require("fileops.util.notify")
@@ -176,13 +176,13 @@ function M.open_path(path, opts)
   local esc    = fn.fnameescape(path)
 
   -- Prompt for modified buffer when replacing. This branch is an interactive
-  -- confirm dialog (vim.ui.select) with no synchronous caller to report back
+  -- confirm dialog (kit.confirm) with no synchronous caller to report back
   -- to, so it notifies directly rather than returning through the callback.
   if target == "replace" and opts.confirm_on_modified and vim.bo[bufnr].modified then
-    vim.ui.select(
-      { "Save and open", "Discard changes and open", "Cancel" },
-      { prompt = "[fileops] Buffer has unsaved changes:" },
-      function(choice)
+    require("lib.nvim.ui.kit").confirm({
+      question = "[fileops] Buffer has unsaved changes:",
+      choices = { "Save and open", "Discard changes and open", "Cancel" },
+      on_answer = function(choice)
         if not choice or choice == "Cancel" then return end
         if choice == "Save and open" then
           if not pcall(vim.cmd, "write") then
@@ -192,8 +192,8 @@ function M.open_path(path, opts)
         end
         local cmd = (choice == "Discard changes and open") and "edit! " or "edit "
         pcall(vim.cmd, cmd .. esc)
-      end
-    )
+      end,
+    })
     return true, nil
   end
 
