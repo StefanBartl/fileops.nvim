@@ -96,6 +96,8 @@ function M.check()
   else
     ok("gitsigns.nvim not found — on_hold falls back to previous-content preview")
   end
+
+  require("lib.nvim.usercmd.composer").checkhealth("File")
 end
 
 return M
