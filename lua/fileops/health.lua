@@ -1,18 +1,26 @@
 ---@module 'fileops.health'
+---Reports fileops's runtime environment and optional-dependency status to `:checkhealth`.
 local M = {}
 
+---@internal
+---@param msg string
 local function ok(msg)
   vim.health.ok(msg)
 end
 
+---@internal
+---@param msg string
 local function warn(msg)
   vim.health.warn(msg)
 end
 
+---@internal
+---@param msg string
 local function start(msg)
   vim.health.start(msg)
 end
 
+---Run all fileops health checks.
 function M.check()
   start("fileops")
 

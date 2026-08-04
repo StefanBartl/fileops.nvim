@@ -5,6 +5,8 @@
 local PREFIX = "[fileops] "
 local M = {}
 
+---@internal
+---@return table|nil notifier  lib.nvim's notifier instance, or nil when lib.nvim is absent.
 local function resolve()
   local ok, lib_notify = pcall(require, "lib.nvim.notify")
   if ok and type(lib_notify) == "table" and type(lib_notify.create) == "function" then
@@ -16,18 +18,26 @@ end
 
 local lib = resolve()
 
+---Show an info-level notification.
+---@param msg string
 function M.info(msg)
   if lib then lib.info(msg) else vim.notify(PREFIX .. msg, vim.log.levels.INFO) end
 end
 
+---Show a warning-level notification.
+---@param msg string
 function M.warn(msg)
   if lib then lib.warn(msg) else vim.notify(PREFIX .. msg, vim.log.levels.WARN) end
 end
 
+---Show an error-level notification.
+---@param msg string
 function M.error(msg)
   if lib then lib.error(msg) else vim.notify(PREFIX .. msg, vim.log.levels.ERROR) end
 end
 
+---Show a debug-level notification.
+---@param msg string
 function M.debug(msg)
   if lib then lib.debug(msg) else vim.notify(PREFIX .. msg, vim.log.levels.DEBUG) end
 end

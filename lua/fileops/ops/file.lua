@@ -16,6 +16,7 @@ local uv       = vim.uv or vim.loop
 
 -- ─── Internal helpers ─────────────────────────────────────────────────────────
 
+---@internal
 ---Return current buffer number, validated.
 ---@return integer|nil
 local function cur_buf()
@@ -23,6 +24,7 @@ local function cur_buf()
   return (b and api.nvim_buf_is_valid(b)) and b or nil
 end
 
+---@internal
 ---Return the file path associated with `bufnr`, or nil.
 ---@param bufnr integer
 ---@return string|nil
@@ -32,6 +34,7 @@ local function buf_path(bufnr)
   return (type(p) == "string" and p ~= "") and p or nil
 end
 
+---@internal
 ---Whether `p` already denotes an absolute location (POSIX root, Windows
 ---drive letter or UNC share). `~` is not checked here — `fn.expand` has
 ---already turned it into an absolute path by the time this is called.
@@ -43,6 +46,7 @@ local function is_absolute(p)
       or p:match("^%a:[\\/]") ~= nil
 end
 
+---@internal
 ---Expand and validate a user-supplied path.
 ---
 ---`base` anchors *relative* input. Ops that act on the current buffer's file
@@ -65,6 +69,7 @@ local function resolve_path(raw, base)
   return (abs ~= "") and abs or nil
 end
 
+---@internal
 ---Build the `lib.nvim.cross.fs.mutate` retry options for a mutation on
 ---`path`. Beyond the attempt budget, the `on_retry` hook does the two things
 ---that make retrying worthwhile at all — waiting alone cannot outlast a
@@ -96,6 +101,7 @@ local function retry_opts(path, retry)
   }
 end
 
+---@internal
 ---libuv reports a Windows sharing violation as `EBUSY`/`EPERM`/`EACCES`.
 ---Once the retry budget is spent, the bare code is a dead end for the user,
 ---so name the actual situation: some *other* process holds the file open. An
@@ -116,6 +122,7 @@ end
 
 -- ─── Explorer refresh / change events ──────────────────────────────────────────
 
+---@internal
 ---Reload known file-explorer plugins in place (no root change) so they pick
 ---up a file that was just created/renamed/moved/copied/deleted elsewhere in
 ---the tree. All calls are guarded; plugins that are not loaded are silently
@@ -287,6 +294,7 @@ end
 
 -- ─── Rename / Move ────────────────────────────────────────────────────────────
 
+---@internal
 ---Shared implementation for `M.rename` and `M.move`: rename the file of the
 ---current buffer on disk via `fsops.rename_file` (works across directories
 ---too, so this also covers "move") and re-point the buffer at the new path.
@@ -484,6 +492,7 @@ end
 
 -- ─── Delete ───────────────────────────────────────────────────────────────────
 
+---@internal
 ---Move every window currently displaying `bufnr` onto an alternate listed
 ---buffer, so that deleting `bufnr` does not spawn a throwaway empty buffer when
 ---other buffers still exist. Prefers the alternate file (`#`) for a natural
@@ -622,6 +631,7 @@ end
 
 -- ─── Info ─────────────────────────────────────────────────────────────────────
 
+---@internal
 ---Human-readable byte size (binary units, e.g. "12.3 KiB").
 ---@param bytes integer
 ---@return string
@@ -701,6 +711,7 @@ end
 
 -- ─── Change directory ──────────────────────────────────────────────────────────
 
+---@internal
 ---Refresh known file-explorer plugins so they reflect `dir` as the new root.
 ---All calls are guarded; plugins that are not loaded are silently skipped.
 ---@param dir string  Absolute directory.

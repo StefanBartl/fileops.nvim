@@ -7,6 +7,7 @@ local autocmd = require("lib.nvim.autocmd")
 
 local M = {}
 
+---@internal
 ---@param name string
 ---@return integer
 local function augroup(name)

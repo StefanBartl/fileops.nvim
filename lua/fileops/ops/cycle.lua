@@ -16,6 +16,7 @@ local uv      = vim.uv or vim.loop
 
 -- ─── Path helpers ────────────────────────────────────────────────────────────
 
+---@internal
 ---Resolve a canonical, absolute path.
 ---@param p string
 ---@param follow boolean  Resolve symlinks when true.
@@ -49,6 +50,7 @@ function M.get_root_dir(opts)
   return (dir ~= "") and dir or nil, (dir == "") and "cannot resolve buffer directory" or nil
 end
 
+---@internal
 ---Whether `name` matches a glob `pattern` (converted via `glob2regpat`).
 ---No pattern means everything matches.
 ---@param name string
@@ -59,6 +61,7 @@ local function matches_pattern(name, pattern)
   return fn.match(name, fn.glob2regpat(pattern)) ~= -1
 end
 
+---@internal
 ---Classify a `vim.fs.dir` entry, falling back to `fs_stat` when the
 ---iterator itself couldn't determine the type (e.g. some network mounts).
 ---@param full string  Absolute-ish path to the entry.
@@ -73,6 +76,7 @@ local function classify_entry(full, t)
   return st.type == "file", st.type == "directory"
 end
 
+---@internal
 ---Recursively collect matching files under `dir` into `acc`. Symlinked
 ---directories are never descended into, so a symlink cycle can't cause an
 ---infinite walk.
@@ -100,6 +104,7 @@ local function collect_recursive(dir, opts, acc)
   end
 end
 
+---@internal
 ---List regular, filtered files in `dir` sorted alphabetically. Recurses
 ---into subdirectories when `opts.root` is `"buffer_dir_recursive"` or
 ---`"cwd_recursive"`.
@@ -133,6 +138,7 @@ local function list_files(dir, opts)
   return acc
 end
 
+---@internal
 ---Find the index of `current` within `files`.
 ---@param files string[]
 ---@param current string
@@ -147,6 +153,7 @@ local function index_of(files, current, ci)
   return nil
 end
 
+---@internal
 ---Clamp and validate a count to [1, ∞).
 ---@param count integer|nil
 ---@return integer

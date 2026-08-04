@@ -78,6 +78,7 @@ local CYCLE_TARGET_MAP = {
 -- type; every other path completion below is FILEOPS_PATH (bufdir-relative);
 -- non-path args map onto enums (CD_SCOPES/CYCLE_TARGETS/PATH_MODES).
 
+---@internal
 ---Complete `arg_lead` relative to the current buffer's directory instead of
 ---cwd (`getcompletion`'s default base), so `:File rename <Tab>` browses
 ---files next to the buffer being edited rather than wherever Neovim's cwd
@@ -135,6 +136,7 @@ composer.register_type("FILEOPS_CYCLE_ARG", {
 
 local report = notify.report
 
+---@internal
 ---Split next/prev's two optional args into a resolved target + glob
 ---pattern. Since the first slot may be either a target keyword or a glob
 ---filter (`:File next *.lua`), a recognized target keyword there shifts the
@@ -150,6 +152,7 @@ local function resolve_cycle_args(a1, a2)
   return nil, a1
 end
 
+---@internal
 ---Run the file-cycle navigate with opts from config + per-call overrides.
 ---@param direction FileOps.Direction
 ---@param a1 string|nil  Target keyword or glob pattern (see `resolve_cycle_args`).
@@ -175,6 +178,7 @@ local function do_cycle(direction, a1, a2, count, bang)
   report(cycle.navigate(dir, direction, copts, count))
 end
 
+---@internal
 ---Jump straight to the first/last file in the directory, with opts from
 ---config + per-call overrides (same target/bang handling as `do_cycle`).
 ---@param edge "first"|"last"
@@ -198,6 +202,7 @@ local function do_jump(edge, target_arg, bang)
   report(cycle.jump_edge(dir, edge, copts))
 end
 
+---@internal
 ---Resolve destination from fargs, handling optional "%" scope prefix.
 ---Returns the destination path, or nil if missing.
 ---@param fargs string[]  Args after the subcommand.
@@ -210,6 +215,7 @@ local function resolve_dest(fargs)
   return fargs[1]    -- :File rename dest  (% implied)
 end
 
+---@internal
 ---Prompt for a missing path argument via kit.input instead of erroring.
 ---Calls `cb(input)` once a non-empty value is entered; a cancelled/empty
 ---prompt is a silent no-op (matches vim.ui.input's own convention).
@@ -225,6 +231,7 @@ local function prompt_dest(prompt_label, cb)
   })
 end
 
+---@internal
 ---Whether tree-explorer refresh is enabled per `config.explorer.refresh_on_change`.
 ---@return boolean
 local function refresh_flag()
@@ -232,6 +239,7 @@ local function refresh_flag()
   return not (cfg.explorer and cfg.explorer.refresh_on_change == false)
 end
 
+---@internal
 ---git_aware.* opts for rename/move/duplicate/copy/delete, from config.
 ---@return { git_aware: boolean, git_warn_only: boolean, git_cmd: string }
 local function git_flags()
@@ -244,6 +252,7 @@ local function git_flags()
   }
 end
 
+---@internal
 ---`retry.*` opts for the filesystem mutations, from config. Folded into the
 ---same table as `git_flags()` by every caller, so it returns the wrapper key
 ---the ops layer expects rather than the bare fields.
@@ -253,6 +262,7 @@ local function retry_flags()
   return { retry = cfg.retry or {} }
 end
 
+---@internal
 ---Whether rename/move should resave the active `:mksession` session
 ---(`session_compat.enable`, default true).
 ---@return boolean
@@ -261,6 +271,7 @@ local function session_compat_flag()
   return not (cfg.session_compat and cfg.session_compat.enable == false)
 end
 
+---@internal
 ---Build a bulk-rename plan for the buffer's directory, preview it, and
 ---(on confirmation via `kit.confirm`) execute it. `!` allows overwriting
 ---existing destinations.
@@ -313,6 +324,7 @@ local function do_bulk_rename(pattern, replacement, bang)
   })
 end
 
+---@internal
 ---Dispatch a parsed command to the appropriate operation.
 ---@param subcmd string
 ---@param fargs string[]  Arguments after the subcommand.
@@ -486,6 +498,7 @@ end
 
 -- ─── Register ────────────────────────────────────────────────────────────────
 
+---@internal
 ---Reconstruct a flat fargs array (matching dispatch's expected shape) from
 --- composer's bound positionals + any leftover tokens.
 ---@param ctx table composer Ctx
@@ -497,6 +510,8 @@ local function fargs_of(ctx)
   return out
 end
 
+---@internal
+---Build a composer route table for `subcmd`, dispatching through `dispatch`.
 ---@param subcmd string
 ---@param args? table[]
 ---@return table

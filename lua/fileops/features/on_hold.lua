@@ -15,6 +15,7 @@ local M = {}
 ---@type integer  Namespace for the fallback EOL/right-aligned virtual text
 local NS = api.nvim_create_namespace("fileops_on_hold_preview")
 
+---@internal
 ---Clear this feature's virtual text in a buffer.
 ---@param buf integer
 ---@return nil
@@ -24,6 +25,7 @@ local function clear_line_diff(buf)
   end
 end
 
+---@internal
 ---@param name string
 ---@return integer
 local function augroup(name)
@@ -34,6 +36,7 @@ local function augroup(name)
   return api.nvim_create_augroup("fileops_on_hold_" .. name, { clear = true })
 end
 
+---@internal
 ---@param s string
 ---@param max_len integer
 ---@return string
@@ -51,6 +54,7 @@ local function truncate(s, max_len)
   return s:sub(1, n - 2) .. " …"
 end
 
+---@internal
 ---@param first string|nil
 ---@return string|nil
 local function parse_blame_sha(first)
@@ -64,12 +68,14 @@ local function parse_blame_sha(first)
   return (#sha >= 7 and #sha <= 40) and sha or nil
 end
 
+---@internal
 ---@param win integer
 ---@return integer
 local function get_lnum(win)
   return api.nvim_win_get_cursor(win)[1]
 end
 
+---@internal
 ---Normalize Neovim's mode string to one of "n"|"v"|"i".
 ---@return "n"|"v"|"i"|nil
 local function normalize_mode()
@@ -86,6 +92,7 @@ local function normalize_mode()
   return nil
 end
 
+---@internal
 ---@param modes string|string[]|nil
 ---@return boolean
 local function mode_allowed(modes)
@@ -106,6 +113,7 @@ local function mode_allowed(modes)
   return cur ~= nil and want[cur] == true
 end
 
+---@internal
 ---@param stdout string|nil
 ---@return string[]
 local function to_lines(stdout)
@@ -115,6 +123,7 @@ local function to_lines(stdout)
   return vim.split((stdout:gsub("\n$", "")), "\n", { plain = true })
 end
 
+---@internal
 ---@param git_cmd string
 ---@return boolean
 local function in_git_repo(git_cmd)
@@ -122,6 +131,7 @@ local function in_git_repo(git_cmd)
   return res.code == 0
 end
 
+---@internal
 ---@param git_cmd string
 ---@param file string
 ---@return boolean
@@ -130,6 +140,7 @@ local function is_tracked(git_cmd, file)
   return res.code == 0
 end
 
+---@internal
 ---@param ignore_buftypes string[]|nil
 ---@return boolean
 local function normal_buf_allowed(ignore_buftypes)
@@ -140,6 +151,7 @@ local function normal_buf_allowed(ignore_buftypes)
   return bt == "" or bt == "acwrite"
 end
 
+---@internal
 ---@param git_cmd string
 ---@param file string
 ---@param lnum integer
@@ -170,6 +182,7 @@ local function get_previous_line(git_cmd, file, lnum)
   return blob[lnum]
 end
 
+---@internal
 ---@param modes string|string[]|nil
 ---@param events_override string[]|nil
 ---@return string[]

@@ -9,6 +9,7 @@ local cycle  = require("fileops.ops.cycle")
 local notify = require("fileops.util.notify")
 local config = require("fileops.config")
 
+---@internal
 ---Set a keymap. Uses lib.nvim's map helper if available (soft dependency),
 ---else falls back to plain vim.keymap.set.
 ---@param lhs string
@@ -23,12 +24,14 @@ local function map(lhs, fn, desc)
   vim.keymap.set("n", lhs, fn, { silent = true, desc = desc })
 end
 
+---@internal
 ---@return FileOps.KeymapLhs
 local function lhs_cfg()
   local km = config.get().keymaps or {}
   return km.lhs or {}
 end
 
+---@internal
 ---@param direction FileOps.Direction
 ---@param target FileOps.OpenTarget
 ---@return fun()
@@ -45,6 +48,7 @@ local function cycle_fn(direction, target)
   end
 end
 
+---@internal
 ---Bind a single cycle key if its lhs is configured (not `false`/nil).
 ---@param key string        Key into FileOps.KeymapLhs.
 ---@param direction FileOps.Direction
