@@ -12,7 +12,7 @@ local M = {}
 local notify = require("fileops.util.notify")
 local open_background = require("lib.nvim.buffer.open_background")
 local api, fn = vim.api, vim.fn
-local uv      = vim.uv or vim.loop
+local uv = vim.uv or vim.loop
 
 -- ─── Path helpers ────────────────────────────────────────────────────────────
 
@@ -24,7 +24,9 @@ local uv      = vim.uv or vim.loop
 local function canon(p, follow)
   if follow and uv.fs_realpath then
     local rp = uv.fs_realpath(p)
-    if type(rp) == "string" and rp ~= "" then return rp end
+    if type(rp) == "string" and rp ~= "" then
+      return rp
+    end
   end
   return fn.fnamemodify(p, ":p")
 end
@@ -39,7 +41,7 @@ function M.get_root_dir(opts)
   if opts.root == "cwd" or opts.root == "cwd_recursive" then
     local cwd = fn.getcwd()
     return (type(cwd) == "string" and cwd ~= "") and cwd or nil,
-           (type(cwd) ~= "string" or cwd == "") and "getcwd() failed" or nil
+      (type(cwd) ~= "string" or cwd == "") and "getcwd() failed" or nil
   end
 
   local name = api.nvim_buf_get_name(0)
@@ -57,7 +59,9 @@ end
 ---@param pattern string|nil
 ---@return boolean
 local function matches_pattern(name, pattern)
-  if not pattern or pattern == "" then return true end
+  if not pattern or pattern == "" then
+    return true
+  end
   return fn.match(name, fn.glob2regpat(pattern)) ~= -1
 end
 
@@ -69,10 +73,16 @@ end
 ---@return boolean is_file
 ---@return boolean is_dir
 local function classify_entry(full, t)
-  if t == "file" then return true, false end
-  if t == "directory" then return false, true end
+  if t == "file" then
+    return true, false
+  end
+  if t == "directory" then
+    return false, true
+  end
   local st = uv.fs_stat and uv.fs_stat(fn.fnamemodify(full, ":p"))
-  if not st then return false, false end
+  if not st then
+    return false, false
+  end
   return st.type == "file", st.type == "directory"
 end
 
@@ -85,7 +95,9 @@ end
 ---@param acc string[]
 local function collect_recursive(dir, opts, acc)
   local ok, iter = pcall(vim.fs.dir, dir)
-  if not ok then return end
+  if not ok then
+    return
+  end
   for name, t in iter do
     local hidden = name:sub(1, 1) == "."
     if opts.include_hidden or not hidden then
@@ -126,7 +138,11 @@ local function list_files(dir, opts)
     for name, t in err_or_iter do
       local is_file = classify_entry(dir .. "/" .. name, t)
       local hidden = name:sub(1, 1) == "."
-      if is_file and (opts.include_hidden or not hidden) and matches_pattern(name, opts.pattern) then
+      if
+        is_file
+        and (opts.include_hidden or not hidden)
+        and matches_pattern(name, opts.pattern)
+      then
         acc[#acc + 1] = canon(dir .. "/" .. name, opts.follow_symlinks)
       end
     end
@@ -148,7 +164,9 @@ local function index_of(files, current, ci)
   local key = ci and current:lower() or current
   for i = 1, #files do
     local v = ci and files[i]:lower() or files[i]
-    if v == key then return i end
+    if v == key then
+      return i
+    end
   end
   return nil
 end
@@ -158,7 +176,9 @@ end
 ---@param count integer|nil
 ---@return integer
 local function validate_count(count)
-  if type(count) ~= "number" or count < 1 then return 1 end
+  if type(count) ~= "number" or count < 1 then
+    return 1
+  end
   return math.floor(count)
 end
 
@@ -171,16 +191,22 @@ end
 ---@return boolean ok
 ---@return string|nil msg
 function M.open_path(path, opts)
-  if type(path) ~= "string" or path == "" then return false, "empty path" end
+  if type(path) ~= "string" or path == "" then
+    return false, "empty path"
+  end
 
   local win = api.nvim_get_current_win()
-  if not (win and api.nvim_win_is_valid(win)) then return false, "no valid window" end
+  if not (win and api.nvim_win_is_valid(win)) then
+    return false, "no valid window"
+  end
 
   local bufnr = api.nvim_get_current_buf()
-  if not (bufnr and api.nvim_buf_is_valid(bufnr)) then return false, "no valid buffer" end
+  if not (bufnr and api.nvim_buf_is_valid(bufnr)) then
+    return false, "no valid buffer"
+  end
 
   local target = opts.open_target or "replace"
-  local esc    = fn.fnameescape(path)
+  local esc = fn.fnameescape(path)
 
   -- Prompt for modified buffer when replacing. This branch is an interactive
   -- confirm dialog (kit.confirm) with no synchronous caller to report back
@@ -190,7 +216,9 @@ function M.open_path(path, opts)
       question = "[fileops] Buffer has unsaved changes:",
       choices = { "Save and open", "Discard changes and open", "Cancel" },
       on_answer = function(choice)
-        if not choice or choice == "Cancel" then return end
+        if not choice or choice == "Cancel" then
+          return
+        end
         if choice == "Save and open" then
           if not pcall(vim.cmd, "write") then
             notify.error("save failed, aborting navigation")
@@ -215,17 +243,19 @@ function M.open_path(path, opts)
       pcall(api.nvim_buf_delete, old, { force = false })
     end
     return true, nil
-
   elseif target == "current" then
     local ok, err = pcall(vim.cmd, "edit " .. esc)
-    if not ok then return false, "open failed: " .. tostring(err) end
+    if not ok then
+      return false, "open failed: " .. tostring(err)
+    end
     return true, nil
-
   elseif target == "split" or target == "vsplit" then
     local cmd = (target == "split") and "split " or "vsplit "
     local cur = win
     local ok, err = pcall(vim.cmd, cmd .. esc)
-    if not ok then return false, target .. " failed: " .. tostring(err) end
+    if not ok then
+      return false, target .. " failed: " .. tostring(err)
+    end
     if opts.keep_focus and api.nvim_win_is_valid(cur) then
       vim.schedule(function()
         if api.nvim_win_is_valid(cur) then
@@ -234,19 +264,18 @@ function M.open_path(path, opts)
       end)
     end
     return true, nil
-
   elseif target == "tab" then
     local ok, err = pcall(vim.cmd, "tabedit " .. esc)
-    if not ok then return false, "tabedit failed: " .. tostring(err) end
+    if not ok then
+      return false, "tabedit failed: " .. tostring(err)
+    end
     return true, nil
-
   elseif target == "background" then
     local ok, err = open_background(path)
     if not ok then
       return false, "background open failed: " .. tostring(err)
     end
     return true, nil
-
   else
     return false, "unknown open_target: " .. tostring(target)
   end
@@ -274,7 +303,7 @@ function M.navigate(dir, mode, opts, count)
     return false, "current buffer has no file name"
   end
 
-  local ci  = opts.case_insensitive or false
+  local ci = opts.case_insensitive or false
   local key = canon(cur, opts.follow_symlinks)
   local idx = index_of(files, key, ci)
 
@@ -297,10 +326,10 @@ function M.navigate(dir, mode, opts, count)
 
   if mode == "next" then
     target_idx = opts.wrap and ((idx - 1 + count) % n) + 1
-                           or (idx + count <= n and idx + count or nil)
+      or (idx + count <= n and idx + count or nil)
   else
     target_idx = opts.wrap and ((idx - 1 - count) % n) + 1
-                           or (idx - count >= 1 and idx - count or nil)
+      or (idx - count >= 1 and idx - count or nil)
   end
 
   if not target_idx then

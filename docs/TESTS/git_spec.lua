@@ -45,5 +45,9 @@ return function(H)
   ok(rm_ok, "rm succeeds: " .. tostring(rm_err))
   eq(vim.fn.filereadable(dest_path), 0, "rm: file removed from disk")
   local status = run("git", "status", "--porcelain")
-  eq(status.stdout:match("renamed%.txt"), nil, "rm: no longer shows up in git status (fully removed)")
+  eq(
+    status.stdout:match("renamed%.txt"),
+    nil,
+    "rm: no longer shows up in git status (fully removed)"
+  )
 end

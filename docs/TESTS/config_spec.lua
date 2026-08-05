@@ -36,7 +36,9 @@ return function(H)
   eq(o.cd.refresh_explorers, true, "untouched sibling key keeps default")
 
   -- delete.mode override + on_before_delete hook is passed through as-is
-  local hook = function() return true end
+  local hook = function()
+    return true
+  end
   config.setup({ delete = { mode = "trash", on_before_delete = hook } })
   local dd = config.get()
   eq(dd.delete.mode, "trash", "override delete.mode")

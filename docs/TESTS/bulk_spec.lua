@@ -40,8 +40,11 @@ return function(H)
   eq(vim.fn.filereadable(dir .. "memo_2.txt"), 1, "execute: memo_2.txt now exists")
   eq(vim.fn.filereadable(dir .. "note_1.txt"), 0, "execute: note_1.txt no longer exists")
   eq(vim.fn.filereadable(dir .. "note_2.txt"), 0, "execute: note_2.txt no longer exists")
-  eq(vim.api.nvim_buf_get_name(buf), vim.fn.fnamemodify(dir .. "memo_1.txt", ":p"),
-    "execute: open buffer follows the rename")
+  eq(
+    vim.api.nvim_buf_get_name(buf),
+    vim.fn.fnamemodify(dir .. "memo_1.txt", ":p"),
+    "execute: open buffer follows the rename"
+  )
 
   -- execute: refuses to overwrite an existing destination without bang
   H.write_file(dir .. "a.log", "-- a")

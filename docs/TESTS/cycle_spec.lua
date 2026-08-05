@@ -12,14 +12,14 @@ return function(H)
 
   ---@type FileOps.CycleConfig
   local opts = {
-    open_target         = "current",
-    keep_focus          = true,
-    include_hidden      = false,
-    wrap                = true,
-    follow_symlinks     = true,
-    root                = "buffer_dir",
+    open_target = "current",
+    keep_focus = true,
+    include_hidden = false,
+    wrap = true,
+    follow_symlinks = true,
+    root = "buffer_dir",
     confirm_on_modified = false,
-    case_insensitive    = true,
+    case_insensitive = true,
   }
 
   H.edit(dir .. "a.lua")
@@ -85,7 +85,9 @@ return function(H)
   H.write_file(dir .. "sub/nested.lua", "-- nested")
   H.write_file(dir .. "sub/deeper/deepest.lua", "-- deepest")
   local opts_rec = vim.tbl_extend("force", opts, {
-    root = "buffer_dir_recursive", pattern = "*.lua", wrap = true,
+    root = "buffer_dir_recursive",
+    pattern = "*.lua",
+    wrap = true,
   })
   H.edit(dir .. "a.lua")
   local root_rec, root_rec_err = cycle.get_root_dir(opts_rec)

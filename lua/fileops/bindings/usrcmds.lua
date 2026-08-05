@@ -5,18 +5,36 @@ local M = {}
 
 local composer = require("lib.nvim.usercmd.composer")
 local notify = require("fileops.util.notify")
-local file   = require("fileops.ops.file")
-local cycle  = require("fileops.ops.cycle")
-local bulk   = require("fileops.ops.bulk")
+local file = require("fileops.ops.file")
+local cycle = require("fileops.ops.cycle")
+local bulk = require("fileops.ops.bulk")
 local config = require("fileops.config")
 
 -- ─── Subcommand catalogue ─────────────────────────────────────────────────────
 
 local SUBCMDS = {
-  "new", "write", "saveas", "writeto", "mkdir", "touch",
-  "rename", "move", "duplicate", "copy", "delete",
-  "next", "prev", "first", "last", "open", "path", "info", "lockinfo",
-  "bulk rename", "cd", "help",
+  "new",
+  "write",
+  "saveas",
+  "writeto",
+  "mkdir",
+  "touch",
+  "rename",
+  "move",
+  "duplicate",
+  "copy",
+  "delete",
+  "next",
+  "prev",
+  "first",
+  "last",
+  "open",
+  "path",
+  "info",
+  "lockinfo",
+  "bulk rename",
+  "cd",
+  "help",
 }
 
 local HELP_TEXT = table.concat({
@@ -50,26 +68,35 @@ local CD_SCOPES = { "window", "tab", "global" }
 
 local CD_SCOPE_MAP = {
   ["window"] = "lcd",
-  ["tab"]    = "tcd",
+  ["tab"] = "tcd",
   ["global"] = "cd",
 }
 
 local CYCLE_TARGETS = {
-  "%", "replace", "stay", "current", "new", "split", "vsplit", "tab", "bg", "background",
+  "%",
+  "replace",
+  "stay",
+  "current",
+  "new",
+  "split",
+  "vsplit",
+  "tab",
+  "bg",
+  "background",
 }
 
 local PATH_MODES = { "abs", "rel", "name", "dir" }
 
 local CYCLE_TARGET_MAP = {
-  ["%"]          = "replace",
-  ["replace"]    = "replace",
-  ["stay"]       = "current",
-  ["current"]    = "current",
-  ["new"]        = "split",
-  ["split"]      = "split",
-  ["vsplit"]     = "vsplit",
-  ["tab"]        = "tab",
-  ["bg"]         = "background",
+  ["%"] = "replace",
+  ["replace"] = "replace",
+  ["stay"] = "current",
+  ["current"] = "current",
+  ["new"] = "split",
+  ["split"] = "split",
+  ["vsplit"] = "vsplit",
+  ["tab"] = "tab",
+  ["bg"] = "background",
   ["background"] = "background",
 }
 
@@ -101,7 +128,9 @@ local function complete_from_bufdir(arg_lead)
 end
 
 composer.register_type("FILEOPS_DEST_FIRST", {
-  validate = function(raw) return true, raw, nil end,
+  validate = function(raw)
+    return true, raw, nil
+  end,
   complete = function(arg_lead)
     local fc = complete_from_bufdir(arg_lead)
     if ("%"):sub(1, #arg_lead) == arg_lead then
@@ -112,7 +141,9 @@ composer.register_type("FILEOPS_DEST_FIRST", {
 })
 
 composer.register_type("FILEOPS_PATH", {
-  validate = function(raw) return true, require("lib.nvim.cross.fs.expand_path")(raw), nil end,
+  validate = function(raw)
+    return true, require("lib.nvim.cross.fs.expand_path")(raw), nil
+  end,
   complete = complete_from_bufdir,
 })
 
@@ -121,12 +152,18 @@ composer.register_type("FILEOPS_PATH", {
 -- enum. Validation always passes; completion still offers the known target
 -- keywords as a prefix match.
 composer.register_type("FILEOPS_CYCLE_ARG", {
-  validate = function(raw) return true, raw, nil end,
+  validate = function(raw)
+    return true, raw, nil
+  end,
   complete = function(arg_lead)
-    if arg_lead == "" then return vim.deepcopy(CYCLE_TARGETS) end
+    if arg_lead == "" then
+      return vim.deepcopy(CYCLE_TARGETS)
+    end
     local out = {}
     for _, t in ipairs(CYCLE_TARGETS) do
-      if t:sub(1, #arg_lead) == arg_lead then out[#out + 1] = t end
+      if t:sub(1, #arg_lead) == arg_lead then
+        out[#out + 1] = t
+      end
     end
     return out
   end,
@@ -148,7 +185,9 @@ local report = notify.report
 ---@return string|nil pattern
 local function resolve_cycle_args(a1, a2)
   local target = a1 and CYCLE_TARGET_MAP[a1:lower()]
-  if target then return target, a2 end
+  if target then
+    return target, a2
+  end
   return nil, a1
 end
 
@@ -160,14 +199,20 @@ end
 ---@param count integer
 ---@param bang boolean
 local function do_cycle(direction, a1, a2, count, bang)
-  local cfg   = config.get()
+  local cfg = config.get()
   local copts = vim.deepcopy(cfg.cycle or {})
 
   local target, pattern = resolve_cycle_args(a1, a2)
-  if target then copts.open_target = target end
-  if pattern and pattern ~= "" then copts.pattern = pattern end
+  if target then
+    copts.open_target = target
+  end
+  if pattern and pattern ~= "" then
+    copts.pattern = pattern
+  end
 
-  if bang then copts.confirm_on_modified = false end
+  if bang then
+    copts.confirm_on_modified = false
+  end
 
   local dir, err = cycle.get_root_dir(copts)
   if not dir then
@@ -185,13 +230,17 @@ end
 ---@param target_arg string|nil
 ---@param bang boolean
 local function do_jump(edge, target_arg, bang)
-  local cfg   = config.get()
+  local cfg = config.get()
   local copts = vim.deepcopy(cfg.cycle or {})
 
   local target = target_arg and CYCLE_TARGET_MAP[target_arg:lower()]
-  if target then copts.open_target = target end
+  if target then
+    copts.open_target = target
+  end
 
-  if bang then copts.confirm_on_modified = false end
+  if bang then
+    copts.confirm_on_modified = false
+  end
 
   local dir, err = cycle.get_root_dir(copts)
   if not dir then
@@ -208,11 +257,13 @@ end
 ---@param fargs string[]  Args after the subcommand.
 ---@return string|nil dest
 local function resolve_dest(fargs)
-  if #fargs == 0 then return nil end
-  if fargs[1] == "%" then
-    return fargs[2]  -- :File rename % dest
+  if #fargs == 0 then
+    return nil
   end
-  return fargs[1]    -- :File rename dest  (% implied)
+  if fargs[1] == "%" then
+    return fargs[2] -- :File rename % dest
+  end
+  return fargs[1] -- :File rename dest  (% implied)
 end
 
 ---@internal
@@ -225,7 +276,9 @@ local function prompt_dest(prompt_label, cb)
   require("lib.nvim.ui.kit").input({
     title = prompt_label,
     on_submit = function(input)
-      if not input or input == "" then return end
+      if not input or input == "" then
+        return
+      end
       cb(input)
     end,
   })
@@ -304,7 +357,9 @@ local function do_bulk_rename(pattern, replacement, bang)
   local preview = { ("bulk rename: %d file(s) in %s"):format(#plan, dir) }
   for _, item in ipairs(plan) do
     preview[#preview + 1] = ("  %s → %s"):format(
-      vim.fn.fnamemodify(item.old, ":t"), vim.fn.fnamemodify(item.new, ":t"))
+      vim.fn.fnamemodify(item.old, ":t"),
+      vim.fn.fnamemodify(item.new, ":t")
+    )
   end
   notify.info(table.concat(preview, "\n"))
 
@@ -313,7 +368,9 @@ local function do_bulk_rename(pattern, replacement, bang)
     question = "[fileops] Confirm bulk rename?",
     choices = { confirm_choice, "Cancel" },
     on_answer = function(choice)
-      if choice ~= confirm_choice then return end
+      if choice ~= confirm_choice then
+        return
+      end
       local renamed, err = bulk.execute(plan, { bang = bang, refresh_explorers = refresh_flag() })
       if err then
         notify.error(("bulk rename: %d/%d renamed, first failure: %s"):format(renamed, #plan, err))
@@ -344,7 +401,6 @@ local function dispatch(subcmd, fargs, bang, count)
         report(file.edit_new(dest, { refresh_explorers = refresh }))
       end)
     end
-
   elseif subcmd == "write" then
     if fargs[1] then
       report(file.edit_new(fargs[1], { write = true, bang = bang, refresh_explorers = refresh }))
@@ -353,7 +409,6 @@ local function dispatch(subcmd, fargs, bang, count)
         report(file.edit_new(dest, { write = true, bang = bang, refresh_explorers = refresh }))
       end)
     end
-
   elseif subcmd == "saveas" then
     if fargs[1] then
       report(file.save_as(fargs[1], { bang = bang, refresh_explorers = refresh }))
@@ -362,7 +417,6 @@ local function dispatch(subcmd, fargs, bang, count)
         report(file.save_as(dest, { bang = bang, refresh_explorers = refresh }))
       end)
     end
-
   elseif subcmd == "writeto" then
     if fargs[1] then
       report(file.write_to(fargs[1], { bang = bang, refresh_explorers = refresh }))
@@ -371,10 +425,8 @@ local function dispatch(subcmd, fargs, bang, count)
         report(file.write_to(dest, { bang = bang, refresh_explorers = refresh }))
       end)
     end
-
   elseif subcmd == "mkdir" then
     report(file.mk_parent({ refresh_explorers = refresh }))
-
   elseif subcmd == "touch" then
     if fargs[1] then
       report(file.touch(fargs[1], { refresh_explorers = refresh }))
@@ -383,11 +435,13 @@ local function dispatch(subcmd, fargs, bang, count)
         report(file.touch(dest, { refresh_explorers = refresh }))
       end)
     end
-
   elseif subcmd == "rename" then
     local dest = resolve_dest(fargs)
-    local ropts = vim.tbl_extend("force",
-      { bang = bang, refresh_explorers = refresh, session_compat = session_compat_flag() }, mutopts)
+    local ropts = vim.tbl_extend(
+      "force",
+      { bang = bang, refresh_explorers = refresh, session_compat = session_compat_flag() },
+      mutopts
+    )
     if dest then
       report(file.rename(dest, ropts))
     else
@@ -395,11 +449,13 @@ local function dispatch(subcmd, fargs, bang, count)
         report(file.rename(d, ropts))
       end)
     end
-
   elseif subcmd == "move" then
     local dest = resolve_dest(fargs)
-    local mopts = vim.tbl_extend("force",
-      { bang = bang, refresh_explorers = refresh, session_compat = session_compat_flag() }, mutopts)
+    local mopts = vim.tbl_extend(
+      "force",
+      { bang = bang, refresh_explorers = refresh, session_compat = session_compat_flag() },
+      mutopts
+    )
     if dest then
       report(file.move(dest, mopts))
     else
@@ -407,7 +463,6 @@ local function dispatch(subcmd, fargs, bang, count)
         report(file.move(d, mopts))
       end)
     end
-
   elseif subcmd == "duplicate" then
     local dest = resolve_dest(fargs)
     local dopts = vim.tbl_extend("force", { bang = bang, refresh_explorers = refresh }, mutopts)
@@ -418,7 +473,6 @@ local function dispatch(subcmd, fargs, bang, count)
         report(file.duplicate(d, dopts))
       end)
     end
-
   elseif subcmd == "copy" then
     local dest = resolve_dest(fargs)
     local copts = vim.tbl_extend("force", { bang = bang, refresh_explorers = refresh }, mutopts)
@@ -429,7 +483,6 @@ local function dispatch(subcmd, fargs, bang, count)
         report(file.copy(d, copts))
       end)
     end
-
   elseif subcmd == "delete" then
     local cfg = config.get()
     local dcfg = cfg.delete or {}
@@ -439,58 +492,52 @@ local function dispatch(subcmd, fargs, bang, count)
       on_before_delete = dcfg.on_before_delete,
       refresh_explorers = refresh,
     }, mutopts)))
-
   elseif subcmd == "cd" then
-    local cfg   = config.get()
-    local arg   = fargs[1] and CD_SCOPE_MAP[fargs[1]:lower()]
+    local cfg = config.get()
+    local arg = fargs[1] and CD_SCOPE_MAP[fargs[1]:lower()]
     local scope = arg or (cfg.cd and CD_SCOPE_MAP[cfg.cd.scope]) or "lcd"
     local cd_refresh = not (cfg.cd and cfg.cd.refresh_explorers == false)
     report(file.cd_here({ scope = scope, refresh = cd_refresh }))
-
   elseif subcmd == "next" then
     do_cycle("next", fargs[1], fargs[2], count, bang)
-
   elseif subcmd == "prev" then
     do_cycle("prev", fargs[1], fargs[2], count, bang)
-
   elseif subcmd == "first" then
     do_jump("first", fargs[1], bang)
-
   elseif subcmd == "last" then
     do_jump("last", fargs[1], bang)
-
   elseif subcmd == "open" then
-    local cfg   = config.get()
+    local cfg = config.get()
     local copts = vim.deepcopy(cfg.cycle or {})
 
     local target = fargs[1] and CYCLE_TARGET_MAP[fargs[1]:lower()]
-    if target then copts.open_target = target end
+    if target then
+      copts.open_target = target
+    end
 
-    if bang then copts.confirm_on_modified = false end
+    if bang then
+      copts.confirm_on_modified = false
+    end
 
     report(cycle.open_current(copts))
-
   elseif subcmd == "path" then
     report(file.copy_path(fargs[1]))
-
   elseif subcmd == "info" then
     report(file.info())
-
   elseif subcmd == "lockinfo" then
     file.diagnose_lock(function(ok_, msg)
       -- The report is a multi-line block meant to be read and pasted into a
       -- bug report, so it goes to :messages as well — a notification alone
       -- would time out before it can be copied.
-      if ok_ then print(msg) end
+      if ok_ then
+        print(msg)
+      end
       report(ok_, msg)
     end, fargs[1])
-
   elseif subcmd == "bulk_rename" then
     do_bulk_rename(fargs[1], fargs[2], bang)
-
   elseif subcmd == "help" then
     notify.info(HELP_TEXT)
-
   else
     notify.warn(("unknown subcommand %q — try: %s"):format(subcmd, table.concat(SUBCMDS, ", ")))
   end
@@ -505,8 +552,12 @@ end
 ---@return string[]
 local function fargs_of(ctx)
   local out = {}
-  for _, v in ipairs(ctx.pos) do out[#out + 1] = tostring(v) end
-  for _, v in ipairs(ctx.rest) do out[#out + 1] = v end
+  for _, v in ipairs(ctx.pos) do
+    out[#out + 1] = tostring(v)
+  end
+  for _, v in ipairs(ctx.rest) do
+    out[#out + 1] = v
+  end
   return out
 end
 
@@ -564,9 +615,18 @@ function M.register()
         { name = "a1", type = "FILEOPS_CYCLE_ARG", optional = true },
         { name = "a2", type = "STRING", optional = true },
       }),
-      route("first", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
-      route("last", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
-      route("open", { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }),
+      route(
+        "first",
+        { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }
+      ),
+      route(
+        "last",
+        { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }
+      ),
+      route(
+        "open",
+        { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }
+      ),
       route("path", { { name = "mode", type = "STRING", optional = true, enum = PATH_MODES } }),
       route("info"),
       route("lockinfo", { { name = "path", type = "FILEOPS_PATH", optional = true } }),

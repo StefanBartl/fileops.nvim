@@ -64,10 +64,16 @@ return function(H)
     vim.cmd("cd " .. vim.fn.fnameescape(prev_cwd))
 
     ok(rok, "rename with a relative name succeeds: " .. tostring(rmsg))
-    eq(vim.fn.filereadable(dir .. "rel_dest.lua"), 1,
-      "rename: relative destination lands next to the source file")
-    eq(vim.fn.filereadable(elsewhere .. "rel_dest.lua"), 0,
-      "rename: relative destination is NOT resolved against the cwd")
+    eq(
+      vim.fn.filereadable(dir .. "rel_dest.lua"),
+      1,
+      "rename: relative destination lands next to the source file"
+    )
+    eq(
+      vim.fn.filereadable(elsewhere .. "rel_dest.lua"),
+      0,
+      "rename: relative destination is NOT resolved against the cwd"
+    )
     eq(vim.fn.filereadable(rel_src), 0, "rename: source file no longer exists")
   end
 
@@ -83,8 +89,11 @@ return function(H)
     local seen_opts, calls, retry_events = nil, 0, 0
     local aug = vim.api.nvim_create_augroup("FileopsRetrySpec", { clear = true })
     vim.api.nvim_create_autocmd("User", {
-      group = aug, pattern = "FileopsRetry",
-      callback = function() retry_events = retry_events + 1 end,
+      group = aug,
+      pattern = "FileopsRetry",
+      callback = function()
+        retry_events = retry_events + 1
+      end,
     })
 
     fsops.rename_file = function(_, _, o)
@@ -92,7 +101,9 @@ return function(H)
       calls = calls + 1
       -- Mimic lib.nvim's own retry loop closely enough to prove the hook runs.
       for attempt = 1, (o and o.attempts or 1) - 1 do
-        if o.on_retry then o.on_retry(attempt, "EBUSY: resource busy or locked") end
+        if o.on_retry then
+          o.on_retry(attempt, "EBUSY: resource busy or locked")
+        end
       end
       return false, "EBUSY: resource busy or locked"
     end
@@ -100,8 +111,8 @@ return function(H)
     local busy = dir .. "busy.lua"
     H.write_file(busy, "-- busy")
     H.edit(busy)
-    local bok, bmsg = file.rename(dir .. "busy_renamed.lua",
-      { retry = { attempts = 4, backoff_ms = 10 } })
+    local bok, bmsg =
+      file.rename(dir .. "busy_renamed.lua", { retry = { attempts = 4, backoff_ms = 10 } })
 
     fsops.rename_file = real_rename
     vim.api.nvim_del_augroup_by_id(aug)
@@ -111,8 +122,10 @@ return function(H)
     eq(seen_opts and seen_opts.attempts, 4, "rename passes the configured attempt budget down")
     eq(seen_opts and seen_opts.backoff_ms, 10, "rename passes the configured backoff down")
     eq(retry_events, 3, "each retry fires a User FileopsRetry event so listeners can drop handles")
-    ok(tostring(bmsg):find("another process is holding the file open", 1, true) ~= nil,
-      "EBUSY is explained rather than surfaced as a bare libuv code: " .. tostring(bmsg))
+    ok(
+      tostring(bmsg):find("another process is holding the file open", 1, true) ~= nil,
+      "EBUSY is explained rather than surfaced as a bare libuv code: " .. tostring(bmsg)
+    )
   end
 
   -- touch: creates a 0-byte file, doesn't need a buffer
@@ -140,7 +153,11 @@ return function(H)
   local vetoed = dir .. "vetoed.lua"
   H.write_file(vetoed, "keep me")
   local vbuf = H.edit(vetoed)
-  local dok1, dmsg1 = file.delete_current({ on_before_delete = function() return false end })
+  local dok1, dmsg1 = file.delete_current({
+    on_before_delete = function()
+      return false
+    end,
+  })
   ok(not dok1, "delete_current: on_before_delete=false aborts: " .. tostring(dmsg1))
   eq(vim.fn.filereadable(vetoed), 1, "delete_current: vetoed file still exists")
   ok(vim.api.nvim_buf_is_valid(vbuf), "delete_current: vetoed buffer still valid")
@@ -150,7 +167,10 @@ return function(H)
   H.edit(deletable)
   local seen_path = nil
   local dok2, dmsg2 = file.delete_current({
-    on_before_delete = function(p) seen_path = p; return true end,
+    on_before_delete = function(p)
+      seen_path = p
+      return true
+    end,
   })
   ok(dok2, "delete_current: on_before_delete=true proceeds: " .. tostring(dmsg2))
   eq(vim.fn.filereadable(deletable), 0, "delete_current: file actually deleted")
@@ -163,7 +183,11 @@ return function(H)
 
   local abs_ok = file.copy_path("abs")
   ok(abs_ok, "copy_path abs succeeds")
-  eq(vim.fn.getreg('"'), vim.fn.fnamemodify(pathed, ":p"), "copy_path abs: register holds absolute path")
+  eq(
+    vim.fn.getreg('"'),
+    vim.fn.fnamemodify(pathed, ":p"),
+    "copy_path abs: register holds absolute path"
+  )
 
   local name_ok = file.copy_path("name")
   ok(name_ok, "copy_path name succeeds")
@@ -171,7 +195,11 @@ return function(H)
 
   local dir_ok = file.copy_path("dir")
   ok(dir_ok, "copy_path dir succeeds")
-  eq(vim.fn.getreg('"'), vim.fn.fnamemodify(pathed, ":p:h"), "copy_path dir: register holds containing directory")
+  eq(
+    vim.fn.getreg('"'),
+    vim.fn.fnamemodify(pathed, ":p:h"),
+    "copy_path dir: register holds containing directory"
+  )
 
   -- default mode (no arg) behaves like "abs"
   local default_ok = file.copy_path(nil)
@@ -196,7 +224,9 @@ return function(H)
   vim.api.nvim_create_autocmd("User", {
     group = group,
     pattern = "FileopsChanged",
-    callback = function(ev) seen[#seen + 1] = ev.data end,
+    callback = function(ev)
+      seen[#seen + 1] = ev.data
+    end,
   })
 
   local touched2 = dir .. "changed_touch.lua"
@@ -218,7 +248,10 @@ return function(H)
   -- refresh_explorers = false suppresses the reload call but NOT the event
   seen = {}
   local no_reload = dir .. "changed_no_reload.lua"
-  ok(file.touch(no_reload, { refresh_explorers = false }), "touch with refresh_explorers=false succeeds")
+  ok(
+    file.touch(no_reload, { refresh_explorers = false }),
+    "touch with refresh_explorers=false succeeds"
+  )
   eq(#seen, 1, "event still fires when refresh_explorers = false")
 
   vim.api.nvim_del_augroup_by_id(group)
@@ -248,11 +281,16 @@ return function(H)
     local renamed_a = gitdir .. "renamed_a.txt"
     local wok, wmsg = file.rename(renamed_a, { git_aware = true, git_warn_only = true })
     ok(wok, "git_aware warn_only rename succeeds: " .. tostring(wmsg))
-    ok(wmsg:find("(git-tracked)", 1, true) ~= nil, "warn_only message notes git-tracked: " .. tostring(wmsg))
+    ok(
+      wmsg:find("(git-tracked)", 1, true) ~= nil,
+      "warn_only message notes git-tracked: " .. tostring(wmsg)
+    )
     -- libuv rename doesn't update the git index, so the old name shows as deleted
     local status_a = git_run("git", "status", "--porcelain")
-    ok(status_a.stdout:find("tracked1.txt", 1, true) ~= nil,
-      "warn_only: git index wasn't updated (plain libuv rename)")
+    ok(
+      status_a.stdout:find("tracked1.txt", 1, true) ~= nil,
+      "warn_only: git index wasn't updated (plain libuv rename)"
+    )
 
     -- warn_only = false: uses git mv, which keeps the index in sync
     H.edit(tracked2)
@@ -261,11 +299,15 @@ return function(H)
     ok(gok, "git_aware git-mv rename succeeds: " .. tostring(gmsg))
     ok(gmsg:find("(git mv)", 1, true) ~= nil, "git-mv message notes git mv: " .. tostring(gmsg))
     local status_b = git_run("git", "status", "--porcelain", "--", "tracked2.txt", "renamed_b.txt")
-    ok(status_b.stdout:match("^R"), "git mv: staged as a rename, not delete+add: " .. tostring(status_b.stdout))
+    ok(
+      status_b.stdout:match("^R"),
+      "git mv: staged as a rename, not delete+add: " .. tostring(status_b.stdout)
+    )
 
     -- delete: warn_only=false uses git rm
     H.edit(renamed_b)
-    local dgok, dgmsg = file.delete_current({ force = true, git_aware = true, git_warn_only = false })
+    local dgok, dgmsg =
+      file.delete_current({ force = true, git_aware = true, git_warn_only = false })
     ok(dgok, "git_aware git-rm delete succeeds: " .. tostring(dgmsg))
     ok(dgmsg:find("(git rm)", 1, true) ~= nil, "git-rm message notes git rm: " .. tostring(dgmsg))
     eq(vim.fn.filereadable(renamed_b), 0, "git rm: file removed from disk")
@@ -292,7 +334,11 @@ return function(H)
     -- active session + session_compat = true: resaves, new path lands in the file
     H.edit(dir .. "sess_a2.lua")
     vim.cmd("mksession! " .. vim.fn.fnameescape(sess_file))
-    eq(vim.v.this_session, vim.fn.fnamemodify(sess_file, ":p"), "setup: mksession! sets v:this_session")
+    eq(
+      vim.v.this_session,
+      vim.fn.fnamemodify(sess_file, ":p"),
+      "setup: mksession! sets v:this_session"
+    )
 
     local sess_b_old = dir .. "sess_b.lua"
     H.write_file(sess_b_old, "-- b")
@@ -304,10 +350,14 @@ return function(H)
     ok(sok2, "rename with session_compat=true succeeds: " .. tostring(smsg2))
 
     local resaved = table.concat(vim.fn.readfile(sess_file), "\n")
-    ok(resaved:find("sess_b_renamed.lua", 1, true) ~= nil,
-      "session_compat=true: resaved session references the new path")
-    ok(resaved:find("/sess_b.lua", 1, true) == nil and resaved:find("\\sess_b.lua", 1, true) == nil,
-      "session_compat=true: resaved session no longer references the old path")
+    ok(
+      resaved:find("sess_b_renamed.lua", 1, true) ~= nil,
+      "session_compat=true: resaved session references the new path"
+    )
+    ok(
+      resaved:find("/sess_b.lua", 1, true) == nil and resaved:find("\\sess_b.lua", 1, true) == nil,
+      "session_compat=true: resaved session no longer references the old path"
+    )
 
     -- session_compat unset/false: leaves the session file untouched
     local before = table.concat(vim.fn.readfile(sess_file), "\n")

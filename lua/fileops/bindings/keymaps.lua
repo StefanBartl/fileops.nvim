@@ -4,8 +4,8 @@
 ---to disable just that one mapping, or to a different string to remap it.
 local M = {}
 
-local file   = require("fileops.ops.file")
-local cycle  = require("fileops.ops.cycle")
+local file = require("fileops.ops.file")
+local cycle = require("fileops.ops.cycle")
 local notify = require("fileops.util.notify")
 local config = require("fileops.config")
 
@@ -19,7 +19,9 @@ local function map(lhs, fn, desc)
   local ok, lib_map = pcall(require, "lib.nvim.map")
   if ok and type(lib_map) == "function" then
     local wrapped = pcall(lib_map, "n", lhs, fn, { silent = true }, desc)
-    if wrapped then return end
+    if wrapped then
+      return
+    end
   end
   vim.keymap.set("n", lhs, fn, { silent = true, desc = desc })
 end
@@ -37,8 +39,9 @@ end
 ---@return fun()
 local function cycle_fn(direction, target)
   return function()
-    local cfg   = config.get()
-    local copts = vim.tbl_deep_extend("force", vim.deepcopy(cfg.cycle or {}), { open_target = target })
+    local cfg = config.get()
+    local copts =
+      vim.tbl_deep_extend("force", vim.deepcopy(cfg.cycle or {}), { open_target = target })
     local dir, err = cycle.get_root_dir(copts)
     if not dir then
       notify.warn(err or "cannot determine root directory")
@@ -56,7 +59,9 @@ end
 ---@param desc string
 local function bind_cycle(key, direction, target, desc)
   local lhs = lhs_cfg()[key]
-  if type(lhs) ~= "string" or lhs == "" then return end
+  if type(lhs) ~= "string" or lhs == "" then
+    return
+  end
   map(lhs, cycle_fn(direction, target), desc)
 end
 
@@ -80,7 +85,9 @@ end
 
 function M.attach_delete()
   local lhs = lhs_cfg().delete
-  if type(lhs) ~= "string" or lhs == "" then return end
+  if type(lhs) ~= "string" or lhs == "" then
+    return
+  end
   map(lhs, function()
     notify.report(file.delete_current({}))
   end, "[fileops] Delete current file")

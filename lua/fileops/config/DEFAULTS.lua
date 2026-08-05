@@ -8,71 +8,71 @@ local is_windows = vim.fn.has("win32") == 1 or vim.fn.has("win64") == 1
 ---@type FileOps.Config
 return {
   cycle = {
-    open_target         = "replace",
-    keep_focus          = true,
-    include_hidden      = false,
-    wrap                = true,
-    follow_symlinks     = true,
-    root                = "buffer_dir",
+    open_target = "replace",
+    keep_focus = true,
+    include_hidden = false,
+    wrap = true,
+    follow_symlinks = true,
+    root = "buffer_dir",
     confirm_on_modified = true,
-    case_insensitive    = true,
+    case_insensitive = true,
   },
   cd = {
-    scope             = "window",  -- "window" (lcd) | "tab" (tcd) | "global" (cd)
-    refresh_explorers = true,      -- refresh neo-tree/nvim-tree/netrw after cd
+    scope = "window", -- "window" (lcd) | "tab" (tcd) | "global" (cd)
+    refresh_explorers = true, -- refresh neo-tree/nvim-tree/netrw after cd
   },
   explorer = {
-    refresh_on_change = true,      -- refresh neo-tree/nvim-tree after any file op
-                                    -- (create/rename/move/duplicate/copy/delete)
+    refresh_on_change = true, -- refresh neo-tree/nvim-tree after any file op
+    -- (create/rename/move/duplicate/copy/delete)
   },
   delete = {
-    mode              = "permanent", -- "permanent" (fs_unlink) | "trash" (OS trash/recycle bin)
-    on_before_delete  = nil,         -- fun(path: string): boolean|nil — return false to abort
+    mode = "permanent", -- "permanent" (fs_unlink) | "trash" (OS trash/recycle bin)
+    on_before_delete = nil, -- fun(path: string): boolean|nil — return false to abort
   },
   git_aware = {
-    enable    = false, -- master switch (opt-in — shells out to git); warns/uses git for tracked files
-                        -- on rename/move/duplicate/copy/delete
-    warn_only = true,  -- true: just note tracked-ness in the result message, still use libuv
-                        -- false: use `git mv`/`git rm` instead of libuv for tracked files
-    git_cmd   = "git", -- git executable to use
+    enable = false, -- master switch (opt-in — shells out to git); warns/uses git for tracked files
+    -- on rename/move/duplicate/copy/delete
+    warn_only = true, -- true: just note tracked-ness in the result message, still use libuv
+    -- false: use `git mv`/`git rm` instead of libuv for tracked files
+    git_cmd = "git", -- git executable to use
   },
   retry = {
     -- 6 tries with a doubling 60ms backoff spends at most ~1.9s before giving
     -- up — long enough to outlast a scanner pass, short enough that a genuinely
     -- locked file still reports back while you're looking at the screen.
-    attempts   = is_windows and 6 or 1,
+    attempts = is_windows and 6 or 1,
     backoff_ms = 60,
   },
   session_compat = {
     enable = true, -- after rename/move, resave the active `:mksession` session
-                    -- (v:this_session) so it doesn't point at a stale path;
-                    -- no-op when no session is active. Other session managers
-                    -- (possession.nvim, sessions.nvim, ...) can hook the
-                    -- `User FileopsChanged` autocmd instead (see explorer.*).
+    -- (v:this_session) so it doesn't point at a stale path;
+    -- no-op when no session is active. Other session managers
+    -- (possession.nvim, sessions.nvim, ...) can hook the
+    -- `User FileopsChanged` autocmd instead (see explorer.*).
   },
   keymaps = {
-    cycle  = true,
+    cycle = true,
     delete = true,
     -- Individual lhs overrides. Set any entry to `false` to disable just that
     -- one keymap, or to a different string to remap it. Master switches above
     -- still gate the whole family.
     lhs = {
-      next_replace    = "<leader>nf",
-      prev_replace    = "<leader>pf",
-      next_current    = "<leader>nfn",
-      prev_current    = "<leader>pfn",
+      next_replace = "<leader>nf",
+      prev_replace = "<leader>pf",
+      next_current = "<leader>nfn",
+      prev_current = "<leader>pfn",
       next_background = "<leader>nF",
       prev_background = "<leader>pF",
-      next_vsplit     = "<leader>NF",
-      prev_vsplit     = "<leader>PF",
-      delete          = "<leader>dcf",
+      next_vsplit = "<leader>NF",
+      prev_vsplit = "<leader>PF",
+      delete = "<leader>dcf",
     },
   },
   commands = true,
   auto_mkdir = {
-    enable                 = true,
-    skip_remote            = true,
-    detect_remote_pattern  = "^%w%w+:[\\/][\\/]", -- e.g. "ssh://", "http://", "file://" (both slash styles)
+    enable = true,
+    skip_remote = true,
+    detect_remote_pattern = "^%w%w+:[\\/][\\/]", -- e.g. "ssh://", "http://", "file://" (both slash styles)
   },
   on_hold = {
     enable = false, -- master switch for this feature; opt-in explicitly in your setup() spec
@@ -96,6 +96,6 @@ return {
     enable = true,
     hl_a = "DiffDelete", -- "<<<<<<<" lines
     hl_b = "DiffChange", -- "=======" separator
-    hl_c = "DiffAdd",    -- ">>>>>>>" lines
+    hl_c = "DiffAdd", -- ">>>>>>>" lines
   },
 }

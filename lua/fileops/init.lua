@@ -7,7 +7,9 @@ local _setup_done = false
 ---Configure and activate fileops.
 ---@param user_opts FileOps.Config|nil
 function M.setup(user_opts)
-  if _setup_done then return end
+  if _setup_done then
+    return
+  end
   _setup_done = true
 
   local cfg = require("fileops.config").setup(user_opts)
@@ -23,12 +25,15 @@ end
 ---@param count? integer
 ---@return boolean ok
 function M.next(opts, count)
-  local cfg   = require("fileops.config").get()
+  local cfg = require("fileops.config").get()
   local copts = vim.tbl_deep_extend("force", vim.deepcopy(cfg.cycle or {}), opts or {})
   local cycle = require("fileops.ops.cycle")
   local notify = require("fileops.util.notify")
   local dir, err = cycle.get_root_dir(copts)
-  if not dir then notify.warn(err or "no root dir"); return false end
+  if not dir then
+    notify.warn(err or "no root dir")
+    return false
+  end
   return notify.report(cycle.navigate(dir, "next", copts, count))
 end
 
@@ -37,12 +42,15 @@ end
 ---@param count? integer
 ---@return boolean ok
 function M.prev(opts, count)
-  local cfg   = require("fileops.config").get()
+  local cfg = require("fileops.config").get()
   local copts = vim.tbl_deep_extend("force", vim.deepcopy(cfg.cycle or {}), opts or {})
   local cycle = require("fileops.ops.cycle")
   local notify = require("fileops.util.notify")
   local dir, err = cycle.get_root_dir(copts)
-  if not dir then notify.warn(err or "no root dir"); return false end
+  if not dir then
+    notify.warn(err or "no root dir")
+    return false
+  end
   return notify.report(cycle.navigate(dir, "prev", copts, count))
 end
 
@@ -50,12 +58,15 @@ end
 ---@param opts? FileOps.CycleConfig
 ---@return boolean ok
 function M.first(opts)
-  local cfg   = require("fileops.config").get()
+  local cfg = require("fileops.config").get()
   local copts = vim.tbl_deep_extend("force", vim.deepcopy(cfg.cycle or {}), opts or {})
   local cycle = require("fileops.ops.cycle")
   local notify = require("fileops.util.notify")
   local dir, err = cycle.get_root_dir(copts)
-  if not dir then notify.warn(err or "no root dir"); return false end
+  if not dir then
+    notify.warn(err or "no root dir")
+    return false
+  end
   return notify.report(cycle.jump_edge(dir, "first", copts))
 end
 
@@ -63,12 +74,15 @@ end
 ---@param opts? FileOps.CycleConfig
 ---@return boolean ok
 function M.last(opts)
-  local cfg   = require("fileops.config").get()
+  local cfg = require("fileops.config").get()
   local copts = vim.tbl_deep_extend("force", vim.deepcopy(cfg.cycle or {}), opts or {})
   local cycle = require("fileops.ops.cycle")
   local notify = require("fileops.util.notify")
   local dir, err = cycle.get_root_dir(copts)
-  if not dir then notify.warn(err or "no root dir"); return false end
+  if not dir then
+    notify.warn(err or "no root dir")
+    return false
+  end
   return notify.report(cycle.jump_edge(dir, "last", copts))
 end
 
@@ -77,7 +91,7 @@ end
 ---@param opts? FileOps.CycleConfig
 ---@return boolean ok
 function M.open(opts)
-  local cfg   = require("fileops.config").get()
+  local cfg = require("fileops.config").get()
   local copts = vim.tbl_deep_extend("force", vim.deepcopy(cfg.cycle or {}), opts or {})
   local cycle = require("fileops.ops.cycle")
   local notify = require("fileops.util.notify")
@@ -89,9 +103,7 @@ end
 ---@param opts? { write?: boolean, bang?: boolean }
 ---@return boolean ok
 function M.new_file(path, opts)
-  return require("fileops.util.notify").report(
-    require("fileops.ops.file").edit_new(path, opts)
-  )
+  return require("fileops.util.notify").report(require("fileops.ops.file").edit_new(path, opts))
 end
 
 ---Create an empty file at `path` if it doesn't already exist. Does not
@@ -99,9 +111,7 @@ end
 ---@param path string
 ---@return boolean ok
 function M.touch(path)
-  return require("fileops.util.notify").report(
-    require("fileops.ops.file").touch(path)
-  )
+  return require("fileops.util.notify").report(require("fileops.ops.file").touch(path))
 end
 
 ---Rename the current file on disk.
@@ -109,9 +119,7 @@ end
 ---@param opts? { bang?: boolean }
 ---@return boolean ok
 function M.rename(new_path, opts)
-  return require("fileops.util.notify").report(
-    require("fileops.ops.file").rename(new_path, opts)
-  )
+  return require("fileops.util.notify").report(require("fileops.ops.file").rename(new_path, opts))
 end
 
 ---Move the current file on disk (possibly to a different directory) without
@@ -120,9 +128,7 @@ end
 ---@param opts? { bang?: boolean }
 ---@return boolean ok
 function M.move(new_path, opts)
-  return require("fileops.util.notify").report(
-    require("fileops.ops.file").move(new_path, opts)
-  )
+  return require("fileops.util.notify").report(require("fileops.ops.file").move(new_path, opts))
 end
 
 ---Duplicate the current file to a new path.
@@ -140,18 +146,14 @@ end
 ---@param opts? { bang?: boolean }
 ---@return boolean ok
 function M.copy(new_path, opts)
-  return require("fileops.util.notify").report(
-    require("fileops.ops.file").copy(new_path, opts)
-  )
+  return require("fileops.util.notify").report(require("fileops.ops.file").copy(new_path, opts))
 end
 
 ---Delete the current file from disk and close the buffer.
 ---@param opts? { force?: boolean, mode?: "trash"|"permanent", on_before_delete?: fun(path: string): boolean|nil }
 ---@return boolean ok
 function M.delete_current(opts)
-  return require("fileops.util.notify").report(
-    require("fileops.ops.file").delete_current(opts)
-  )
+  return require("fileops.util.notify").report(require("fileops.ops.file").delete_current(opts))
 end
 
 ---Copy the current buffer's file path to the unnamed + system clipboard
@@ -159,17 +161,13 @@ end
 ---@param mode? "abs"|"rel"|"name"|"dir"  Defaults to "abs".
 ---@return boolean ok
 function M.copy_path(mode)
-  return require("fileops.util.notify").report(
-    require("fileops.ops.file").copy_path(mode)
-  )
+  return require("fileops.util.notify").report(require("fileops.ops.file").copy_path(mode))
 end
 
 ---Show size/mtime/permissions for the current buffer's file.
 ---@return boolean ok
 function M.info()
-  return require("fileops.util.notify").report(
-    require("fileops.ops.file").info()
-  )
+  return require("fileops.util.notify").report(require("fileops.ops.file").info())
 end
 
 ---Diagnose who holds a file open when a mutation fails with a sharing
@@ -189,9 +187,7 @@ end
 ---@param opts? { scope?: "lcd"|"cd"|"tcd", refresh?: boolean }
 ---@return boolean ok
 function M.cd_here(opts)
-  return require("fileops.util.notify").report(
-    require("fileops.ops.file").cd_here(opts)
-  )
+  return require("fileops.util.notify").report(require("fileops.ops.file").cd_here(opts))
 end
 
 return M

@@ -11,7 +11,9 @@ local function resolve()
   local ok, lib_notify = pcall(require, "lib.nvim.notify")
   if ok and type(lib_notify) == "table" and type(lib_notify.create) == "function" then
     local create_ok, notifier = pcall(lib_notify.create, PREFIX)
-    if create_ok and type(notifier) == "table" then return notifier end
+    if create_ok and type(notifier) == "table" then
+      return notifier
+    end
   end
   return nil
 end
@@ -21,25 +23,41 @@ local lib = resolve()
 ---Show an info-level notification.
 ---@param msg string
 function M.info(msg)
-  if lib then lib.info(msg) else vim.notify(PREFIX .. msg, vim.log.levels.INFO) end
+  if lib then
+    lib.info(msg)
+  else
+    vim.notify(PREFIX .. msg, vim.log.levels.INFO)
+  end
 end
 
 ---Show a warning-level notification.
 ---@param msg string
 function M.warn(msg)
-  if lib then lib.warn(msg) else vim.notify(PREFIX .. msg, vim.log.levels.WARN) end
+  if lib then
+    lib.warn(msg)
+  else
+    vim.notify(PREFIX .. msg, vim.log.levels.WARN)
+  end
 end
 
 ---Show an error-level notification.
 ---@param msg string
 function M.error(msg)
-  if lib then lib.error(msg) else vim.notify(PREFIX .. msg, vim.log.levels.ERROR) end
+  if lib then
+    lib.error(msg)
+  else
+    vim.notify(PREFIX .. msg, vim.log.levels.ERROR)
+  end
 end
 
 ---Show a debug-level notification.
 ---@param msg string
 function M.debug(msg)
-  if lib then lib.debug(msg) else vim.notify(PREFIX .. msg, vim.log.levels.DEBUG) end
+  if lib then
+    lib.debug(msg)
+  else
+    vim.notify(PREFIX .. msg, vim.log.levels.DEBUG)
+  end
 end
 
 ---Whether lib.nvim's notifier is in use (for :checkhealth reporting).
@@ -58,7 +76,11 @@ end
 ---@return boolean ok  passthrough, so callers can chain
 function M.report(ok, msg)
   if msg then
-    if ok then M.info(msg) else M.error(msg) end
+    if ok then
+      M.info(msg)
+    else
+      M.error(msg)
+    end
   end
   return ok
 end

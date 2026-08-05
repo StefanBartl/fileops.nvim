@@ -16,7 +16,9 @@ function M.is_tracked(path, git_cmd)
   local dir = fn.fnamemodify(path, ":p:h")
   local name = fn.fnamemodify(path, ":t")
   local ok, res = pcall(function()
-    return vim.system({ git_cmd, "ls-files", "--error-unmatch", "--", name }, { text = true, cwd = dir }):wait()
+    return vim
+      .system({ git_cmd, "ls-files", "--error-unmatch", "--", name }, { text = true, cwd = dir })
+      :wait()
   end)
   return ok and res.code == 0
 end
@@ -33,7 +35,9 @@ function M.mv(old, new, git_cmd)
   local ok, res = pcall(function()
     return vim.system({ git_cmd, "mv", "-f", "--", old, new }, { text = true, cwd = dir }):wait()
   end)
-  if not ok then return false, tostring(res) end
+  if not ok then
+    return false, tostring(res)
+  end
   if res.code ~= 0 then
     return false, (res.stderr ~= "" and res.stderr) or "git mv failed"
   end
@@ -52,7 +56,9 @@ function M.rm(path, git_cmd)
   local ok, res = pcall(function()
     return vim.system({ git_cmd, "rm", "-f", "--", path }, { text = true, cwd = dir }):wait()
   end)
-  if not ok then return false, tostring(res) end
+  if not ok then
+    return false, tostring(res)
+  end
   if res.code ~= 0 then
     return false, (res.stderr ~= "" and res.stderr) or "git rm failed"
   end

@@ -76,7 +76,7 @@ function M.check()
   if pcall(require, "lib.nvim.usercmd.composer") then
     ok("lib.nvim detected (:File command layer available)")
   else
-    warn("lib.nvim not found — :File will fail to register; install \"StefanBartl/lib.nvim\"")
+    warn('lib.nvim not found — :File will fail to register; install "StefanBartl/lib.nvim"')
   end
   if require("fileops.util.notify").using_lib() then
     ok("lib.nvim.notify in use (styled notifications)")
@@ -86,7 +86,7 @@ function M.check()
 
   -- which-key (optional, groups the <leader>n / <leader>p prefixes)
   if require("fileops.bindings.which_key").available() then
-    ok('which-key detected (<leader>n / <leader>p grouped)')
+    ok("which-key detected (<leader>n / <leader>p grouped)")
   else
     ok("which-key not found — mappings still carry their own descriptions")
   end
@@ -95,7 +95,9 @@ function M.check()
   if vim.fn.executable("git") == 1 then
     ok("git executable found (required for on_hold; used by git_aware when enabled)")
   else
-    warn("git executable not found — on_hold will be a silent no-op, git_aware will fail if enabled")
+    warn(
+      "git executable not found — on_hold will be a silent no-op, git_aware will fail if enabled"
+    )
   end
 
   -- gitsigns.nvim (optional, on_hold prefers its inline hunk preview)

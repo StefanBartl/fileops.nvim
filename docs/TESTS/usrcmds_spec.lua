@@ -26,9 +26,15 @@ return function(H)
 
   vim.cmd("File touch")
 
-  eq(captured_title, "File touch: ", "prompt_dest: routes through kit.input with the expected prompt")
-  ok(vim.fn.filereadable(tmp .. "newfile.txt") == 1,
-    "prompt_dest: the submitted name is used to create the file")
+  eq(
+    captured_title,
+    "File touch: ",
+    "prompt_dest: routes through kit.input with the expected prompt"
+  )
+  ok(
+    vim.fn.filereadable(tmp .. "newfile.txt") == 1,
+    "prompt_dest: the submitted name is used to create the file"
+  )
 
   package.loaded["lib.nvim.ui.kit"] = nil
 end

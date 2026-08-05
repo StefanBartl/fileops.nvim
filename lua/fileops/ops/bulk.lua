@@ -5,7 +5,7 @@
 local M = {}
 
 local fsops = require("lib.nvim.cross.fs.mutate")
-local file  = require("fileops.ops.file")
+local file = require("fileops.ops.file")
 local api, fn = vim.api, vim.fn
 local uv = vim.uv or vim.loop
 
@@ -32,7 +32,9 @@ function M.plan(dir, pattern, replacement, opts)
   local base = dir:match("[\\/]$") and dir or (dir .. "/")
 
   local ok, iter = pcall(vim.fs.dir, dir)
-  if not ok then return {}, "cannot read directory: " .. dir end
+  if not ok then
+    return {}, "cannot read directory: " .. dir
+  end
 
   for name, t in iter do
     local hidden = name:sub(1, 1) == "."
@@ -46,7 +48,9 @@ function M.plan(dir, pattern, replacement, opts)
 
       if is_file then
         local gok, new_name = pcall(string.gsub, name, pattern, replacement)
-        if not gok then return {}, "invalid pattern: " .. tostring(new_name) end
+        if not gok then
+          return {}, "invalid pattern: " .. tostring(new_name)
+        end
         if new_name ~= name and new_name ~= "" then
           acc[#acc + 1] = {
             old = fn.fnamemodify(full, ":p"),
@@ -57,7 +61,9 @@ function M.plan(dir, pattern, replacement, opts)
     end
   end
 
-  table.sort(acc, function(a, b) return a.old < b.old end)
+  table.sort(acc, function(a, b)
+    return a.old < b.old
+  end)
   return acc, nil
 end
 
@@ -77,15 +83,16 @@ function M.execute(plan, opts)
 
   for _, item in ipairs(plan) do
     if fn.filereadable(item.new) == 1 and not opts.bang then
-      first_err = first_err
-        or ("destination already exists (use ! to overwrite): " .. item.new)
+      first_err = first_err or ("destination already exists (use ! to overwrite): " .. item.new)
     else
       local ok, err = fsops.rename_file(item.old, item.new)
       if ok then
         renamed = renamed + 1
         local old_abs = fn.fnamemodify(item.old, ":p")
         for _, b in ipairs(api.nvim_list_bufs()) do
-          if api.nvim_buf_is_valid(b) and fn.fnamemodify(api.nvim_buf_get_name(b), ":p") == old_abs then
+          if
+            api.nvim_buf_is_valid(b) and fn.fnamemodify(api.nvim_buf_get_name(b), ":p") == old_abs
+          then
             pcall(api.nvim_buf_set_name, b, item.new)
           end
         end
