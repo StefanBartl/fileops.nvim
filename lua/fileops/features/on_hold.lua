@@ -125,18 +125,26 @@ end
 
 ---@internal
 ---@param git_cmd string
+---@param cwd string  Directory to run git in — the buffer's own directory, not
+---Neovim's (possibly unrelated) global cwd. See `util/git.lua`, which uses
+---the same pattern for the same reason.
 ---@return boolean
-local function in_git_repo(git_cmd)
-  local res = vim.system({ git_cmd, "rev-parse", "--is-inside-work-tree" }, { text = true }):wait()
+local function in_git_repo(git_cmd, cwd)
+  local res = vim
+    .system({ git_cmd, "rev-parse", "--is-inside-work-tree" }, { text = true, cwd = cwd })
+    :wait()
   return res.code == 0
 end
 
 ---@internal
 ---@param git_cmd string
 ---@param file string
+---@param cwd string
 ---@return boolean
-local function is_tracked(git_cmd, file)
-  local res = vim.system({ git_cmd, "ls-files", "--error-unmatch", "--", file }, { text = true }):wait()
+local function is_tracked(git_cmd, file, cwd)
+  local res = vim
+    .system({ git_cmd, "ls-files", "--error-unmatch", "--", file }, { text = true, cwd = cwd })
+    :wait()
   return res.code == 0
 end
 
@@ -155,10 +163,14 @@ end
 ---@param git_cmd string
 ---@param file string
 ---@param lnum integer
+---@param cwd string
 ---@return string|nil
-local function get_previous_line(git_cmd, file, lnum)
+local function get_previous_line(git_cmd, file, lnum, cwd)
   local blame_res = vim
-    .system({ git_cmd, "blame", "-L", lnum .. "," .. lnum, "--porcelain", "--", file }, { text = true })
+    .system(
+      { git_cmd, "blame", "-L", lnum .. "," .. lnum, "--porcelain", "--", file },
+      { text = true, cwd = cwd }
+    )
     :wait()
   if blame_res.code ~= 0 then
     return nil
@@ -171,7 +183,9 @@ local function get_previous_line(git_cmd, file, lnum)
   if not sha then
     return nil
   end
-  local blob_res = vim.system({ git_cmd, "show", sha .. ":" .. file }, { text = true }):wait()
+  local blob_res = vim
+    .system({ git_cmd, "show", sha .. ":" .. file }, { text = true, cwd = cwd })
+    :wait()
   if blob_res.code ~= 0 then
     return nil
   end
@@ -269,16 +283,18 @@ function M.setup(cfg)
       return
     end
 
-    local git = cfg.git_cmd or "git"
-    if not in_git_repo(git) then
-      return
-    end
-
     local file = api.nvim_buf_get_name(buf)
     if file == "" then
       return
     end
-    if cfg.only_tracked and not is_tracked(git, file) then
+    local dir = fn.fnamemodify(file, ":p:h")
+
+    local git = cfg.git_cmd or "git"
+    if not in_git_repo(git, dir) then
+      return
+    end
+
+    if cfg.only_tracked and not is_tracked(git, file, dir) then
       return
     end
 
@@ -333,7 +349,7 @@ function M.setup(cfg)
       end
 
       local lnum = get_lnum(win)
-      local prev = get_previous_line(git, file, lnum)
+      local prev = get_previous_line(git, file, lnum, dir)
       if not prev or prev == "" then
         return
       end
