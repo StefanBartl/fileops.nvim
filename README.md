@@ -24,6 +24,13 @@ I/O going through libuv directly.
 
 ---
 
+## Table of contents
+
+- [Quickstart](#quickstart)
+- [Documentation](#documentation)
+
+---
+
 ## Quickstart
 
 Requires Neovim **0.9+** and [lib.nvim](https://github.com/StefanBartl/lib.nvim).
