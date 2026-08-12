@@ -28,6 +28,20 @@ is a silent no-op. Tab-completion for path arguments resolves against the
 - **Config:** `opts.commands` (default `true`) — master switch for
   registering `:File` at all
 
+- Create/write: `new`, `write`, `saveas`, `writeto`, `mkdir`, `touch`
+- Mutate: `rename`, `move`, `duplicate`, `copy`, `delete` (git-aware, retrying,
+  session-compat, trash-mode opt-in)
+- Navigate: `next`, `prev`, `first`, `last`, `open` (glob filter, recursive
+  root, configurable open target)
+- Diagnose: `info`, `lockinfo` (Windows sharing-violation holder lookup)
+- Bulk: `bulk rename` (Lua-pattern batch rename with preview + confirm)
+- Misc: `path` (clipboard), `cd` (+ explorer refresh), `help`
+- Ambient features: `auto_mkdir`, `on_hold` (line-diff preview, opt-in),
+  `conflict_marks`
+- Full Lua API mirroring every subcommand (`docs/api.md`), which-key groups,
+  per-key remappable keymaps, `:checkhealth fileops`, headless test suite
+  (`docs/TESTS/`) run in CI alongside stylua/luacheck.
+
 ### Why one command instead of many
 
 Every subcommand shares the same `!`/`%`/prompt-on-missing-arg conventions,
