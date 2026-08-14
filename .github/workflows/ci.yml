@@ -29,6 +29,47 @@ jobs:
         working-directory: fileops.nvim
         run: nvim --headless -i NONE -u NONE -c "set rtp+=." -c "luafile docs/TESTS/run.lua" -c "qa!"
 
+  explorer-integration:
+    name: tests (neo-tree + nvim-tree, headless)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: fileops.nvim
+      - uses: actions/checkout@v4
+        with:
+          repository: StefanBartl/lib.nvim
+          path: lib.nvim
+      # explorer_integration_spec.lua's own subject: exercises ops/file.lua's
+      # explorer-refresh code path against REAL neo-tree.nvim/nvim-tree.lua
+      # instances, not just the `package.loaded[...]`-guarded no-op the rest
+      # of the suite exercises. Checked out as siblings, same lookup order
+      # the spec itself uses (`$<NAME>_DIR` first, sibling checkout second) —
+      # nui.nvim and plenary.nvim are neo-tree's own hard dependencies.
+      - uses: actions/checkout@v4
+        with:
+          repository: nvim-neo-tree/neo-tree.nvim
+          path: neo-tree.nvim
+      - uses: actions/checkout@v4
+        with:
+          repository: nvim-tree/nvim-tree.lua
+          path: nvim-tree.lua
+      - uses: actions/checkout@v4
+        with:
+          repository: MunifTanjim/nui.nvim
+          path: nui.nvim
+      - uses: actions/checkout@v4
+        with:
+          repository: nvim-lua/plenary.nvim
+          path: plenary.nvim
+      - uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+      - name: Run docs/TESTS suite (with explorer deps on rtp)
+        working-directory: fileops.nvim
+        run: nvim --headless -i NONE -u NONE -c "set rtp+=." -c "luafile docs/TESTS/run.lua" -c "qa!"
+
   lint:
     name: lint (stylua + luacheck)
     runs-on: ubuntu-latest

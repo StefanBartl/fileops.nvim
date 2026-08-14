@@ -17,7 +17,8 @@ lua/fileops/
   util/
     notify.lua            "[fileops] " prefixed notifier; upgrades to
                            lib.nvim.notify when lib.nvim is installed
-    git.lua                Argv-only git helpers (is_tracked/mv/rm) for git_aware
+    git.lua                Argv-only git helpers (is_tracked/mv/rm) for git_aware,
+                           plus async twins (is_tracked_async/mv_async/rm_async)
   ops/
     cycle.lua              Directory listing, indexing, navigation, open_path,
                             jump_edge (first/last)

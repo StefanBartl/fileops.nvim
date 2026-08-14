@@ -124,28 +124,57 @@ local function to_lines(stdout)
 end
 
 ---@internal
+---Async: never blocks the UI thread, even on a slow filesystem (network
+---share, WSL interop) or a large repo — `cb` runs on the next main-loop tick
+---via `vim.schedule`, exactly like `util/git.lua`'s `_async` twins.
 ---@param git_cmd string
 ---@param cwd string  Directory to run git in — the buffer's own directory, not
 ---Neovim's (possibly unrelated) global cwd. See `util/git.lua`, which uses
 ---the same pattern for the same reason.
----@return boolean
-local function in_git_repo(git_cmd, cwd)
-  local res = vim
-    .system({ git_cmd, "rev-parse", "--is-inside-work-tree" }, { text = true, cwd = cwd })
-    :wait()
-  return res.code == 0
+---@param cb fun(is_repo: boolean)
+---@return nil
+local function in_git_repo_async(git_cmd, cwd, cb)
+  local ok = pcall(function()
+    vim.system(
+      { git_cmd, "rev-parse", "--is-inside-work-tree" },
+      { text = true, cwd = cwd },
+      function(res)
+        vim.schedule(function()
+          cb(res.code == 0)
+        end)
+      end
+    )
+  end)
+  if not ok then
+    vim.schedule(function()
+      cb(false)
+    end)
+  end
 end
 
 ---@internal
 ---@param git_cmd string
 ---@param file string
 ---@param cwd string
----@return boolean
-local function is_tracked(git_cmd, file, cwd)
-  local res = vim
-    .system({ git_cmd, "ls-files", "--error-unmatch", "--", file }, { text = true, cwd = cwd })
-    :wait()
-  return res.code == 0
+---@param cb fun(tracked: boolean)
+---@return nil
+local function is_tracked_async(git_cmd, file, cwd, cb)
+  local ok = pcall(function()
+    vim.system(
+      { git_cmd, "ls-files", "--error-unmatch", "--", file },
+      { text = true, cwd = cwd },
+      function(res)
+        vim.schedule(function()
+          cb(res.code == 0)
+        end)
+      end
+    )
+  end)
+  if not ok then
+    vim.schedule(function()
+      cb(false)
+    end)
+  end
 end
 
 ---@internal
@@ -160,40 +189,59 @@ local function normal_buf_allowed(ignore_buftypes)
 end
 
 ---@internal
+---Async: chains `git blame` → `git show`, neither of which blocks the UI
+---thread. `cb` is always called exactly once, scheduled onto the main loop.
 ---@param git_cmd string
 ---@param file string
 ---@param lnum integer
 ---@param cwd string
----@return string|nil
-local function get_previous_line(git_cmd, file, lnum, cwd)
-  local blame_res = vim
-    .system(
+---@param cb fun(prev_line: string|nil)
+---@return nil
+local function get_previous_line_async(git_cmd, file, lnum, cwd, cb)
+  local started = pcall(function()
+    vim.system(
       { git_cmd, "blame", "-L", lnum .. "," .. lnum, "--porcelain", "--", file },
-      { text = true, cwd = cwd }
+      { text = true, cwd = cwd },
+      function(blame_res)
+        if blame_res.code ~= 0 then
+          return vim.schedule(function()
+            cb(nil)
+          end)
+        end
+        local blame = to_lines(blame_res.stdout)
+        local sha = #blame > 0 and parse_blame_sha(blame[1]) or nil
+        if not sha then
+          return vim.schedule(function()
+            cb(nil)
+          end)
+        end
+        local show_started = pcall(function()
+          vim.system({ git_cmd, "show", sha .. ":" .. file }, { text = true, cwd = cwd }, function(blob_res)
+            vim.schedule(function()
+              if blob_res.code ~= 0 then
+                return cb(nil)
+              end
+              local blob = to_lines(blob_res.stdout)
+              if #blob == 0 or lnum > #blob then
+                return cb(nil)
+              end
+              cb(blob[lnum])
+            end)
+          end)
+        end)
+        if not show_started then
+          vim.schedule(function()
+            cb(nil)
+          end)
+        end
+      end
     )
-    :wait()
-  if blame_res.code ~= 0 then
-    return nil
+  end)
+  if not started then
+    vim.schedule(function()
+      cb(nil)
+    end)
   end
-  local blame = to_lines(blame_res.stdout)
-  if #blame == 0 then
-    return nil
-  end
-  local sha = parse_blame_sha(blame[1])
-  if not sha then
-    return nil
-  end
-  local blob_res = vim
-    .system({ git_cmd, "show", sha .. ":" .. file }, { text = true, cwd = cwd })
-    :wait()
-  if blob_res.code ~= 0 then
-    return nil
-  end
-  local blob = to_lines(blob_res.stdout)
-  if #blob == 0 or lnum > #blob then
-    return nil
-  end
-  return blob[lnum]
 end
 
 ---@internal
@@ -290,27 +338,27 @@ function M.setup(cfg)
     local dir = fn.fnamemodify(file, ":p:h")
 
     local git = cfg.git_cmd or "git"
-    if not in_git_repo(git, dir) then
-      return
-    end
 
-    if cfg.only_tracked and not is_tracked(git, file, dir) then
-      return
-    end
-
+    -- Bumped now, before the async git checks below start — not after them —
+    -- so a mode change that happens *during* `in_git_repo_async`/
+    -- `is_tracked_async` (both real subprocess round-trips) invalidates this
+    -- pass too, the same way it already invalidated a delayed `run()`.
     local my_gen = bump_gen(win)
 
+    ---@internal
+    ---Re-validate everything that can go stale while waiting on an async
+    ---git call: mode, generation (a later CursorHold or a mode change since),
+    ---and buffer/window liveness.
+    ---@return boolean
+    local function still_valid()
+      return mode_allowed(cfg.modes)
+        and gen_by_win[win] == my_gen
+        and api.nvim_buf_is_valid(buf)
+        and api.nvim_win_is_valid(win)
+    end
+
     local function run()
-      if not mode_allowed(cfg.modes) then
-        return
-      end
-      if gen_by_win[win] ~= my_gen then
-        return
-      end
-      -- run() may execute after a vim.defer_fn delay (cfg.delay > 0), by
-      -- which point the buffer/window captured above could have been closed —
-      -- re-validate before touching them.
-      if not api.nvim_buf_is_valid(buf) or not api.nvim_win_is_valid(win) then
+      if not still_valid() then
         return
       end
 
@@ -349,40 +397,63 @@ function M.setup(cfg)
       end
 
       local lnum = get_lnum(win)
-      local prev = get_previous_line(git, file, lnum, dir)
-      if not prev or prev == "" then
+      get_previous_line_async(git, file, lnum, dir, function(prev)
+        if not prev or prev == "" or not still_valid() then
+          return
+        end
+
+        local virt = truncate(prev, tonumber(cfg.max_len or 160) or 160)
+        local pos = (cfg.right_align and "right_align") or "eol"
+        local pref = (cfg.prefix ~= nil) and tostring(cfg.prefix) or "previous: "
+
+        api.nvim_buf_set_extmark(buf, NS, lnum - 1, 0, {
+          virt_text = { { pref .. virt, cfg.hl_prev or "Comment" } },
+          virt_text_pos = pos,
+          priority = tonumber(cfg.virt_priority or 1000) or 1000,
+        })
+
+        -- Buffer-local (opts.buffer): lib.nvim.autocmd.create doesn't
+        -- forward a `buffer` option, so this one stays on the raw API.
+        api.nvim_create_autocmd({ "CursorMoved", "BufHidden", "InsertEnter" }, {
+          group = augroup("cleanup"),
+          buffer = buf,
+          once = true,
+          callback = function()
+            clear_line_diff(buf)
+          end,
+          desc = "[fileops] Clear previous-line preview on next move",
+        })
+      end)
+    end
+
+    ---@internal
+    ---Schedule `run()` (honoring `cfg.delay`) now that the async git-state
+    ---checks below have both passed.
+    ---@return nil
+    local function schedule_run()
+      local extra = tonumber(cfg.delay or 0) or 0
+      if extra > 0 then
+        vim.defer_fn(run, extra)
+      else
+        run()
+      end
+    end
+
+    in_git_repo_async(git, dir, function(is_repo)
+      if not is_repo or not still_valid() then
         return
       end
-
-      local virt = truncate(prev, tonumber(cfg.max_len or 160) or 160)
-      local pos = (cfg.right_align and "right_align") or "eol"
-      local pref = (cfg.prefix ~= nil) and tostring(cfg.prefix) or "previous: "
-
-      api.nvim_buf_set_extmark(buf, NS, lnum - 1, 0, {
-        virt_text = { { pref .. virt, cfg.hl_prev or "Comment" } },
-        virt_text_pos = pos,
-        priority = tonumber(cfg.virt_priority or 1000) or 1000,
-      })
-
-      -- Buffer-local (opts.buffer): lib.nvim.autocmd.create doesn't
-      -- forward a `buffer` option, so this one stays on the raw API.
-      api.nvim_create_autocmd({ "CursorMoved", "BufHidden", "InsertEnter" }, {
-        group = augroup("cleanup"),
-        buffer = buf,
-        once = true,
-        callback = function()
-          clear_line_diff(buf)
-        end,
-        desc = "[fileops] Clear previous-line preview on next move",
-      })
-    end
-
-    local extra = tonumber(cfg.delay or 0) or 0
-    if extra > 0 then
-      vim.defer_fn(run, extra)
-    else
-      run()
-    end
+      if cfg.only_tracked then
+        is_tracked_async(git, file, dir, function(tracked)
+          if not tracked or not still_valid() then
+            return
+          end
+          schedule_run()
+        end)
+      else
+        schedule_run()
+      end
+    end)
   end, {
     group = augroup("preview"),
     desc = "[fileops] Show line diff/previous content on CursorHold/CursorHoldI (mode-aware, throttled)",

@@ -8,7 +8,13 @@
 -- Loads every *_spec.lua listed below, runs it against the shared harness,
 -- prints a per-spec result, and exits non-zero on the first failing spec.
 
+-- Resolved to an absolute path immediately: `debug.getinfo` reports the
+-- source as it was passed to `luafile`/`-l` (relative when the runner is
+-- invoked with a relative path, as the header above does), and a relative
+-- `dir` breaks the moment any earlier spec changes Neovim's cwd (e.g.
+-- usrcmds_spec.lua's own `:cd` coverage) before a later spec's `dofile`.
 local dir = debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") or "./"
+dir = vim.fn.fnamemodify(dir, ":p")
 local H = dofile(dir .. "harness.lua")
 
 -- fileops.nvim depends on lib.nvim at runtime (ops/file.lua, ops/cycle.lua),
@@ -63,7 +69,9 @@ local specs = {
   "file_spec.lua",
   "bulk_spec.lua",
   "git_spec.lua",
+  "git_async_spec.lua",
   "usrcmds_spec.lua",
+  "explorer_integration_spec.lua",
 }
 
 local failed = 0

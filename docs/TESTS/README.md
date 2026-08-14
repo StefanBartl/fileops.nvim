@@ -24,6 +24,8 @@ The runner prints one line per spec and exits non-zero on the first failure
 | `file_spec.lua`     | `ops/file.lua`: copy/move/touch and other non-buffer-destructive mutations. |
 | `bulk_spec.lua`     | `ops/bulk.lua`: bulk-rename plan/execute, conflicts, hidden-file filtering. |
 | `git_spec.lua`      | `util/git.lua`: is_tracked/mv/rm against a real temp git repo (skips if git is unusable). |
+| `git_async_spec.lua`| `util/git.lua`: the `_async` twins (is_tracked_async/mv_async/rm_async) against the same repo, driven to completion via `vim.wait`. |
+| `explorer_integration_spec.lua` | `ops/file.lua`'s explorer-refresh path (`reload_explorers`/`refresh_explorers`) against REAL neo-tree.nvim/nvim-tree.lua instances — optional, see below. |
 | `run.lua`           | Runner: resolves lib.nvim, loads every spec, reports results, sets the exit code. |
 
 `platform_spec.lua` is gone: `util/platform.lua` was removed in favour of
@@ -43,6 +45,24 @@ The suite needs `lib.nvim` on the runtimepath, since `ops/file.lua` and
 The sibling checkout deliberately wins over the plugin-manager copy: the
 bootstrap clone is often older than the working checkout, and testing against
 a stale lib.nvim produces misleading failures.
+
+## Explorer integration (optional)
+
+`explorer_integration_spec.lua` exercises `ops/file.lua`'s explorer-refresh
+code path against real `neo-tree.nvim` and `nvim-tree.lua` instances instead
+of just the `package.loaded[...]`-guarded no-op every other spec exercises.
+Neither plugin is a runtime dependency of fileops.nvim, so the spec skips
+itself (prints `skip` and returns) unless both — plus neo-tree's own hard
+deps, `nui.nvim` and `plenary.nvim` — are found, resolved the same way
+`run.lua` resolves lib.nvim:
+
+1. `$NEO_TREE_NVIM_DIR` / `$NVIM_TREE_LUA_DIR` / `$NUI_NVIM_DIR` / `$PLENARY_NVIM_DIR`
+2. a sibling checkout (`../neo-tree.nvim`, `../nvim-tree.lua`, `../nui.nvim`, `../plenary.nvim`)
+
+CI runs it as its own `explorer-integration` job in `.github/workflows/ci.yml`,
+which checks the four repos out as siblings. A local run with nothing checked
+out just skips it — the main `test` job (and this local `nvim --headless …`
+command) never depend on it.
 
 ## Adding a spec
 
