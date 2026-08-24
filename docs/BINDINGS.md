@@ -25,6 +25,28 @@ remap). See [`bindings/keymaps.lua`](../lua/fileops/bindings/keymaps.lua).
 
 All cycle keymaps respect `v:count1`.
 
+## Context Menu (optional)
+
+`fileops.integrations.menu` contributes entries in the shape
+[nvzone/menu](https://github.com/nvzone/menu) expects — Rename file…,
+Duplicate file…, Delete file, Copy path, Show file info, Next/Previous file
+in directory — all acting on the current buffer's file, the same target
+every `:File <subcommand>` acts on. Each entry just runs the equivalent
+`:File <subcommand>` with no arguments, so options (git-aware flags, retry,
+refresh-explorers, delete confirmation mode, …) and destination prompting
+stay identical to running the command directly — see
+[`bindings/usrcmds.lua`](../lua/fileops/bindings/usrcmds.lua). Entries
+needing a real file are omitted on an unnamed buffer.
+
+fileops.nvim has **no** dependency on `menu` and never opens a context menu
+itself — a host (typically your own `<RightMouse>` dispatcher) has to
+compose these entries into its own menu:
+
+```lua
+local items = require("fileops.integrations.menu").items()  -- current buffer
+local sub = require("fileops.integrations.menu").submenu()  -- { name = "  File", items = {…} } | nil
+```
+
 ## User commands
 
 Registered by [`bindings/usrcmds.lua`](../lua/fileops/bindings/usrcmds.lua),
