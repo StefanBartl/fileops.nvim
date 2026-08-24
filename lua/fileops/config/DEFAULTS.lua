@@ -66,6 +66,25 @@ return {
       next_vsplit = "<leader>NF",
       prev_vsplit = "<leader>PF",
       delete = "<leader>dcf",
+
+      -- Unset by default. These actions were reachable only as `:File …`
+      -- subcommands; making a key *possible* is a different thing from
+      -- claiming one, so nothing new is bound unless you name it.
+      --
+      --   next_filtered / prev_filtered  prompt for a glob, then cycle within it
+      --                                  (`:File next *.lua` as a key)
+      --   delete_force                   the `:File! delete` form
+      --   path / cd / info / lockinfo    the matching `:File` subcommands
+      --   bulk_rename                    prompts for pattern + replacement
+      --
+      -- next_filtered = "<leader>nfg",
+      -- prev_filtered = "<leader>pfg",
+      -- delete_force  = "<leader>dcF",
+      -- path          = "<leader>fp",
+      -- cd            = "<leader>fd",
+      -- info          = "<leader>fi",
+      -- lockinfo      = "<leader>fl",
+      -- bulk_rename   = "<leader>fR",
     },
   },
   commands = true,

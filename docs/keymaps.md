@@ -24,6 +24,11 @@ All cycle keymaps respect `v:count1`.
 |---|---|
 | `<leader>dcf` | Delete current file + close buffer |
 
+Eight further `lhs` keys exist but are **unset by default** —
+`next_filtered`, `prev_filtered`, `delete_force`, `path`, `cd`, `info`,
+`lockinfo`, `bulk_rename`. See
+[BINDINGS.md](BINDINGS.md#unset-by-default-2026-08-24).
+
 Disable or remap a single key without touching the rest of the family:
 
 ```lua

@@ -14,6 +14,23 @@ return function(H)
   eq(d.keymaps.cycle, true, "default keymaps.cycle")
   eq(d.keymaps.lhs.next_replace, "<leader>nf", "default keymaps.lhs.next_replace")
   ok(type(d.keymaps.lhs) == "table", "keymaps.lhs is a table")
+
+  -- The keys added 2026-08-24 are deliberately unset: their actions were
+  -- command-only, and making a keymap *possible* is a different thing from
+  -- claiming a key for it. If a default ever appears here it should be a
+  -- decision, not a slip.
+  for _, key in ipairs({
+    "next_filtered",
+    "prev_filtered",
+    "delete_force",
+    "path",
+    "cd",
+    "info",
+    "lockinfo",
+    "bulk_rename",
+  }) do
+    eq(d.keymaps.lhs[key], nil, ("keymaps.lhs.%s has no default"):format(key))
+  end
   eq(d.auto_mkdir.enable, true, "default auto_mkdir.enable")
   eq(d.auto_mkdir.skip_remote, true, "default auto_mkdir.skip_remote")
   eq(d.on_hold.enable, false, "default on_hold.enable (opt-in)")

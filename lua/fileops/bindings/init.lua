@@ -13,7 +13,12 @@ function M.setup(cfg)
 
   if km.cycle ~= false then
     require("fileops.bindings.keymaps").attach_cycle()
+    require("fileops.bindings.keymaps").attach_cycle_filtered()
   end
+
+  -- No master switch of its own: every key it binds is unset by default, so
+  -- the `lhs` entries are already the switch.
+  require("fileops.bindings.keymaps").attach_actions()
 
   if km.delete ~= false then
     require("fileops.bindings.keymaps").attach_delete()

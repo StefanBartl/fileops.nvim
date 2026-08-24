@@ -23,6 +23,27 @@ remap). See [`bindings/keymaps.lua`](../lua/fileops/bindings/keymaps.lua).
 | `<leader>PF` | `prev_vsplit` | n | Previous file (vsplit) |
 | `<leader>dcf` | `delete` | n | Delete current file + close buffer |
 
+### Unset by default (2026-08-24)
+
+These actions were reachable only as `:File …` subcommands. Making a keymap
+*possible* is a different thing from claiming a key for it, so none of them
+is bound unless you name an `lhs`:
+
+| `lhs` config key | Mode | Action |
+| --- | --- | --- |
+| `next_filtered` / `prev_filtered` | n | Prompt for a glob, then cycle within it (`:File next *.lua` as a key) |
+| `delete_force` | n | Delete + force-close even with unsaved changes — the `:File! delete` form |
+| `path` | n | Copy the current path to the clipboard |
+| `cd` | n | `cd` to the current file's directory |
+| `info` | n | Show file info |
+| `lockinfo` | n | Diagnose which process locks this file |
+| `bulk_rename` | n | Bulk rename in this directory (prompts for pattern, then replacement) |
+
+The prompting ones prompt because a bare keypress carries no argument: a glob
+for the filtered cycle, a pattern and a replacement for the bulk rename. The
+filtered cycle remembers the last glob for the session, so walking a `*.lua`
+set does not mean retyping it at every step, and it still honours a count.
+
 All cycle keymaps respect `v:count1`.
 
 ## Context Menu (optional)

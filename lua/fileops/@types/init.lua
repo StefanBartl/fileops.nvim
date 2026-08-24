@@ -63,7 +63,15 @@
 ---@field prev_background? string|false  Previous file, load into buffer list only.
 ---@field next_vsplit?     string|false  Next file, vertical split.
 ---@field prev_vsplit?     string|false  Previous file, vertical split.
+---@field next_filtered?   string|false  Next file matching a prompted glob.
+---@field prev_filtered?   string|false  Previous file matching a prompted glob.
 ---@field delete?          string|false  Delete current file + close buffer.
+---@field delete_force?    string|false  Delete + force-close even with unsaved changes (the `:File! delete` form).
+---@field path?            string|false  Copy the current path to the clipboard.
+---@field cd?              string|false  cd to the current file's directory.
+---@field info?            string|false  Show file info.
+---@field lockinfo?        string|false  Diagnose which process locks this file.
+---@field bulk_rename?     string|false  Bulk rename in this directory (prompts for pattern + replacement).
 
 ---@class FileOps.KeymapConfig
 ---@field cycle?  boolean          Master switch: register cycle (next/prev) keymaps.
