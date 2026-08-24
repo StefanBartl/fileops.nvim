@@ -206,6 +206,21 @@ approximation).
   `lua/fileops/init.lua` (`M.info`)
 - **Usercmds:** `:File info` — see [docs/commands.md](commands.md#file-info)
 
+## Right-click context menu (nvzone/menu)
+
+`fileops.integrations.menu` contributes entries — Rename, Duplicate,
+Delete, Copy path, Show info, Next/Previous file — in the shape
+[nvzone/menu](https://github.com/nvzone/menu) expects, all acting on the
+current buffer's file. Each entry just runs the equivalent `:File
+<subcommand>` with no arguments, so options and destination prompting
+stay identical to running the command directly. Entries needing a real
+file are omitted on an unnamed buffer. fileops.nvim has no dependency on
+`menu` and never opens a context menu itself — a host (typically your own
+`<RightMouse>` dispatcher) composes the entries into its own menu.
+
+- **Module:** `fileops/integrations/menu.lua` (`M.items`, `M.submenu`)
+- **Docs:** [docs/BINDINGS.md#context-menu-optional](BINDINGS.md#context-menu-optional)
+
 ## Lock diagnosis (`:File lockinfo`)
 
 Diagnoses an `EBUSY`/`EPERM`/`EACCES` failure by probing whether the file is
