@@ -82,7 +82,13 @@ jobs:
       - name: stylua --check
         uses: JohnnyMorganz/stylua-action@v4
         with:
-          version: latest
+          # Required by the action to fetch the release; without it the step
+          # fails with "Parameter token or opts.auth is required" before ever
+          # running stylua. It went unnoticed while the job was advisory.
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Pinned, not "latest": stylua's own rule changes between releases
+          # would otherwise turn this gate red with no local diff to blame.
+          version: v2.5.2
           args: --check .
       - name: luacheck
         run: |
