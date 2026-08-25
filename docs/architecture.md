@@ -33,7 +33,7 @@ plugin/
 docs/
   BINDINGS.md             Cheatsheet of every keymap, user command, autocmd
   ROADMAP.md              Planned features
-  TESTS/                  Headless spec suite (see docs/TESTS/README.md)
+  TESTS/                  Headless spec suite (see TESTS/README.md)
 ```
 
 All file I/O uses `vim.uv` (libuv) — no shell, no injection risk, fully

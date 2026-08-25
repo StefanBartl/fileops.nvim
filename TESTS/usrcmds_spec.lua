@@ -1,4 +1,4 @@
--- docs/TESTS/usrcmds_spec.lua — bindings/usrcmds.lua: the :File dispatcher's
+-- TESTS/usrcmds_spec.lua — bindings/usrcmds.lua: the :File dispatcher's
 -- prompt_dest() helper (missing-path prompt, shared by 9 subcommands).
 
 return function(H)

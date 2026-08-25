@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: fileops.nvim
-      # docs/TESTS/run.lua hard-fails without lib.nvim on the runtimepath
+      # TESTS/run.lua hard-fails without lib.nvim on the runtimepath
       # (a real runtime dependency, not just optional) -- check it out as a
       # sibling so the run.lua's own sibling-checkout lookup (../lib.nvim)
       # finds it.
@@ -25,9 +25,9 @@ jobs:
         with:
           neovim: true
           version: stable
-      - name: Run docs/TESTS suite
+      - name: Run TESTS suite
         working-directory: fileops.nvim
-        run: nvim --headless -i NONE -u NONE -c "set rtp+=." -c "luafile docs/TESTS/run.lua" -c "qa!"
+        run: nvim --headless -i NONE -u NONE -c "set rtp+=." -c "luafile TESTS/run.lua" -c "qa!"
 
   explorer-integration:
     name: tests (neo-tree + nvim-tree, headless)
@@ -66,9 +66,9 @@ jobs:
         with:
           neovim: true
           version: stable
-      - name: Run docs/TESTS suite (with explorer deps on rtp)
+      - name: Run TESTS suite (with explorer deps on rtp)
         working-directory: fileops.nvim
-        run: nvim --headless -i NONE -u NONE -c "set rtp+=." -c "luafile docs/TESTS/run.lua" -c "qa!"
+        run: nvim --headless -i NONE -u NONE -c "set rtp+=." -c "luafile TESTS/run.lua" -c "qa!"
 
   lint:
     name: lint (stylua + luacheck)

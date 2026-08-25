@@ -1,5 +1,5 @@
--- docs/TESTS/harness.lua — tiny assertion helper shared by the spec files.
--- Returned to each spec by docs/TESTS/run.lua.
+-- TESTS/harness.lua — tiny assertion helper shared by the spec files.
+-- Returned to each spec by TESTS/run.lua.
 
 local H = {}
 

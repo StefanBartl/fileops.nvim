@@ -1,4 +1,4 @@
--- docs/TESTS/file_spec.lua — ops/file.lua: copy/move/touch and friends.
+-- TESTS/file_spec.lua — ops/file.lua: copy/move/touch and friends.
 
 return function(H)
   local eq, ok = H.eq, H.ok

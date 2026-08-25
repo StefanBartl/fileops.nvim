@@ -1,4 +1,4 @@
--- docs/TESTS/git_async_spec.lua — util/git.lua: is_tracked_async/mv_async/rm_async
+-- TESTS/git_async_spec.lua — util/git.lua: is_tracked_async/mv_async/rm_async
 -- against a real temp git repo. Mirrors git_spec.lua's blocking coverage; the
 -- point here is only that the async twins agree with it and never block the
 -- caller past the callback (waited for via vim.wait, same as any other

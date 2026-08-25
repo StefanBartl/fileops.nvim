@@ -1,4 +1,4 @@
--- docs/TESTS/bulk_spec.lua — ops/bulk.lua: batch rename plan + execute.
+-- TESTS/bulk_spec.lua — ops/bulk.lua: batch rename plan + execute.
 
 return function(H)
   local eq, ok = H.eq, H.ok

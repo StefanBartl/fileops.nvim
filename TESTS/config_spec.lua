@@ -1,4 +1,4 @@
--- docs/TESTS/config_spec.lua — config merge (DEFAULTS + user options).
+-- TESTS/config_spec.lua — config merge (DEFAULTS + user options).
 
 return function(H)
   local eq, ok = H.eq, H.ok

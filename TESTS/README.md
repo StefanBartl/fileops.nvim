@@ -8,7 +8,7 @@ that is trivially testable without a UI.
 From the repo root:
 
 ```sh
-nvim --headless -u NONE -c "set rtp+=." -c "luafile docs/TESTS/run.lua" -c "qa!"
+nvim --headless -u NONE -c "set rtp+=." -c "luafile TESTS/run.lua" -c "qa!"
 ```
 
 The runner prints one line per spec and exits non-zero on the first failure
@@ -31,7 +31,7 @@ The runner prints one line per spec and exits non-zero on the first failure
 `platform_spec.lua` is gone: `util/platform.lua` was removed in favour of
 `lib.nvim.cross.fs.mutate`, and that behaviour (`mkdir_p`, `copy_file`,
 `rename_file`, `delete_file`) is covered by lib.nvim's own
-`docs/TESTS/nvim_helpers_spec.lua`. The coverage moved with the code.
+`TESTS/nvim_helpers_spec.lua`. The coverage moved with the code.
 
 ## lib.nvim
 

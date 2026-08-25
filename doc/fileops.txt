@@ -847,7 +847,7 @@ Checks:
 
   docs/BINDINGS.md           Cheatsheet of every keymap/usrcmd/autocmd
   docs/ROADMAP.md            Planned features
-  docs/TESTS/                Headless spec suite
+  TESTS/                Headless spec suite
 
 Module load order: util → ops → config → bindings → init
 

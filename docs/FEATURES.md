@@ -40,7 +40,7 @@ is a silent no-op. Tab-completion for path arguments resolves against the
   `conflict_marks`
 - Full Lua API mirroring every subcommand (`docs/api.md`), which-key groups,
   per-key remappable keymaps, `:checkhealth fileops`, headless test suite
-  (`docs/TESTS/`) run in CI alongside stylua/luacheck.
+  (`TESTS/`) run in CI alongside stylua/luacheck.
 
 ### Why one command instead of many
 
@@ -189,7 +189,7 @@ default key but left the forced form reachable only by retyping the command.
 - **Module:** `bindings/keymaps.lua` (`attach_actions`,
   `attach_cycle_filtered`, `bind`)
 - **Config:** `opts.keymaps.lhs.{path,cd,info,lockinfo,bulk_rename,delete_force,next_filtered,prev_filtered}`
-- **Tests:** `docs/TESTS/config_spec.lua` pins that none of them has a default
+- **Tests:** `TESTS/config_spec.lua` pins that none of them has a default
 - **Config:** `opts.cycle.*` (`open_target`, `root`, `wrap`,
   `include_hidden`, `case_insensitive`, `follow_symlinks`,
   `confirm_on_modified`, `keep_focus`, `pattern`) — see

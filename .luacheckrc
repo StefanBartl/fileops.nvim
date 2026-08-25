@@ -15,6 +15,6 @@ ignore = {
 }
 
 -- Test specs intentionally use partial config tables.
-files["docs/TESTS/**"] = {
+files["TESTS/**"] = {
   ignore = { "631", "211" },
 }

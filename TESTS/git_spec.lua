@@ -1,4 +1,4 @@
--- docs/TESTS/git_spec.lua — util/git.lua: is_tracked/mv/rm against a real repo.
+-- TESTS/git_spec.lua — util/git.lua: is_tracked/mv/rm against a real repo.
 
 return function(H)
   local eq, ok = H.eq, H.ok

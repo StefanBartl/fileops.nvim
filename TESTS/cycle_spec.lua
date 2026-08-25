@@ -1,4 +1,4 @@
--- docs/TESTS/cycle_spec.lua — ops/cycle.lua directory listing + navigate.
+-- TESTS/cycle_spec.lua — ops/cycle.lua directory listing + navigate.
 
 return function(H)
   local eq, ok = H.eq, H.ok

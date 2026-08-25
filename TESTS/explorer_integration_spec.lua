@@ -1,4 +1,4 @@
--- docs/TESTS/explorer_integration_spec.lua — ops/file.lua's explorer-refresh
+-- TESTS/explorer_integration_spec.lua — ops/file.lua's explorer-refresh
 -- code path (`reload_explorers`/`refresh_explorers` in ops/file.lua) against
 -- REAL neo-tree.nvim and nvim-tree.lua instances, not just the
 -- `package.loaded[...]`-guarded no-op every other spec exercises.
