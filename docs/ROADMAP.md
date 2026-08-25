@@ -1,6 +1,6 @@
 # fileops.nvim — Roadmap
 
-> Wenn eine Task erledigt ist, dann hier ersatzlos entfernen und ggf. nach `docs/Features` schreiben!
+> When a task is done, remove it here without replacement and, where it fits, write it up under `docs/Features`.
 
 ---
 
