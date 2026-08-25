@@ -44,7 +44,9 @@ return function(H)
   for _, dirname in ipairs({ "neo-tree.nvim", "nvim-tree.lua", "nui.nvim", "plenary.nvim" }) do
     local d = resolve(dirname)
     if not d then
-      print("skip  explorer_integration_spec.lua: neo-tree.nvim/nvim-tree.lua (+deps) not found beside this repo")
+      print(
+        "skip  explorer_integration_spec.lua: neo-tree.nvim/nvim-tree.lua (+deps) not found beside this repo"
+      )
       return
     end
     vim.opt.rtp:append(d)

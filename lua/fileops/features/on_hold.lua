@@ -216,18 +216,22 @@ local function get_previous_line_async(git_cmd, file, lnum, cwd, cb)
           end)
         end
         local show_started = pcall(function()
-          vim.system({ git_cmd, "show", sha .. ":" .. file }, { text = true, cwd = cwd }, function(blob_res)
-            vim.schedule(function()
-              if blob_res.code ~= 0 then
-                return cb(nil)
-              end
-              local blob = to_lines(blob_res.stdout)
-              if #blob == 0 or lnum > #blob then
-                return cb(nil)
-              end
-              cb(blob[lnum])
-            end)
-          end)
+          vim.system(
+            { git_cmd, "show", sha .. ":" .. file },
+            { text = true, cwd = cwd },
+            function(blob_res)
+              vim.schedule(function()
+                if blob_res.code ~= 0 then
+                  return cb(nil)
+                end
+                local blob = to_lines(blob_res.stdout)
+                if #blob == 0 or lnum > #blob then
+                  return cb(nil)
+                end
+                cb(blob[lnum])
+              end)
+            end
+          )
         end)
         if not show_started then
           vim.schedule(function()

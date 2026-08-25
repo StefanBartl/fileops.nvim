@@ -43,21 +43,35 @@ function M.items(bufnr)
 
   contextmenu.group(
     out,
-    contextmenu.entry(named, "  Rename file…", function() vim.cmd("File rename") end),
-    contextmenu.entry(named, "  Duplicate file…", function() vim.cmd("File duplicate") end),
-    contextmenu.entry(named, "  Delete file", function() vim.cmd("File delete") end)
+    contextmenu.entry(named, "  Rename file…", function()
+      vim.cmd("File rename")
+    end),
+    contextmenu.entry(named, "  Duplicate file…", function()
+      vim.cmd("File duplicate")
+    end),
+    contextmenu.entry(named, "  Delete file", function()
+      vim.cmd("File delete")
+    end)
   )
 
   contextmenu.group(
     out,
-    contextmenu.entry(named, "  Copy path", function() vim.cmd("File path") end),
-    contextmenu.entry(named, "  Show file info", function() vim.cmd("File info") end)
+    contextmenu.entry(named, "  Copy path", function()
+      vim.cmd("File path")
+    end),
+    contextmenu.entry(named, "  Show file info", function()
+      vim.cmd("File info")
+    end)
   )
 
   contextmenu.group(
     out,
-    contextmenu.entry(true, "  Next file in directory", function() vim.cmd("File next") end),
-    contextmenu.entry(true, "  Previous file in directory", function() vim.cmd("File prev") end)
+    contextmenu.entry(true, "  Next file in directory", function()
+      vim.cmd("File next")
+    end),
+    contextmenu.entry(true, "  Previous file in directory", function()
+      vim.cmd("File prev")
+    end)
   )
 
   return out

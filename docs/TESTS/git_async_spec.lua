@@ -55,12 +55,9 @@ return function(H)
     end),
     "is_tracked_async: true for a committed file"
   )
-  ok(
-    not await(function(cb)
-      git.is_tracked_async(untracked_path, cb)
-    end),
-    "is_tracked_async: false for a never-added file"
-  )
+  ok(not await(function(cb)
+    git.is_tracked_async(untracked_path, cb)
+  end), "is_tracked_async: false for a never-added file")
 
   -- mv_async: renames on disk AND keeps the new name tracked
   local dest_path = dir .. "renamed.txt"
