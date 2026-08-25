@@ -73,10 +73,10 @@ jobs:
   lint:
     name: lint (stylua + luacheck)
     runs-on: ubuntu-latest
-    # stylua is advisory until a one-time `stylua .` formatting pass has landed
-    # (existing style predates this config). luacheck already passes clean;
-    # the `test` job remains the authoritative gate either way.
-    continue-on-error: true
+    # Was advisory while the one-time `stylua .` pass the existing style
+    # predated was still outstanding. That pass has landed, `stylua --check .`
+    # and `luacheck lua` both run clean, and leaving the job non-blocking would
+    # only let the formatting drift back unnoticed.
     steps:
       - uses: actions/checkout@v4
       - name: stylua --check
