@@ -39,7 +39,7 @@ docs/
 All file I/O uses `vim.uv` (libuv) — no shell, no injection risk, fully
 cross-platform. `lib.nvim` is a **required** dependency (see
 [Requirements](installation.md#requirements)): it supplies the `:File`
-command layer (`lib.nvim.usercmd.composer`), the injection-safe file
+command layer (`lib.nvim.bindings.usercmd.composer`), the injection-safe file
 primitives behind create/rename/duplicate/delete (`lib.nvim.cross.fs.mutate`),
 and background buffer opening (`lib.nvim.buffer.open_background`). Only
 notifications are a genuinely soft, cosmetic fallback: if `lib.nvim.notify`

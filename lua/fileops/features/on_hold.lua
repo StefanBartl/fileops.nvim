@@ -8,7 +8,7 @@
 
 local api, fn = vim.api, vim.fn
 local uv = vim.uv or vim.loop
-local autocmd = require("lib.nvim.autocmd")
+local autocmd = require("lib.nvim.bindings.autocmd")
 
 local M = {}
 
@@ -30,7 +30,7 @@ end
 ---@return integer
 local function augroup(name)
   -- Created directly via nvim_create_augroup(..., { clear = true }) rather
-  -- than lib.nvim.autocmd.group(): that helper caches groups by name and
+  -- than lib.nvim.bindings.autocmd.group(): that helper caches groups by name and
   -- skips the clear on subsequent calls, which would stack duplicate
   -- autocmds if setup() ever re-runs.
   return api.nvim_create_augroup("fileops_on_hold_" .. name, { clear = true })
@@ -384,7 +384,7 @@ function M.setup(cfg)
                 pcall(api.nvim_win_set_cursor, win, cur)
               end)
             end
-            -- Buffer-local (opts.buffer): lib.nvim.autocmd.create doesn't
+            -- Buffer-local (opts.buffer): lib.nvim.bindings.autocmd.create doesn't
             -- forward a `buffer` option, so this one stays on the raw API.
             api.nvim_create_autocmd({ "CursorMoved", "BufHidden", "InsertEnter" }, {
               group = augroup("cleanup"),
@@ -416,7 +416,7 @@ function M.setup(cfg)
           priority = tonumber(cfg.virt_priority or 1000) or 1000,
         })
 
-        -- Buffer-local (opts.buffer): lib.nvim.autocmd.create doesn't
+        -- Buffer-local (opts.buffer): lib.nvim.bindings.autocmd.create doesn't
         -- forward a `buffer` option, so this one stays on the raw API.
         api.nvim_create_autocmd({ "CursorMoved", "BufHidden", "InsertEnter" }, {
           group = augroup("cleanup"),

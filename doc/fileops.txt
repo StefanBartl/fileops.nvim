@@ -36,7 +36,7 @@ injection risk, fully cross-platform (Windows and Unix).
 
   - Neovim 0.9 or later
   - lib.nvim (https://github.com/StefanBartl/lib.nvim) — REQUIRED. Supplies
-    the :File command layer (lib.nvim.usercmd.composer), the injection-safe
+    the :File command layer (lib.nvim.bindings.usercmd.composer), the injection-safe
     file primitives behind create/rename/duplicate/delete
     (lib.nvim.cross.fs.mutate), and background buffer opening
     (lib.nvim.buffer.open_background). Only notify's own styling is a

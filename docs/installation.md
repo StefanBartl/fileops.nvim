@@ -4,7 +4,7 @@
 
 - Neovim **0.9+**
 - [lib.nvim](https://github.com/StefanBartl/lib.nvim) — **required**. Supplies
-  the `:File` command layer (`lib.nvim.usercmd.composer`), notifications, the
+  the `:File` command layer (`lib.nvim.bindings.usercmd.composer`), notifications, the
   injection-safe file primitives behind create/rename/duplicate/delete
   (`lib.nvim.cross.fs.mutate`), and background buffer opening
 

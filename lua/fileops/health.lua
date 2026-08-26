@@ -68,12 +68,12 @@ function M.check()
     ok("nvim-treesitter not installed (not required)")
   end
 
-  -- lib.nvim: required (:File command layer via lib.nvim.usercmd.composer,
+  -- lib.nvim: required (:File command layer via lib.nvim.bindings.usercmd.composer,
   -- plus ops/file.lua's lib.nvim.cross.fs.mutate and ops/cycle.lua's
   -- lib.nvim.buffer.open_background — both already hard requires with no
   -- pcall, so this plugin has never actually run standalone). Only
   -- notify's own styling is a genuinely soft, cosmetic fallback.
-  if pcall(require, "lib.nvim.usercmd.composer") then
+  if pcall(require, "lib.nvim.bindings.usercmd.composer") then
     ok("lib.nvim detected (:File command layer available)")
   else
     warn('lib.nvim not found — :File will fail to register; install "StefanBartl/lib.nvim"')
@@ -107,7 +107,7 @@ function M.check()
     ok("gitsigns.nvim not found — on_hold falls back to previous-content preview")
   end
 
-  require("lib.nvim.usercmd.composer").checkhealth("File")
+  require("lib.nvim.bindings.usercmd.composer").checkhealth("File")
 end
 
 return M

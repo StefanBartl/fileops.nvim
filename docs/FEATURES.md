@@ -21,7 +21,7 @@ is a silent no-op. Tab-completion for path arguments resolves against the
 
 - **Tab:** true
 - **Module:** `bindings/usrcmds.lua` (`M.register`, `dispatch`), built on
-  `lib.nvim.usercmd.composer`
+  `lib.nvim.bindings.usercmd.composer`
 - **Usercmds:** [`:File`](commands.md) — see
   [docs/BINDINGS.md#user-commands](BINDINGS.md#user-commands) for the full
   subcommand table
@@ -48,7 +48,7 @@ Every subcommand shares the same `!`/`%`/prompt-on-missing-arg conventions,
 the same tab-completion base (buffer directory), and the same
 git-aware/retry/session-compat plumbing for the five mutating subcommands
 (`rename`/`move`/`duplicate`/`copy`/`delete`). Dispatching through one
-`lib.nvim.usercmd.composer` verb with per-subcommand routes means that
+`lib.nvim.bindings.usercmd.composer` verb with per-subcommand routes means that
 plumbing is written once in `bindings/usrcmds.lua`'s `dispatch()` function
 instead of once per command definition, and `:File help` can enumerate every
 subcommand from the same `SUBCMDS` table the router itself uses.

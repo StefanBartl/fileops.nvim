@@ -3,7 +3,7 @@
 ---cleared on window leave.
 
 local api, fn = vim.api, vim.fn
-local autocmd = require("lib.nvim.autocmd")
+local autocmd = require("lib.nvim.bindings.autocmd")
 
 local M = {}
 
@@ -12,7 +12,7 @@ local M = {}
 ---@return integer
 local function augroup(name)
   -- Created directly via nvim_create_augroup(..., { clear = true }) rather
-  -- than lib.nvim.autocmd.group(): that helper caches groups by name and
+  -- than lib.nvim.bindings.autocmd.group(): that helper caches groups by name and
   -- skips the clear on subsequent calls, which would stack duplicate
   -- autocmds if setup() ever re-runs.
   return api.nvim_create_augroup("fileops_conflict_marks_" .. name, { clear = true })

@@ -1,9 +1,9 @@
 ---@module 'fileops.bindings.usrcmds'
 ---Registers the single :File[!] unified user command, built via
----lib.nvim.usercmd.composer.
+---lib.nvim.bindings.usercmd.composer.
 local M = {}
 
-local composer = require("lib.nvim.usercmd.composer")
+local composer = require("lib.nvim.bindings.usercmd.composer")
 local notify = require("fileops.util.notify")
 local file = require("fileops.ops.file")
 local cycle = require("fileops.ops.cycle")
