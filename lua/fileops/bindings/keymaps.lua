@@ -18,7 +18,7 @@ local config = require("fileops.config")
 ---@param desc string
 local function map(lhs, fn, desc)
   local ok, lib_map = pcall(require, "lib.nvim.bindings.keymap")
-  if ok and type(lib_map) == "function" then
+  if ok and vim.is_callable(lib_map) then
     local wrapped = pcall(lib_map, "n", lhs, fn, { silent = true }, desc)
     if wrapped then
       return
