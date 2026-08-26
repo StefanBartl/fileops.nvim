@@ -85,7 +85,7 @@ function M.check()
   end
 
   -- which-key (optional, groups the <leader>n / <leader>p prefixes)
-  if require("fileops.bindings.which_key").available() then
+  if pcall(require, "which-key") then
     ok("which-key detected (<leader>n / <leader>p grouped)")
   else
     ok("which-key not found — mappings still carry their own descriptions")
