@@ -29,11 +29,11 @@ end
 ---@param name string
 ---@return integer
 local function augroup(name)
-  -- Created directly via nvim_create_augroup(..., { clear = true }) rather
-  -- than lib.nvim.bindings.autocmd.group(): that helper caches groups by name and
-  -- skips the clear on subsequent calls, which would stack duplicate
-  -- autocmds if setup() ever re-runs.
-  return api.nvim_create_augroup("fileops_on_hold_" .. name, { clear = true })
+  -- Cleared through lib rather than nvim_create_augroup: `group(name, true)`
+  -- drops the module's *records* along with the autocmds, so a re-run cannot
+  -- leave rows in the generated bindings table for autocmds that no longer
+  -- exist.
+  return autocmd.group("fileops_on_hold_" .. name, true)
 end
 
 ---@internal
@@ -384,15 +384,12 @@ function M.setup(cfg)
                 pcall(api.nvim_win_set_cursor, win, cur)
               end)
             end
-            -- Buffer-local (opts.buffer): lib.nvim.bindings.autocmd.create doesn't
-            -- forward a `buffer` option, so this one stays on the raw API.
-            api.nvim_create_autocmd({ "CursorMoved", "BufHidden", "InsertEnter" }, {
+            autocmd.create({ "CursorMoved", "BufHidden", "InsertEnter" }, function()
+              clear_line_diff(buf)
+            end, {
               group = augroup("cleanup"),
               buffer = buf,
               once = true,
-              callback = function()
-                clear_line_diff(buf)
-              end,
               desc = "[fileops] Clear inline diff preview on next move",
             })
             return
@@ -416,15 +413,12 @@ function M.setup(cfg)
           priority = tonumber(cfg.virt_priority or 1000) or 1000,
         })
 
-        -- Buffer-local (opts.buffer): lib.nvim.bindings.autocmd.create doesn't
-        -- forward a `buffer` option, so this one stays on the raw API.
-        api.nvim_create_autocmd({ "CursorMoved", "BufHidden", "InsertEnter" }, {
+        autocmd.create({ "CursorMoved", "BufHidden", "InsertEnter" }, function()
+          clear_line_diff(buf)
+        end, {
           group = augroup("cleanup"),
           buffer = buf,
           once = true,
-          callback = function()
-            clear_line_diff(buf)
-          end,
           desc = "[fileops] Clear previous-line preview on next move",
         })
       end)

@@ -19,11 +19,11 @@ function M.attach_auto_mkdir(cfg)
 
   local pattern = cfg.detect_remote_pattern or "^%w%w+:[\\/][\\/]"
 
-  -- Created directly via nvim_create_augroup(..., { clear = true }) rather
-  -- than lib.nvim.bindings.autocmd.group(): that helper caches groups by name and
-  -- skips the clear on subsequent calls, which would stack duplicate
-  -- autocmds if attach_auto_mkdir() ever re-runs.
-  local grp = vim.api.nvim_create_augroup(GROUP, { clear = true })
+  -- Cleared through lib rather than nvim_create_augroup: `group(name, true)`
+  -- drops the module's *records* along with the autocmds, so a re-run cannot
+  -- leave rows in the generated bindings table for autocmds that no longer
+  -- exist.
+  local grp = autocmd.group(GROUP, true)
 
   autocmd.create("BufWritePre", function(event)
     if cfg.skip_remote ~= false and event.match:match(pattern) then

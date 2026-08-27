@@ -2,7 +2,7 @@
 ---Highlight Git conflict markers (<<<<<<< / ======= / >>>>>>>) per-window,
 ---cleared on window leave.
 
-local api, fn = vim.api, vim.fn
+local fn = vim.fn
 local autocmd = require("lib.nvim.bindings.autocmd")
 
 local M = {}
@@ -11,11 +11,11 @@ local M = {}
 ---@param name string
 ---@return integer
 local function augroup(name)
-  -- Created directly via nvim_create_augroup(..., { clear = true }) rather
-  -- than lib.nvim.bindings.autocmd.group(): that helper caches groups by name and
-  -- skips the clear on subsequent calls, which would stack duplicate
-  -- autocmds if setup() ever re-runs.
-  return api.nvim_create_augroup("fileops_conflict_marks_" .. name, { clear = true })
+  -- Cleared through lib rather than nvim_create_augroup: `group(name, true)`
+  -- drops the module's *records* along with the autocmds, so a re-run cannot
+  -- leave rows in the generated bindings table for autocmds that no longer
+  -- exist.
+  return autocmd.group("fileops_conflict_marks_" .. name, true)
 end
 
 ---Register the BufWinEnter/BufWinLeave conflict-marker highlight autocmds if enabled.
