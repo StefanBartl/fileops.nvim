@@ -846,7 +846,6 @@ Checks:
       conflict_marks.lua     conflict-marker highlighting
 
   docs/BINDINGS.md           Cheatsheet of every keymap/usrcmd/autocmd
-  docs/ROADMAP.md            Planned features
   TESTS/                Headless spec suite
 
 Module load order: util → ops → config → bindings → init

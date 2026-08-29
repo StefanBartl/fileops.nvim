@@ -96,4 +96,3 @@ Verify your setup any time with:
 - [Lua API](docs/api.md) — calling fileops.nvim functions directly from Lua.
 - [Architecture](docs/architecture.md) — module layout and design notes.
 - [Bindings cheatsheet](docs/BINDINGS.md) — quick-reference table of every keymap, command, and autocommand.
-- [Roadmap](docs/ROADMAP.md) — implemented and planned features.

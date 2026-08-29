@@ -32,7 +32,6 @@ plugin/
   fileops.lua        Load guard
 docs/
   BINDINGS.md             Cheatsheet of every keymap, user command, autocmd
-  ROADMAP.md              Planned features
   TESTS/                  Headless spec suite (see TESTS/README.md)
 ```
 
