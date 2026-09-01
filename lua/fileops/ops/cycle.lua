@@ -122,7 +122,7 @@ end
 ---`"cwd_recursive"`.
 ---@param dir string
 ---@param opts FileOps.CycleConfig
----@return string[]  Absolute, canonicalized paths.
+---@return string[] files  Absolute, canonicalized paths.
 local function list_files(dir, opts)
   local acc = {}
   local ci = opts.case_insensitive
@@ -220,13 +220,18 @@ function M.open_path(path, opts)
           return
         end
         if choice == "Save and open" then
-          if not pcall(vim.cmd, "write") then
+          local saved = pcall(function()
+            vim.cmd("write")
+          end)
+          if not saved then
             notify.error("save failed, aborting navigation")
             return
           end
         end
         local cmd = (choice == "Discard changes and open") and "edit! " or "edit "
-        pcall(vim.cmd, cmd .. esc)
+        pcall(function()
+          vim.cmd(cmd .. esc)
+        end)
       end,
     })
     return true, nil
@@ -234,7 +239,9 @@ function M.open_path(path, opts)
 
   if target == "replace" then
     local old = bufnr
-    local ok, err = pcall(vim.cmd, "edit " .. esc)
+    local ok, err = pcall(function()
+      vim.cmd("edit " .. esc)
+    end)
     if not ok then
       return false, "open failed: " .. tostring(err)
     end
@@ -244,7 +251,9 @@ function M.open_path(path, opts)
     end
     return true, nil
   elseif target == "current" then
-    local ok, err = pcall(vim.cmd, "edit " .. esc)
+    local ok, err = pcall(function()
+      vim.cmd("edit " .. esc)
+    end)
     if not ok then
       return false, "open failed: " .. tostring(err)
     end
@@ -252,7 +261,9 @@ function M.open_path(path, opts)
   elseif target == "split" or target == "vsplit" then
     local cmd = (target == "split") and "split " or "vsplit "
     local cur = win
-    local ok, err = pcall(vim.cmd, cmd .. esc)
+    local ok, err = pcall(function()
+      vim.cmd(cmd .. esc)
+    end)
     if not ok then
       return false, target .. " failed: " .. tostring(err)
     end
@@ -265,7 +276,9 @@ function M.open_path(path, opts)
     end
     return true, nil
   elseif target == "tab" then
-    local ok, err = pcall(vim.cmd, "tabedit " .. esc)
+    local ok, err = pcall(function()
+      vim.cmd("tabedit " .. esc)
+    end)
     if not ok then
       return false, "tabedit failed: " .. tostring(err)
     end

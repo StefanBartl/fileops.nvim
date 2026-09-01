@@ -2,6 +2,10 @@
 -- a fixture read, a uv handle -- this file must crash and name it. The nil
 -- guards LuaLS asks for below would hide the very failure it exists to report.
 ---@diagnostic disable: need-check-nil
+--
+-- `fsops.rename_file` is replaced below as a test double, for the length of
+-- one case, and restored right after.
+---@diagnostic disable: duplicate-set-field
 -- TESTS/file_spec.lua — ops/file.lua: copy/move/touch and friends.
 
 return function(H)
@@ -210,6 +214,8 @@ return function(H)
   ok(default_ok, "copy_path with no mode succeeds")
   eq(vim.fn.getreg('"'), vim.fn.fnamemodify(pathed, ":p"), "copy_path nil: defaults to abs")
 
+  -- Deliberately outside the alias: rejecting an unknown mode is the point.
+  ---@diagnostic disable-next-line: param-type-mismatch
   local bad_ok, bad_msg = file.copy_path("bogus")
   ok(not bad_ok, "copy_path rejects unknown mode: " .. tostring(bad_msg))
 

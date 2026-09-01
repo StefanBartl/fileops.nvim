@@ -96,7 +96,7 @@ function M.execute(plan, opts)
             pcall(api.nvim_buf_set_name, b, item.new)
           end
         end
-        file.notify_change("rename", item.new, opts)
+        file.notify_change("rename", item.new, { refresh_explorers = opts.refresh_explorers })
       else
         first_err = first_err
           or (("rename failed: %s -> %s (%s)"):format(item.old, item.new, tostring(err)))

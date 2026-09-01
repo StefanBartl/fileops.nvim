@@ -150,7 +150,7 @@ function M.copy(new_path, opts)
 end
 
 ---Delete the current file from disk and close the buffer.
----@param opts? { force?: boolean, mode?: "trash"|"permanent", on_before_delete?: fun(path: string): boolean|nil }
+---@param opts? { force?: boolean, mode?: "trash"|"permanent", on_before_delete?: (fun(path: string): boolean|nil) }
 ---@return boolean ok
 function M.delete_current(opts)
   return require("fileops.util.notify").report(require("fileops.ops.file").delete_current(opts))

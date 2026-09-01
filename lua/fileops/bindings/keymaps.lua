@@ -106,8 +106,25 @@ local function bulk_rename()
             notify.warn(err or "cannot determine root directory")
             return
           end
-          local plan = bulk.plan(dir, pattern, replacement or "", cfg.bulk or {})
-          notify.report(bulk.execute(plan, cfg.bulk or {}))
+          -- `cfg.bulk` is not a config section and never was, so this read
+          -- always produced `{}`: bulk's own options (`include_hidden`,
+          -- `bang`, `refresh_explorers`) are not configurable from `setup()`.
+          -- Passing the empty table outright says so, instead of looking like
+          -- a setting a reader could go and set.
+          local plan = bulk.plan(dir, pattern, replacement or "", {})
+          -- `execute` answers `(renamed_count, err)`, not `(ok, msg)`, so
+          -- `notify.report` was handed a number as its `ok` and nil as its
+          -- message -- and reports nothing at all when the message is nil.
+          -- The keymap therefore said neither "12 renamed" nor why it failed.
+          -- Same wording as the `:File bulk` path in bindings/usrcmds.lua.
+          local renamed, err = bulk.execute(plan, {})
+          if err then
+            notify.error(
+              ("bulk rename: %d/%d renamed, first failure: %s"):format(renamed, #plan, err)
+            )
+          else
+            notify.info(("bulk rename: %d file(s) renamed"):format(renamed))
+          end
         end,
       })
     end,
@@ -253,7 +270,11 @@ function M.setup(cfg)
 
       lockinfo = {
         rhs = function()
-          file.diagnose_lock()
+          -- Through the public entry point, which supplies the notify-based
+          -- callback. `ops.file.diagnose_lock` is asynchronous and takes the
+          -- callback as a required first argument -- called bare, as it was
+          -- here, it raised instead of reporting anything.
+          require("fileops").diagnose_lock()
         end,
         desc = "Diagnose which process locks this file",
       },

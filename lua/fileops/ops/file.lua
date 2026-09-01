@@ -205,14 +205,18 @@ function M.edit_new(path, opts)
 
   local esc = fn.fnameescape(abs)
   local cmd = "file " .. esc
-  local ok, err = pcall(vim.cmd, cmd)
+  local ok, err = pcall(function()
+    vim.cmd(cmd)
+  end)
   if not ok then
     return false, "file command failed: " .. tostring(err)
   end
 
   if opts.write then
     local write_cmd = opts.bang and "write!" or "write"
-    local wok, werr = pcall(vim.cmd, write_cmd)
+    local wok, werr = pcall(function()
+      vim.cmd(write_cmd)
+    end)
     if not wok then
       return false, "write failed: " .. tostring(werr)
     end
@@ -241,7 +245,9 @@ function M.save_as(path, opts)
 
   local esc = fn.fnameescape(abs)
   local cmd = opts.bang and "saveas! " or "saveas "
-  local ok, err = pcall(vim.cmd, cmd .. esc)
+  local ok, err = pcall(function()
+    vim.cmd(cmd .. esc)
+  end)
   if not ok then
     return false, "saveas failed: " .. tostring(err)
   end
@@ -269,7 +275,9 @@ function M.write_to(path, opts)
 
   local esc = fn.fnameescape(abs)
   local cmd = opts.bang and "write! " or "write "
-  local ok, err = pcall(vim.cmd, cmd .. esc)
+  local ok, err = pcall(function()
+    vim.cmd(cmd .. esc)
+  end)
   if not ok then
     return false, "write to failed: " .. tostring(err)
   end
@@ -386,7 +394,9 @@ local function move_or_rename(new_path, opts)
 
   -- Write unsaved changes before renaming so no data is lost
   if vim.bo[b].modified then
-    local ok, err = pcall(vim.cmd, "write")
+    local ok, err = pcall(function()
+      vim.cmd("write")
+    end)
     if not ok then
       return false, "save failed before " .. action .. ": " .. tostring(err)
     end
@@ -412,9 +422,14 @@ local function move_or_rename(new_path, opts)
 
   -- Update buffer to point at new path
   local esc = fn.fnameescape(abs)
-  pcall(vim.cmd, "file " .. esc)
+  pcall(function()
+    vim.cmd("file " .. esc)
+  end)
   if reload then
-    pcall(vim.cmd, "edit") -- reload from disk so signs/diagnostics reset
+    -- reload from disk so signs/diagnostics reset
+    pcall(function()
+      vim.cmd("edit")
+    end)
   end
 
   M.notify_change(action, abs, opts)
@@ -427,7 +442,9 @@ local function move_or_rename(new_path, opts)
   -- Third-party session managers (possession.nvim, sessions.nvim, ...) can
   -- react to the `User FileopsChanged` autocmd fired just above instead.
   if opts.session_compat and vim.v.this_session ~= "" then
-    pcall(vim.cmd, "mksession! " .. fn.fnameescape(vim.v.this_session))
+    pcall(function()
+      vim.cmd("mksession! " .. fn.fnameescape(vim.v.this_session))
+    end)
   end
 
   local suffix = tracked and (used_git and " (git mv)" or " (git-tracked)") or ""
@@ -524,7 +541,9 @@ function M.duplicate(new_path, opts)
 
   -- Flush unsaved content first
   if vim.bo[b].modified then
-    local ok, err = pcall(vim.cmd, "write")
+    local ok, err = pcall(function()
+      vim.cmd("write")
+    end)
     if not ok then
       return false, "save failed before duplicate: " .. tostring(err)
     end
@@ -537,7 +556,9 @@ function M.duplicate(new_path, opts)
 
   if open then
     local esc = fn.fnameescape(abs)
-    pcall(vim.cmd, "edit " .. esc)
+    pcall(function()
+      vim.cmd("edit " .. esc)
+    end)
   end
 
   M.notify_change(verb == "copied" and "copy" or "duplicate", abs, opts)
@@ -625,7 +646,7 @@ end
 ---applies when `opts.mode` is `"permanent"` (or unset) — trashing a file is
 ---a different operation than `git rm`, so trash mode always uses the trash
 ---path and just notes tracked-ness in the message.
----@param opts? { force?: boolean, mode?: "trash"|"permanent", on_before_delete?: fun(path: string): boolean|nil, refresh_explorers?: boolean, git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string, retry?: FileOps.RetryConfig }
+---@param opts? { force?: boolean, mode?: "trash"|"permanent", on_before_delete?: (fun(path: string): boolean|nil), refresh_explorers?: boolean, git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string, retry?: FileOps.RetryConfig }
 ---@return boolean ok
 ---@return string|nil msg
 function M.delete_current(opts)
@@ -846,7 +867,9 @@ local function refresh_explorers(dir)
       local buf = api.nvim_win_get_buf(win)
       if api.nvim_buf_is_valid(buf) and vim.bo[buf].filetype == "netrw" then
         pcall(api.nvim_win_call, win, function()
-          pcall(vim.cmd, "edit " .. fn.fnameescape(dir))
+          pcall(function()
+            vim.cmd("edit " .. fn.fnameescape(dir))
+          end)
         end)
       end
     end
@@ -877,7 +900,9 @@ function M.cd_here(opts)
 
   local scope = opts.scope
   local cmd = (scope == "cd" or scope == "tcd") and scope or "lcd"
-  local ok, err = pcall(vim.cmd, cmd .. " " .. fn.fnameescape(dir))
+  local ok, err = pcall(function()
+    vim.cmd(cmd .. " " .. fn.fnameescape(dir))
+  end)
   if not ok then
     return false, "cd failed: " .. tostring(err)
   end
