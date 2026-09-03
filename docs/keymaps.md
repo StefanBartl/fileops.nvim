@@ -1,42 +1,42 @@
 # Keymaps
 
-Registered only when `setup()` is called, and only for keys whose `lhs` entry
-resolves to a string (see [Configuration](configuration.md)).
+How fileops.nvim's keymaps are enabled, disabled and remapped.
 
-**Cycle** (`keymaps.cycle = true`):
+For the actual key list — every `lhs`, its config key, and what it does — see
+the [bindings cheatsheet](BINDINGS.md#keymaps). That table is maintained in one
+place so it cannot drift from this page.
 
-| Key | Action |
-|---|---|
-| `<leader>nf` | Next file (replace) |
-| `<leader>pf` | Previous file (replace) |
-| `<leader>nfn` | Next file (current) |
-| `<leader>pfn` | Previous file (current) |
-| `<leader>nF` | Next file (background) |
-| `<leader>pF` | Previous file (background) |
-| `<leader>NF` | Next file (vsplit) |
-| `<leader>PF` | Previous file (vsplit) |
+Keymaps are registered only when `setup()` is called, and only for keys whose
+`lhs` entry resolves to a string (see [Configuration](configuration.md)).
 
-All cycle keymaps respect `v:count1`.
+## Two master switches
 
-**Delete** (`keymaps.delete = true`):
+| Option | Default | Covers |
+|---|---|---|
+| `keymaps.cycle` | `true` | The eight `<leader>n…` / `<leader>p…` directory-cycling keys |
+| `keymaps.delete` | `true` | `<leader>dcf` — delete current file and close its buffer |
 
-| Key | Action |
-|---|---|
-| `<leader>dcf` | Delete current file + close buffer |
+All cycle keymaps respect `v:count1`, so `3<leader>nf` jumps three files
+forward.
 
-Eight further `lhs` keys exist but are **unset by default** —
+Eight further actions have an `lhs` slot but are **unset by default** —
 `next_filtered`, `prev_filtered`, `delete_force`, `path`, `cd`, `info`,
-`lockinfo`, `bulk_rename`. See
-[BINDINGS.md](BINDINGS.md#unset-by-default-2026-08-24).
+`lockinfo`, `bulk_rename`. Making a keymap possible is a different thing from
+claiming a key for it, so you have to name the key yourself. They are reachable
+as `:File …` subcommands either way.
 
-Disable or remap a single key without touching the rest of the family:
+## Per-key override
+
+`keymaps.lhs.*` overrides individual keys without touching the rest of the
+family — `false` disables one, a string remaps it:
 
 ```lua
 require("fileops").setup({
   keymaps = {
     lhs = {
-      next_replace = false,       -- disable just <leader>nf
-      delete       = "<leader>X", -- remap delete to <leader>X
+      next_replace = false,        -- disable just <leader>nf
+      delete       = "<leader>X",  -- remap delete to <leader>X
+      info         = "<leader>fi", -- bind one of the unset actions
     },
   },
 })
@@ -46,9 +46,10 @@ require("fileops").setup({
 
 [which-key.nvim](https://github.com/folke/which-key.nvim) is an **optional**
 soft dependency. When installed, fileops.nvim groups the `<leader>n` and
-`<leader>p` prefixes so the cycle family reads as a menu; when absent, this is
-a no-op and every key still carries its own `desc`. Supports both which-key v2
-(`register`) and v3 (`add`).
+`<leader>p` prefixes so the cycle family reads as a menu; when absent this is a
+no-op and every key still carries its own `desc`. Both which-key v2
+(`register`) and v3 (`add`) are supported.
 
-For the full keymap/command/autocommand cheatsheet, see
-[docs/BINDINGS.md](BINDINGS.md).
+The group labels are two fields in the keymap spec, applied by lib.nvim's
+keymap registry — see
+[`bindings/keymaps.lua`](../lua/fileops/bindings/keymaps.lua).

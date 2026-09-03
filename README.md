@@ -1,4 +1,4 @@
-> **Active development.** This repository is in its development phase — breaking changes are to be expected at any time. Pin a commit or tag if you depend on it.
+> **Alpha stage — active development.** This repository is in its development phase — breaking changes are to be expected at any time. Pin a commit or tag if you depend on it.
 
 # fileops.nvim
 
@@ -94,14 +94,16 @@ Verify your setup any time with:
 
 ## Documentation
 
+Start with the [documentation index](docs/README.md) — it lists every page and
+says what each one answers.
+
+- [Documentation index](docs/README.md) — the full map of what is written down.
+- [Features](docs/FEATURES/README.md) — what the plugin does, one page per area, with the reasoning.
 - [Installation](docs/installation.md) — requirements and setup for lazy.nvim, packer.nvim/pckr.nvim, and vim-plug.
 - [Configuration](docs/configuration.md) — all available `setup()` options and their defaults.
 - [Command reference](docs/commands.md) — full usage and examples for every `:File` subcommand.
-- [Keymaps](docs/keymaps.md) — default keybindings, per-key overrides, and which-key integration.
-- [Autocommands](docs/autocommands.md) — auto-created parent dirs, ambient diff preview, and conflict-marker highlighting.
+- [Bindings cheatsheet](docs/BINDINGS.md) — every keymap, command, and autocommand in one table.
 - [Lua API](docs/api.md) — calling fileops.nvim functions directly from Lua.
-- [Architecture](docs/architecture.md) — module layout and design notes.
-- [Bindings cheatsheet](docs/BINDINGS.md) — quick-reference table of every keymap, command, and autocommand.
 
 ## License
 

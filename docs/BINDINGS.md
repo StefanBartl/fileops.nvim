@@ -127,8 +127,10 @@ default (`config.session_compat.enable`).
 
 ## Which-key groups
 
-Registered by [`bindings/which_key.lua`](../lua/fileops/bindings/which_key.lua)
-when [which-key.nvim](https://github.com/folke/which-key.nvim) is installed
+Declared as the `which_key` field of the keymap spec in
+[`bindings/keymaps.lua`](../lua/fileops/bindings/keymaps.lua) and applied by
+lib.nvim's keymap registry when
+[which-key.nvim](https://github.com/folke/which-key.nvim) is installed
 (soft dependency, no-op otherwise):
 
 | Prefix | Group label |
