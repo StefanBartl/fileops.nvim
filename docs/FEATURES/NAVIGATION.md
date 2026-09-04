@@ -19,7 +19,7 @@ current (stay listed), split, vsplit, tab, background.
   `M.last`)
 - **Usercmds:** `:[count]File[!] next [target] [glob]`,
   `:[count]File[!] prev [target] [glob]`, `:File[!] first [target]`,
-  `:File[!] last [target]` — see [docs/commands.md](../commands.md#filecount-next-target-glob--filecount-prev-target-glob)
+  `:File[!] last [target]` — see [docs/commands.md](../commands.md#countfile-next-target-glob--countfile-prev-target-glob)
 - **Keymaps:** `<leader>nf`/`<leader>pf` family (8 keys total) — see
   [docs/keymaps.md](../keymaps.md). Since 2026-08-24 also `next_filtered` /
   `prev_filtered` (unset by default): they prompt once for a glob and then
