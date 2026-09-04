@@ -63,7 +63,7 @@ bin (`lib.nvim.fs.trash`) instead of a permanent `fs_unlink`.
 
 - **Module:** `ops/file.lua` (`M.delete_current`, `switch_windows_off`)
 - **Usercmds:** `:File[!] delete [%]` — see
-  [docs/commands.md](../commands.md#file-delete)
+  [docs/commands.md](../commands.md#file-delete-)
 - **Config:** `opts.delete.mode` (default `"permanent"`),
   `opts.delete.on_before_delete` (default `nil`)
 
