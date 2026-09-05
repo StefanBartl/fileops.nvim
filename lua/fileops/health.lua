@@ -20,6 +20,12 @@ local function start(msg)
   vim.health.start(msg)
 end
 
+---@internal
+---@param msg string
+local function err(msg)
+  vim.health.error(msg)
+end
+
 ---Run all fileops health checks.
 function M.check()
   start("fileops")
@@ -36,7 +42,7 @@ function M.check()
   if uv then
     ok("libuv available (" .. (vim.uv and "vim.uv" or "vim.loop") .. ")")
   else
-    warn("libuv not found; file I/O will fail")
+    err("libuv not found; file I/O will fail")
   end
 
   -- vim.ui.select (used for confirm_on_modified dialog)
