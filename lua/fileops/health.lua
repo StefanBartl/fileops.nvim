@@ -10,8 +10,9 @@ end
 
 ---@internal
 ---@param msg string
-local function warn(msg)
-  vim.health.warn(msg)
+---@param advice? string[]
+local function warn(msg, advice)
+  vim.health.warn(msg, advice)
 end
 
 ---@internal
@@ -22,8 +23,9 @@ end
 
 ---@internal
 ---@param msg string
-local function err(msg)
-  vim.health.error(msg)
+---@param advice? string[]
+local function err(msg, advice)
+  vim.health.error(msg, advice)
 end
 
 ---Run all fileops health checks.
@@ -34,7 +36,7 @@ function M.check()
   if vim.fn.has("nvim-0.9") == 1 then
     ok("Neovim >= 0.9")
   else
-    warn("Neovim 0.9+ recommended (vim.uv may not be available)")
+    warn("Neovim 0.9+ recommended (vim.uv may not be available)", { "Upgrade Neovim to 0.9+" })
   end
 
   -- libuv (vim.uv or vim.loop)
@@ -82,7 +84,7 @@ function M.check()
   if pcall(require, "lib.nvim.bindings.usercmd.composer") then
     ok("lib.nvim detected (:File command layer available)")
   else
-    warn('lib.nvim not found — :File will fail to register; install "StefanBartl/lib.nvim"')
+    err("lib.nvim not found — :File will fail to register", { 'Install "StefanBartl/lib.nvim"' })
   end
   if require("fileops.util.notify").using_lib() then
     ok("lib.nvim.notify in use (styled notifications)")
@@ -102,7 +104,8 @@ function M.check()
     ok("git executable found (required for on_hold; used by git_aware when enabled)")
   else
     warn(
-      "git executable not found — on_hold will be a silent no-op, git_aware will fail if enabled"
+      "git executable not found — on_hold will be a silent no-op, git_aware will fail if enabled",
+      { "install git" }
     )
   end
 
