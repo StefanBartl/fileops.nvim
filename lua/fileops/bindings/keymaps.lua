@@ -117,7 +117,8 @@ local function bulk_rename()
           -- message -- and reports nothing at all when the message is nil.
           -- The keymap therefore said neither "12 renamed" nor why it failed.
           -- Same wording as the `:File bulk` path in bindings/usrcmds.lua.
-          local renamed, err = bulk.execute(plan, {})
+          local renamed
+          renamed, err = bulk.execute(plan, {})
           if err then
             notify.error(
               ("bulk rename: %d/%d renamed, first failure: %s"):format(renamed, #plan, err)
