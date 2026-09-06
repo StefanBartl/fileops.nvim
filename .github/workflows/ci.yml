@@ -10,14 +10,14 @@ jobs:
     name: tests (headless)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           path: fileops.nvim
       # TESTS/run.lua hard-fails without lib.nvim on the runtimepath
       # (a real runtime dependency, not just optional) -- check it out as a
       # sibling so the run.lua's own sibling-checkout lookup (../lib.nvim)
       # finds it.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: StefanBartl/lib.nvim
           path: lib.nvim
@@ -33,10 +33,10 @@ jobs:
     name: tests (neo-tree + nvim-tree, headless)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           path: fileops.nvim
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: StefanBartl/lib.nvim
           path: lib.nvim
@@ -46,19 +46,19 @@ jobs:
       # of the suite exercises. Checked out as siblings, same lookup order
       # the spec itself uses (`$<NAME>_DIR` first, sibling checkout second) —
       # nui.nvim and plenary.nvim are neo-tree's own hard dependencies.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: nvim-neo-tree/neo-tree.nvim
           path: neo-tree.nvim
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: nvim-tree/nvim-tree.lua
           path: nvim-tree.lua
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: MunifTanjim/nui.nvim
           path: nui.nvim
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           repository: nvim-lua/plenary.nvim
           path: plenary.nvim
@@ -78,7 +78,7 @@ jobs:
     # and `luacheck lua` both run clean, and leaving the job non-blocking would
     # only let the formatting drift back unnoticed.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: stylua --check
         uses: JohnnyMorganz/stylua-action@v4
         with:
