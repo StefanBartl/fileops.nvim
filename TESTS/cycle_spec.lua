@@ -102,4 +102,39 @@ return function(H)
   local nr_ok, nr_msg = cycle.jump_edge(root, "last", opts_nonrec)
   ok(nr_ok, "non-recursive jump_edge last succeeds: " .. tostring(nr_msg))
   eq(vim.fn.expand("%:t"), "c.lua", "non-recursive listing stays on c.lua, ignoring sub/")
+
+  -- regression: case_insensitive's comparator used to be
+  -- `ci and (a:lower() < b:lower()) or (a < b)` -- the middle term is itself
+  -- a boolean, so whenever it was false the `or` fell through to a
+  -- case-SENSITIVE comparison instead of the intended `false`. Uppercase
+  -- sorts before all lowercase in ASCII, so e.g. "Banana.txt" < "apple.txt"
+  -- was true case-sensitively even though "banana" > "apple"
+  -- case-insensitively -- both comp(apple,Banana) and comp(Banana,apple)
+  -- came back true, an invalid comparator (ERR-60) that table.sort has no
+  -- correct answer for.
+  --
+  -- A single next-hop assertion isn't enough to catch this: with only two
+  -- files, wrapping from the last one always lands on the other one
+  -- regardless of which specific order the (possibly wrong) sort produced.
+  -- Three files, walked all the way around, distinguish the fully-correct
+  -- case-insensitive cycle from any wrong permutation.
+  local dir_ci = H.tmpdir()
+  H.write_file(dir_ci .. "Banana.txt", "-- Banana")
+  H.write_file(dir_ci .. "cherry.txt", "-- cherry")
+  H.write_file(dir_ci .. "apple.txt", "-- apple")
+  local opts_ci = vim.tbl_extend("force", opts, { pattern = "*.txt", root = "buffer_dir" })
+  H.edit(dir_ci .. "apple.txt")
+  local root_ci = cycle.get_root_dir(opts_ci)
+  ---@cast root_ci string
+
+  local visited = {}
+  for _ = 1, 3 do
+    ok(cycle.navigate(root_ci, "next", opts_ci, 1), "case_insensitive: navigate next succeeds")
+    visited[#visited + 1] = vim.fn.expand("%:t")
+  end
+  eq(
+    table.concat(visited, ","),
+    "Banana.txt,cherry.txt,apple.txt",
+    "case_insensitive: full cycle from apple.txt follows case-insensitive order"
+  )
 end

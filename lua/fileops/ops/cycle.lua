@@ -149,7 +149,10 @@ local function list_files(dir, opts)
   end
 
   table.sort(acc, function(a, b)
-    return ci and (a:lower() < b:lower()) or (a < b)
+    if ci then
+      return a:lower() < b:lower()
+    end
+    return a < b
   end)
   return acc
 end
@@ -325,7 +328,10 @@ function M.navigate(dir, mode, opts, count)
     local entry = key
     files[#files + 1] = entry
     table.sort(files, function(a, b)
-      return ci and (a:lower() < b:lower()) or (a < b)
+      if ci then
+        return a:lower() < b:lower()
+      end
+      return a < b
     end)
     idx = index_of(files, entry, ci)
   end
