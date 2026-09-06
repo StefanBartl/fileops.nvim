@@ -21,6 +21,7 @@ jobs:
         with:
           repository: StefanBartl/lib.nvim
           path: lib.nvim
+          ref: ci-verified
       - uses: rhysd/action-setup-vim@v1
         with:
           neovim: true
@@ -40,6 +41,7 @@ jobs:
         with:
           repository: StefanBartl/lib.nvim
           path: lib.nvim
+          ref: ci-verified
       # explorer_integration_spec.lua's own subject: exercises ops/file.lua's
       # explorer-refresh code path against REAL neo-tree.nvim/nvim-tree.lua
       # instances, not just the `package.loaded[...]`-guarded no-op the rest
