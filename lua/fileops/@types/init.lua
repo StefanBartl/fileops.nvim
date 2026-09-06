@@ -92,7 +92,7 @@
 --- Ambient, mode-aware line-diff preview on CursorHold/CursorHoldI. Prefers
 --- gitsigns' `preview_hunk_inline()`; falls back to rendering the previous
 --- committed content of the current line as EOL/right-aligned virtual text.
----@field enable?               boolean  Master switch for this feature. Default: true.
+---@field enable?               boolean  Master switch for this feature. Default: false (opt-in).
 ---@field modes?                (FileOps.OnHoldMode|string)[]|string|nil  Mode filter (any combination, e.g. "nv") or array. Default: nil (Normal+Visual).
 ---@field events_override?      string[]|nil  Fully replace the auto-mapped events, e.g. { "CursorHold", "CursorHoldI" }.
 ---@field delay?                integer|nil  Extra debounce (ms) beyond 'updatetime'. Default: 3000.
@@ -129,8 +129,5 @@
 ---@field auto_mkdir?     FileOps.AutoMkdirConfig      Auto-create parent dirs before writing (default: enabled).
 ---@field on_hold?        FileOps.OnHoldConfig         Ambient CursorHold line-diff preview (default: disabled; opt-in).
 ---@field conflict_marks? FileOps.ConflictMarksConfig  Conflict-marker highlighting (default: enabled).
-
----@class FileOps.CycleState
----@field config FileOps.CycleConfig
 
 return {}

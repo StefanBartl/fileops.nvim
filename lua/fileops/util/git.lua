@@ -5,9 +5,12 @@
 ---
 ---Each blocking function (`is_tracked`/`mv`/`rm`) has an `_async` twin with
 ---the same argv/cwd contract, built on `vim.system`'s callback form instead
----of `:wait()` — for callers on a hot path (e.g. `features/on_hold.lua`'s
----CursorHold preview) where blocking the UI thread is the actual cost being
----avoided, not just a style preference.
+---of `:wait()`, for callers that must not block the UI thread.
+---
+--- CDX: the `_async` twins have no production caller — `features/on_hold.lua`
+--- needs a blame->show chain plus an `is-inside-work-tree` probe and rolls its
+--- own local async helpers instead. Kept because `git_async_spec.lua` exercises
+--- them as deliberate public API.
 local M = {}
 
 local fn = vim.fn

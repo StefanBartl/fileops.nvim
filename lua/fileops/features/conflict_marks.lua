@@ -11,10 +11,8 @@ local M = {}
 ---@param name string
 ---@return integer
 local function augroup(name)
-  -- Cleared through lib rather than nvim_create_augroup: `group(name, true)`
-  -- drops the module's *records* along with the autocmds, so a re-run cannot
-  -- leave rows in the generated bindings table for autocmds that no longer
-  -- exist.
+  -- `autocmd.group(name, true)` drops this module's binding-table *records*
+  -- along with its autocmds, so a re-run can't leave stale rows behind.
   return autocmd.group("fileops_conflict_marks_" .. name, true)
 end
 
