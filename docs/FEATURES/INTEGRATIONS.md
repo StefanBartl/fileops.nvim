@@ -39,13 +39,13 @@ directly.
 
 ## Which-key group labels
 
-When [which-key.nvim](https://github.com/folke/which-key.nvim) is installed
-(soft dependency, no-op otherwise), groups the `<leader>n` and `<leader>p`
-prefixes so the cycle keymap family reads as a menu. Supports both which-key
-v2 (`register`) and v3 (`add`) APIs. Every individual key already carries its
-own `desc`, so this only adds the shared group label.
+When [which-key.nvim](https://github.com/folke/which-key.nvim) is installed,
+the `<leader>n` and `<leader>p` prefixes get group labels
+("fileops: next file" / "fileops: prev file"). Every individual key also
+carries its own `desc`.
 
-- **Module:** `bindings/which_key.lua` (`M.setup`, `M.available`)
+- **Module:** the `which_key` field of the keymap spec in
+  `bindings/keymaps.lua`, applied by lib.nvim's keymap registry
 
 ## `:checkhealth fileops`
 

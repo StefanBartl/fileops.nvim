@@ -725,10 +725,10 @@ User FileopsRetry ~
 8. WHICH-KEY                                                *fileops-whichkey*
 
 which-key.nvim (https://github.com/folke/which-key.nvim) is an OPTIONAL soft
-dependency. When installed, fileops.nvim groups the `<leader>n` and
-`<leader>p` prefixes so the cycle family reads as a menu; when absent, this
-is a no-op and every key still carries its own `desc`. Supports both
-which-key v2 (`register`) and v3 (`add`).
+dependency. When installed, the `<leader>n` and `<leader>p` prefixes get the
+group labels "fileops: next file" and "fileops: prev file". Every key also
+carries its own `desc`. The labels are the `which_key` field of the keymap
+spec in `bindings/keymaps.lua`.
 
 ==============================================================================
 9. LUA API                                                      *fileops-api*
@@ -828,11 +828,11 @@ Checks:
     config/init.lua          Merge user opts over DEFAULTS, expose get()
     config/DEFAULTS.lua      Immutable default configuration
     @types/init.lua          LuaLS annotations
-    bindings/init.lua        Orchestrates usrcmds + keymaps + autocmds + which-key
+    bindings/init.lua        Orchestrates usrcmds + keymaps + autocmds
     bindings/usrcmds.lua     :File command with subcommand dispatch
     bindings/keymaps.lua     Per-key configurable keymap registrations
+                              (which-key group labels are a field of the spec)
     bindings/autocmds.lua    auto_mkdir/on_hold/conflict_marks registration
-    bindings/which_key.lua   Optional which-key group labels
     health.lua               checkhealth provider
     util/
       notify.lua             "[fileops] " notifier; soft lib.nvim.notify use
