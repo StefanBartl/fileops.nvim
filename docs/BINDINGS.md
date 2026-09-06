@@ -1,8 +1,7 @@
 # Bindings cheatsheet
 
-Every keymap, user command, and autocommand fileops.nvim defines. Mirrors the
-source of truth in `lua/fileops/bindings/`. If a binding is added or
-renamed there, update this file to match.
+Every keymap, user command, and autocommand `fileops.nvim` defines. Kept in
+sync with `lua/fileops/bindings/`.
 
 ## Keymaps
 
@@ -126,12 +125,6 @@ duplicate/copy/delete) also fires a `User FileopsChanged` autocmd
 default (`config.session_compat.enable`).
 
 ## Which-key groups
-
-Declared as the `which_key` field of the keymap spec in
-[`bindings/keymaps.lua`](../lua/fileops/bindings/keymaps.lua) and applied by
-lib.nvim's keymap registry when
-[which-key.nvim](https://github.com/folke/which-key.nvim) is installed
-(soft dependency, no-op otherwise):
 
 | Prefix | Group label |
 |---|---|
