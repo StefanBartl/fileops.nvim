@@ -8,11 +8,11 @@ lua/fileops/
     DEFAULTS.lua          Immutable default configuration
   @types/init.lua        LuaLS type annotations
   bindings/
-    init.lua              Orchestrates usrcmds + keymaps + autocmds + which-key
+    init.lua              Orchestrates usrcmds + keymaps + autocmds
     usrcmds.lua           Single :File command with subcommand dispatch
-    keymaps.lua           Per-key configurable vim.keymap.set registrations
+    keymaps.lua           Per-key configurable keymap registrations (the
+                           which-key group labels are a field of the spec)
     autocmds.lua           auto_mkdir/on_hold/conflict_marks registration
-    which_key.lua         Optional which-key group labels (soft dependency)
   health.lua             :checkhealth fileops
   util/
     notify.lua            "[fileops] " prefixed notifier; upgrades to

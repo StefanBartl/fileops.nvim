@@ -44,12 +44,7 @@ require("fileops").setup({
 
 ## Which-key
 
-[which-key.nvim](https://github.com/folke/which-key.nvim) is an **optional**
-soft dependency. When installed, fileops.nvim groups the `<leader>n` and
-`<leader>p` prefixes so the cycle family reads as a menu; when absent this is a
-no-op and every key still carries its own `desc`. Both which-key v2
-(`register`) and v3 (`add`) are supported.
-
-The group labels are two fields in the keymap spec, applied by lib.nvim's
-keymap registry — see
-[`bindings/keymaps.lua`](../lua/fileops/bindings/keymaps.lua).
+[which-key.nvim](https://github.com/folke/which-key.nvim) is an optional soft
+dependency. When installed, the `<leader>n` and `<leader>p` prefixes get group
+labels (see [BINDINGS.md](BINDINGS.md#which-key-groups)); every key also carries
+its own `desc` either way.
