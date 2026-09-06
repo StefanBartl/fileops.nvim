@@ -19,10 +19,8 @@ function M.attach_auto_mkdir(cfg)
 
   local pattern = cfg.detect_remote_pattern or "^%w%w+:[\\/][\\/]"
 
-  -- Cleared through lib rather than nvim_create_augroup: `group(name, true)`
-  -- drops the module's *records* along with the autocmds, so a re-run cannot
-  -- leave rows in the generated bindings table for autocmds that no longer
-  -- exist.
+  -- `autocmd.group(name, true)` drops this module's binding-table *records*
+  -- along with its autocmds, so a re-run can't leave stale rows behind.
   local grp = autocmd.group(GROUP, true)
 
   autocmd.create("BufWritePre", function(event)
