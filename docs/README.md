@@ -44,3 +44,9 @@ Two argument conventions run through every command and are worth knowing once:
 
 Every `[path]` and `[dest]` argument is optional. Omitting one opens a
 `vim.ui.input` prompt instead of raising an error.
+
+## Working on it
+
+| Page | Answers |
+| --- | --- |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Ground rules, project layout, and how to add a subcommand |
