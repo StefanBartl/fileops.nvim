@@ -9,6 +9,9 @@ local file = require("fileops.ops.file")
 local cycle = require("fileops.ops.cycle")
 local bulk = require("fileops.ops.bulk")
 local config = require("fileops.config")
+-- Soft dependency on filetree.nvim's refs engine (cascade-delete-assets) —
+-- a no-op module when that plugin isn't installed. See its own doc header.
+local filetree_assets = require("fileops.integrations.filetree_assets")
 
 -- ─── Subcommand catalogue ─────────────────────────────────────────────────────
 
@@ -486,12 +489,24 @@ local function dispatch(subcmd, fargs, bang, count)
   elseif subcmd == "delete" then
     local cfg = config.get()
     local dcfg = cfg.delete or {}
-    report(file.delete_current(vim.tbl_extend("force", {
+    local dopts = vim.tbl_extend("force", {
       force = bang,
       mode = dcfg.mode,
       on_before_delete = dcfg.on_before_delete,
       refresh_explorers = refresh,
-    }, mutopts)))
+    }, mutopts)
+
+    -- The cascade-delete-assets scan needs the file to still exist, so it
+    -- runs BEFORE delete_current — same prefetch-before-mutation ordering
+    -- filetree.nvim's own refs engine uses. A no-op (immediate cb(nil)) when
+    -- filetree.nvim isn't installed or its feature is off, so the ordinary
+    -- case pays no cost beyond one pcall(require).
+    filetree_assets.confirm(file.current_path(), function(approved_assets)
+      report(file.delete_current(dopts))
+      if approved_assets then
+        filetree_assets.delete(approved_assets, dopts)
+      end
+    end)
   elseif subcmd == "cd" then
     local cfg = config.get()
     local arg = fargs[1] and CD_SCOPE_MAP[fargs[1]:lower()]

@@ -71,6 +71,7 @@ local specs = {
   "git_spec.lua",
   "git_async_spec.lua",
   "usrcmds_spec.lua",
+  "filetree_assets_spec.lua",
   "explorer_integration_spec.lua",
 }
 

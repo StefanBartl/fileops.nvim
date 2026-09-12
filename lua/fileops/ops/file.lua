@@ -641,6 +641,56 @@ local function switch_windows_off(bufnr)
   return true
 end
 
+---@internal
+---Actually remove `path` from disk per the trash/permanent + git-awareness
+---policy — the part of a delete that is the same whether the path came from
+---the current buffer (`delete_current`) or was resolved some other way
+---(`delete_path`, e.g. an asset a linking file pointed at). `path` is
+---assumed to already exist; callers check that first (their "does not
+---exist" wording differs slightly, and `delete_current`'s check happens
+---before the unsaved-changes/on_before_delete guards, which apply only
+---there).
+---@param path string
+---@param opts { mode?: "trash"|"permanent", git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string, retry?: FileOps.RetryConfig }
+---@return boolean ok, string msg
+local function delete_path_from_disk(path, opts)
+  local trash = opts.mode == "trash"
+  local tracked = opts.git_aware and git.is_tracked(path, opts.git_cmd)
+  local used_git = false
+  local ok, err
+
+  local ropts = retry_opts(path, opts.retry)
+
+  if trash then
+    ok, err = require("lib.nvim.fs.trash").trash_blocking(path)
+  elseif tracked and not opts.git_warn_only then
+    ok, err = git.rm(path, opts.git_cmd)
+    used_git = ok
+    if not ok then
+      -- Fall back to a plain delete rather than leaving the file untouched.
+      ok, err = fsops.delete_file(path, ropts)
+    end
+  else
+    ok, err = fsops.delete_file(path, ropts)
+  end
+  if not ok then
+    return false, (trash and "trash failed: " or "delete failed: ") .. explain_fs_error(err)
+  end
+
+  local suffix = tracked and (used_git and " (git rm)" or " (git-tracked)") or ""
+  return true, (trash and "trashed " or "deleted ") .. fn.fnamemodify(path, ":t") .. suffix
+end
+
+---Absolute path of the current buffer's file, or nil if it has none / the
+---buffer is invalid. Exported for a caller that needs to know what
+---`delete_current`/other buffer-bound ops would act on before calling them —
+---e.g. a soft integration deciding whether to scan the file first.
+---@return string|nil
+function M.current_path()
+  local b = cur_buf()
+  return b and buf_path(b)
+end
+
 ---Delete the file of the current buffer from disk and close the buffer.
 ---Git-aware deletion (`opts.git_aware` + not `opts.git_warn_only`) only
 ---applies when `opts.mode` is `"permanent"` (or unset) — trashing a file is
@@ -677,27 +727,9 @@ function M.delete_current(opts)
     return false, "deletion cancelled by on_before_delete hook: " .. path
   end
 
-  local trash = opts.mode == "trash"
-  local tracked = opts.git_aware and git.is_tracked(path, opts.git_cmd)
-  local used_git = false
-  local ok, err
-
-  local ropts = retry_opts(path, opts.retry)
-
-  if trash then
-    ok, err = require("lib.nvim.fs.trash").trash_blocking(path)
-  elseif tracked and not opts.git_warn_only then
-    ok, err = git.rm(path, opts.git_cmd)
-    used_git = ok
-    if not ok then
-      -- Fall back to a plain delete rather than leaving the file untouched.
-      ok, err = fsops.delete_file(path, ropts)
-    end
-  else
-    ok, err = fsops.delete_file(path, ropts)
-  end
+  local ok, msg = delete_path_from_disk(path, opts)
   if not ok then
-    return false, (trash and "trash failed: " or "delete failed: ") .. explain_fs_error(err)
+    return false, msg
   end
 
   -- Close the buffer (force already implied by the guard above for modified ones).
@@ -709,8 +741,32 @@ function M.delete_current(opts)
   end
 
   M.notify_change("delete", path, opts)
-  local suffix = tracked and (used_git and " (git rm)" or " (git-tracked)") or ""
-  return true, (trash and "trashed " or "deleted ") .. fn.fnamemodify(path, ":t") .. suffix
+  return true, msg
+end
+
+---Delete an arbitrary path from disk with the same trash/permanent + git-
+---awareness policy `delete_current` applies to the current buffer's file —
+---for a caller that resolved the path some other way and has no buffer of
+---its own to close (e.g. an asset a just-deleted file linked to; see
+---`fileops.integrations.filetree_assets`). Fires the same `User
+---FileopsChanged` autocmd via `notify_change`, so an explorer refresh still
+---happens. Does not run `on_before_delete` — the caller already decided to
+---delete this specific path, there is nothing left to veto.
+---@param path string
+---@param opts? { mode?: "trash"|"permanent", git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string, retry?: FileOps.RetryConfig }
+---@return boolean ok
+---@return string|nil msg
+function M.delete_path(path, opts)
+  opts = opts or {}
+  if fn.filereadable(path) ~= 1 and fn.isdirectory(path) ~= 1 then
+    return false, "path does not exist: " .. path
+  end
+
+  local ok, msg = delete_path_from_disk(path, opts)
+  if ok then
+    M.notify_change("delete", path, opts)
+  end
+  return ok, msg
 end
 
 -- ─── Lock diagnosis ───────────────────────────────────────────────────────────
