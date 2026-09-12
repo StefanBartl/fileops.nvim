@@ -118,9 +118,10 @@ opening the copy afterwards. `!` overwrites.
 
 ## `:File[!] delete [%]`
 
-Delete the current file from disk and close the buffer. Uses libuv by
-default (`delete.mode = "permanent"`), or the OS trash/recycle bin when
-`delete.mode = "trash"` — see [Configuration](configuration.md). If the
+Delete the current file from disk and close the buffer. Sends it to the OS
+trash/recycle bin by default (`delete.mode = "trash"`), or deletes it for
+good via libuv when `delete.mode = "permanent"` — see
+[Configuration](configuration.md). If the
 buffer has unsaved changes, plain `:File delete` refuses (nothing is
 deleted); `!` deletes the file and force-closes the buffer. If
 `delete.on_before_delete` is configured, it runs first and can abort the

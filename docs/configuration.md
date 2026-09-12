@@ -26,8 +26,8 @@ require("fileops").setup({
   },
   -- Options for :File[!] delete
   delete = {
-    mode             = "permanent", -- "permanent" (fs_unlink) | "trash" (OS trash/recycle bin)
-    on_before_delete = nil,         -- fun(path: string): boolean|nil — return false to abort
+    mode             = "trash", -- "trash" (OS trash/recycle bin) | "permanent" (fs_unlink, no undo)
+    on_before_delete = nil,     -- fun(path: string): boolean|nil — return false to abort
   },
   -- Git-tracked-file awareness for rename/move/duplicate/copy/delete
   git_aware = {
