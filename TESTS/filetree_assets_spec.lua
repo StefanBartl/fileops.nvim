@@ -9,7 +9,12 @@
 return function(H)
   local eq, ok = H.eq, H.ok
 
-  require("fileops.config").setup({})
+  -- `delete.mode = "permanent"` on purpose: the default is "trash" (a real
+  -- OS trash/recycle bin call), and this spec's `:File delete` calls exist
+  -- to exercise the cascade-delete-assets SEAM, not to shell out to
+  -- PowerShell/osascript/gio on every run (slow, environment-dependent, and
+  -- would leave test fixtures in the machine's real trash).
+  require("fileops.config").setup({ delete = { mode = "permanent" } })
 
   -- Deliberately a plain `require` (no `package.loaded[...] = nil` first,
   -- unlike usrcmds_spec.lua): that spec runs before this one and changes

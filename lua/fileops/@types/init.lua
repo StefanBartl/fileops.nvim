@@ -27,7 +27,7 @@
 ---@alias FileOps.DeleteMode "permanent"|"trash"
 
 ---@class FileOps.DeleteConfig
----@field mode?              FileOps.DeleteMode  "permanent" (fs_unlink) or "trash" (OS trash/recycle bin). Default: "permanent".
+---@field mode?              FileOps.DeleteMode  "trash" (OS trash/recycle bin, cross-platform via lib.nvim.fs.trash) or "permanent" (fs_unlink, no undo). Default: "trash".
 ---@field on_before_delete?  fun(path: string): boolean|nil  Called before deletion; return `false` to abort. Default: nil.
 
 ---@class FileOps.GitAwareConfig

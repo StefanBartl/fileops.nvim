@@ -26,7 +26,9 @@ return {
     -- (create/rename/move/duplicate/copy/delete)
   },
   delete = {
-    mode = "permanent", -- "permanent" (fs_unlink) | "trash" (OS trash/recycle bin)
+    -- "trash" (OS trash/recycle bin, cross-platform via lib.nvim.fs.trash) is
+    -- the safer default; "permanent" (fs_unlink, no undo) is opt-in.
+    mode = "trash", -- "trash" | "permanent"
     on_before_delete = nil, -- fun(path: string): boolean|nil — return false to abort
   },
   git_aware = {

@@ -88,8 +88,8 @@ packer.nvim / pckr.nvim: >lua
       refresh_on_change = true,
     },
     delete = {
-      mode             = "permanent",  -- "permanent"|"trash"
-      on_before_delete = nil,          -- fun(path): boolean|nil
+      mode             = "trash",  -- "trash"|"permanent"
+      on_before_delete = nil,      -- fun(path): boolean|nil
     },
     git_aware = {
       enable    = false,
@@ -196,9 +196,9 @@ explorer.refresh_on_change ~
   this setting. See |fileops-autocmds|. Default: `true`.
 
 delete.mode ~
-  `"permanent"` (`uv.fs_unlink` via lib.nvim.cross.fs.mutate) or `"trash"`
-  (OS trash/recycle bin via lib.nvim.fs.trash — Windows Recycle Bin, macOS
-  Finder, Linux `gio trash`/`trash-put`). Default: `"permanent"`.
+  `"trash"` (OS trash/recycle bin via lib.nvim.fs.trash — Windows Recycle
+  Bin, macOS Finder, Linux `gio trash`/`trash-put`) or `"permanent"`
+  (`uv.fs_unlink` via lib.nvim.cross.fs.mutate, no undo). Default: `"trash"`.
 
 delete.on_before_delete ~
   `fun(path: string): boolean|nil` called right before a file is deleted (by
