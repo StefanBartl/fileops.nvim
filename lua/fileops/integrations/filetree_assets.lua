@@ -20,14 +20,30 @@ local notify = require("fileops.util.notify")
 local M = {}
 
 ---@internal
----filetree.nvim's refs engine, or nil when the plugin isn't installed (or
----not yet loaded). Resolved at call time, not module load time, so this
----file never errors on a machine without filetree.nvim and always reflects
----whatever is currently on `package.loaded`.
+---filetree.nvim's refs engine, or nil when the plugin isn't installed, not
+---yet loaded, or too old to have the `outgoing_assets` API this integration
+---calls (checking `require` alone isn't enough: an older filetree.nvim
+---resolves fine but has neither function, which would otherwise turn every
+---`:File delete` into an uncaught error instead of the documented no-op).
+---Deliberately checks only these two functions, not filetree.refs' full
+---shape: this integration is a soft dependency on purpose (see the module
+---header), and depending on any more of filetree.nvim's internals than the
+---two entry points it actually calls would recreate the lockstep-versioning
+---problem the presence check exists to avoid.
+---Resolved at call time, not module load time, so this file never errors on
+---a machine without filetree.nvim and always reflects whatever is currently
+---on `package.loaded`.
 ---@return table|nil
 local function refs()
   local ok, mod = pcall(require, "filetree.refs")
-  return ok and mod or nil
+  if
+    not ok
+    or type(mod.outgoing_assets_mode) ~= "function"
+    or type(mod.outgoing_assets) ~= "function"
+  then
+    return nil
+  end
+  return mod
 end
 
 ---@internal

@@ -502,8 +502,12 @@ local function dispatch(subcmd, fargs, bang, count)
     -- filetree.nvim isn't installed or its feature is off, so the ordinary
     -- case pays no cost beyond one pcall(require).
     filetree_assets.confirm(file.current_path(), function(approved_assets)
-      report(file.delete_current(dopts))
-      if approved_assets then
+      local ok = report(file.delete_current(dopts))
+      -- Only cascade once the primary file is actually gone: `delete_current`
+      -- can legitimately return false (unsaved buffer without `!`, an
+      -- `on_before_delete` veto, a filesystem error), and the assets were
+      -- only ever "orphaned" on the assumption that deletion went through.
+      if ok and approved_assets then
         filetree_assets.delete(approved_assets, dopts)
       end
     end)

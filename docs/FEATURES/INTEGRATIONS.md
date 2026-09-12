@@ -20,6 +20,23 @@ file are omitted on an unnamed buffer. fileops.nvim has no dependency on
 - **Docs:** [docs/BINDINGS.md#context-menu-optional](../BINDINGS.md#context-menu-optional)
 
 
+## Cascade-delete-assets (filetree.nvim)
+
+`fileops.integrations.filetree_assets` is the seam `:File delete` and the
+`delete`/`delete_force` keymaps use to ask, IF filetree.nvim happens to be
+installed and its own `refs.outgoing_assets` feature is turned on, whether
+the file about to be deleted links to now-orphaned assets (screenshots
+etc. under a configured root) and offer to cascade-delete those too. A
+no-op in every other case: filetree.nvim absent, or present but its
+feature left at the upstream default (off). This module adds no config of
+its own — filetree.nvim's own `refs.outgoing_assets.enabled`/`on_delete`
+switch is the only thing that turns any of this on. See that plugin's
+`docs/FEATURES/FILEOPS.md#cascade-delete-assets` for the feature itself.
+
+- **Module:** `fileops/integrations/filetree_assets.lua` (`M.confirm`, `M.delete`)
+- **Config:** none — governed entirely by filetree.nvim's `refs.outgoing_assets`
+
+
 ## Explorer refresh & the `User FileopsChanged` event
 
 Every tree-changing op (`new`/`write`/`saveas`/`writeto`/`mkdir`/`touch`/
