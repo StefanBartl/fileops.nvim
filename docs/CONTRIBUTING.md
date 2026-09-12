@@ -47,7 +47,7 @@ Work in a scratch directory. Several subcommands delete files.
 | `lua/fileops/features/` | Navigation, bulk rename, path/info/lockinfo reporting |
 | `lua/fileops/bindings/` | The `:File` route tree, completion, and the optional keymaps |
 | `lua/fileops/config/` | Defaults and `setup()` validation |
-| `lua/fileops/integrations/` | Soft-dependency bridges (nvzone/menu) |
+| `lua/fileops/integrations/` | Soft-dependency bridges (nvzone/menu, filetree.nvim) |
 | `lua/fileops/util/` | Shared path and buffer helpers |
 | `lua/fileops/health.lua` | `:checkhealth fileops` |
 | `docs/` | Everything the README links to |

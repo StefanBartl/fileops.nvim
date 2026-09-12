@@ -22,6 +22,12 @@ local bulk = require("fileops.ops.bulk")
 local notify = require("fileops.util.notify")
 local config = require("fileops.config")
 local keymap = require("lib.nvim.bindings.keymap")
+-- Soft dependency on filetree.nvim's refs engine (cascade-delete-assets) —
+-- a no-op module when that plugin isn't installed. Same integration
+-- `:File delete` uses (see fileops.bindings.usrcmds); the interactive
+-- `delete`/`delete_force` keymaps are the more commonly used path and must
+-- not silently skip it.
+local filetree_assets = require("fileops.integrations.filetree_assets")
 
 local M = {}
 
@@ -132,6 +138,29 @@ local function bulk_rename()
   })
 end
 
+---@internal
+---Delete the current buffer's file, offering to cascade-delete any now-
+---orphaned assets it links to (filetree.nvim's `refs.outgoing_assets`, via
+---`fileops.integrations.filetree_assets` — a no-op when that plugin isn't
+---installed or the feature is off). Shared by the `delete`/`delete_force`
+---keymaps, mirroring the `:File delete` Ex command in bindings/usrcmds.lua.
+---@param opts { force?: boolean }
+---@return fun()
+local function delete_fn(opts)
+  return function()
+    filetree_assets.confirm(file.current_path(), function(approved_assets)
+      local ok = notify.report(file.delete_current(opts))
+      -- Only cascade once the primary file is actually gone: `delete_current`
+      -- can legitimately return false (unsaved buffer, an `on_before_delete`
+      -- veto, a filesystem error), and the assets were only ever "orphaned"
+      -- on the assumption that deletion went through.
+      if ok and approved_assets then
+        filetree_assets.delete(approved_assets, opts)
+      end
+    end)
+  end
+end
+
 --- Which actions belong to which master switch.
 ---@type table<string, string[]>
 local FAMILIES = {
@@ -232,9 +261,7 @@ function M.setup(cfg)
       prev_filtered = { rhs = filtered_fn("prev"), desc = "Previous file matching a glob" },
 
       delete = {
-        rhs = function()
-          notify.report(file.delete_current({}))
-        end,
+        rhs = delete_fn({}),
         desc = "Delete current file",
       },
 
@@ -242,9 +269,7 @@ function M.setup(cfg)
       -- That is right for the default key, but it left the forced form
       -- reachable only by retyping the command -- so this is the `!` as a key.
       delete_force = {
-        rhs = function()
-          notify.report(file.delete_current({ force = true }))
-        end,
+        rhs = delete_fn({ force = true }),
         desc = "Delete current file (force, discards unsaved changes)",
       },
 
