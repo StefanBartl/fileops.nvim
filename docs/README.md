@@ -8,8 +8,10 @@ The [repository README](../README.md) is the short version; this is the index.
 | Page | What it answers |
 |---|---|
 | [installation.md](installation.md) | How do I install it, and what does it need? |
+| [quickstart.md](quickstart.md) | What's the first thing to run after installing? |
 | [WORKFLOW.md](WORKFLOW.md) | What does using this look like day to day? |
 | [FEATURES/](FEATURES/README.md) | What can it actually do? |
+| [around-it.md](around-it.md) | How does this plugin's scope differ from its siblings in the collection? |
 
 ## Reference
 

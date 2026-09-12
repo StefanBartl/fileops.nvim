@@ -69,6 +69,8 @@ carries its own `desc`.
 Reports the runtime environment and every optional-dependency status in one
 place: Neovim version, libuv availability, `vim.ui.select`/`vim.fs.dir`
 presence, the `vim.g.loaded_fileops` guard, `lib.nvim` (hard requirement —
-`:File` cannot register without it), which-key, `git`, and gitsigns.nvim.
+`:File` cannot register without it), which-key, `git`, and gitsigns.nvim —
+plus which file explorer (if any) was detected for the tree refresh, and
+whether the configured keymaps were installed.
 
 - **Module:** `health.lua` (`M.check`)
