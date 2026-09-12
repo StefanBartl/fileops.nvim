@@ -1,5 +1,11 @@
 # Features
 
+Renaming a file from inside an editor is two operations that must not come
+apart: the one on disk, and the one on the buffer that is pointing at it. Do
+them in the wrong order, or forget the second, and you are editing a file that
+no longer exists. Neovim ships `:saveas` and leaves the rest to you. `:File` is
+that missing half — every filesystem operation, with the buffer kept in step.
+
 fileops.nvim wraps the whole single-file lifecycle — create, write, rename,
 move, duplicate, copy, delete, navigate, diagnose — behind one user command and
 a small, focused Lua API, with libuv doing every bit of I/O (no shell,

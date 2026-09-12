@@ -8,6 +8,19 @@
   injection-safe file primitives behind create/rename/duplicate/delete
   (`lib.nvim.cross.fs.mutate`), and background buffer opening
 
+No CLI tools are required — all I/O goes through libuv directly, which is
+what keeps behaviour identical on Windows and Unix.
+
+### Optional
+
+Each detected at runtime and degrading to nothing when absent:
+
+| | |
+| --- | --- |
+| [filetree.nvim](https://github.com/StefanBartl/filetree.nvim), neo-tree, nvim-tree | Refreshed in place after a tree-changing operation |
+| [which-key.nvim](https://github.com/folke/which-key.nvim) | Labels for the optional keymaps |
+| [nvzone/menu](https://github.com/nvzone/menu) | A host for the context-menu entries — see [Integrations](FEATURES/INTEGRATIONS.md) |
+
 ## Installation
 
 **When to use which:**
@@ -27,6 +40,10 @@
   opts = {},
 }
 ```
+
+`event = "VeryLazy"` rather than `cmd = "File"`: the `User FileopsChanged`
+autocmd and the explorer refresh have to be live before the first operation,
+not after it.
 
 ### packer.nvim / pckr.nvim
 
