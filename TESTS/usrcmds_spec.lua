@@ -11,7 +11,7 @@ return function(H)
   -- BEFORE cd'ing into the tmp dir below: `set rtp+=.` resolves "." against
   -- the cwd at lookup time, so changing cwd first would break this require.
   local captured_title
-  package.loaded["lib.nvim.ui.kit"] = {
+  package.loaded["ui.kit"] = {
     input = function(opts)
       captured_title = opts.title
       opts.on_submit("newfile.txt")
@@ -36,5 +36,5 @@ return function(H)
     "prompt_dest: the submitted name is used to create the file"
   )
 
-  package.loaded["lib.nvim.ui.kit"] = nil
+  package.loaded["ui.kit"] = nil
 end

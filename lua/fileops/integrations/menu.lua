@@ -3,7 +3,7 @@
 ---@description
 --- fileops.nvim does not depend on a menu plugin. It *provides* a list of
 --- entries in the shape nvzone/menu expects, built with
---- `lib.nvim.contextmenu`'s helpers, and a host — typically the user's own
+--- `ui.contextmenu`'s helpers, and a host — typically the user's own
 --- RightMouse dispatcher — composes them into its own menu, e.g.:
 --- >
 ---   local items = require("fileops.integrations.menu").items()
@@ -15,13 +15,13 @@
 --- flags, retry flags, refresh-explorers, delete confirmation mode, …):
 --- the command's own handler (`fileops.bindings.usrcmds`) already builds
 --- those correctly from config and prompts for any missing destination via
---- `lib.nvim.ui.kit.input`, so re-running that path here keeps this module
+--- `ui.kit.input`, so re-running that path here keeps this module
 --- from drifting out of sync with it. Entries needing a real file (rename,
 --- duplicate, delete, copy path, info) are omitted on an unnamed buffer;
 --- "Next/Previous file in directory" stay available everywhere `:File
 --- next`/`:File prev` already work from.
 
-local contextmenu = require("lib.nvim.contextmenu")
+local contextmenu = require("ui.contextmenu")
 
 local M = {}
 
@@ -34,7 +34,7 @@ end
 
 ---Build the fileops.nvim menu entries for `bufnr`.
 ---@param bufnr? integer defaults to the current buffer
----@return Lib.ContextMenu.Item[]
+---@return Ui.ContextMenu.Item[]
 function M.items(bufnr)
   bufnr = bufnr or vim.api.nvim_get_current_buf()
   local named = has_file(bufnr)
@@ -82,7 +82,7 @@ end
 --- entries. Returns nil when there is nothing to show.
 ---@param label? string submenu label (default "  File")
 ---@param bufnr? integer
----@return Lib.ContextMenu.Item|nil
+---@return Ui.ContextMenu.Item|nil
 function M.submenu(label, bufnr)
   return contextmenu.submenu(label or "  File", M.items(bufnr))
 end

@@ -276,7 +276,7 @@ end
 ---@param prompt_label string
 ---@param cb fun(input: string)
 local function prompt_dest(prompt_label, cb)
-  require("lib.nvim.ui.kit").input({
+  require("ui.kit").input({
     title = prompt_label,
     on_submit = function(input)
       if not input or input == "" then
@@ -367,7 +367,7 @@ local function do_bulk_rename(pattern, replacement, bang)
   notify.info(table.concat(preview, "\n"))
 
   local confirm_choice = ("Rename %d file(s)"):format(#plan)
-  require("lib.nvim.ui.kit").confirm({
+  require("ui.kit").confirm({
     question = "[fileops] Confirm bulk rename?",
     choices = { confirm_choice, "Cancel" },
     on_answer = function(choice)

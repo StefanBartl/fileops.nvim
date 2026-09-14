@@ -20,6 +20,7 @@ Each detected at runtime and degrading to nothing when absent:
 | [filetree.nvim](https://github.com/StefanBartl/filetree.nvim), neo-tree, nvim-tree | Refreshed in place after a tree-changing operation |
 | [which-key.nvim](https://github.com/folke/which-key.nvim) | Labels for the optional keymaps |
 | [nvzone/menu](https://github.com/nvzone/menu) | A host for the context-menu entries — see [Integrations](FEATURES/INTEGRATIONS.md) |
+| [ui.nvim](https://github.com/StefanBartl/ui.nvim) | `ui.kit`/`ui.contextmenu` back the missing-destination prompt, bulk-rename, the modified-buffer confirm, and the context-menu entries — lazily required, so nothing loads it until one of those runs |
 
 ## Installation
 

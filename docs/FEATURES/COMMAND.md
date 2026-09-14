@@ -11,7 +11,7 @@ operation the plugin offers instead of one command per verb. `!` overrides
 safety checks (existing-file guard, modified-buffer confirm); `%` is an
 explicit "current file" scope, always implied when omitted. Every
 `[path]`/`[dest]` argument is optional — omitting it opens a `vim.ui.input`
-(via `lib.nvim.ui.kit`) prompt instead of erroring, and cancelling the prompt
+(via `ui.kit`) prompt instead of erroring, and cancelling the prompt
 is a silent no-op. Tab-completion for path arguments resolves against the
 **current buffer's directory**, not Neovim's cwd.
 

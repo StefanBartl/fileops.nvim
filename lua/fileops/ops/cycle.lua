@@ -215,7 +215,7 @@ function M.open_path(path, opts)
   -- confirm dialog (kit.confirm) with no synchronous caller to report back
   -- to, so it notifies directly rather than returning through the callback.
   if target == "replace" and opts.confirm_on_modified and vim.bo[bufnr].modified then
-    require("lib.nvim.ui.kit").confirm({
+    require("ui.kit").confirm({
       question = "[fileops] Buffer has unsaved changes:",
       choices = { "Save and open", "Discard changes and open", "Cancel" },
       on_answer = function(choice)
