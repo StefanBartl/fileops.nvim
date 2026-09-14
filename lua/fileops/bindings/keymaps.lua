@@ -64,7 +64,7 @@ end
 ---@return fun()
 local function filtered_fn(direction)
   return function()
-    require("lib.nvim.ui.kit").input({
+    require("ui.kit").input({
       title = "cycle to files matching: ",
       default = last_pattern,
       on_submit = function(pattern)
@@ -95,7 +95,7 @@ end
 ---replacement, and a bare keypress has neither.
 ---@return nil
 local function bulk_rename()
-  local kit = require("lib.nvim.ui.kit")
+  local kit = require("ui.kit")
   kit.input({
     title = "bulk rename — pattern: ",
     on_submit = function(pattern)

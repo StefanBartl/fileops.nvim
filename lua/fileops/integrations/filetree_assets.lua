@@ -115,7 +115,7 @@ function M.confirm(path, cb)
       return cb(deletable)
     end
 
-    require("lib.nvim.ui.kit").confirm({
+    require("ui.kit").confirm({
       question = string.format(
         "[fileops] Also delete %d orphaned asset(s)? %s",
         #deletable,

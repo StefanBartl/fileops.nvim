@@ -12,7 +12,7 @@ pattern doesn't match, or that `gsub` leaves unchanged, are excluded from
 the plan. Split into a pure `plan()` (side-effect free — used by the test
 suite to assert the plan without touching disk) and an `execute()` that
 performs the renames; the command layer previews every `old → new` pair via
-a notification, then confirms via `vim.ui.select` (`lib.nvim.ui.kit.confirm`)
+a notification, then confirms via `vim.ui.select` (`ui.kit.confirm`)
 before touching disk. `!` allows overwriting existing destinations;
 otherwise a conflicting destination is skipped and reported while the rest
 of the batch still proceeds. Any open buffer pointing at a renamed file is

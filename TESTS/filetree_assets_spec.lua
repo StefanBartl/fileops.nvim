@@ -28,7 +28,7 @@ return function(H)
 
   local function cleanup_stubs()
     package.loaded["filetree.refs"] = nil
-    package.loaded["lib.nvim.ui.kit"] = nil
+    package.loaded["ui.kit"] = nil
   end
 
   -- ── absent: filetree.nvim not installed -> :File delete unaffected ───────
@@ -75,7 +75,7 @@ return function(H)
     H.edit(victim)
 
     local confirm_called = false
-    package.loaded["lib.nvim.ui.kit"] = {
+    package.loaded["ui.kit"] = {
       confirm = function()
         confirm_called = true
       end,
@@ -107,7 +107,7 @@ return function(H)
     H.edit(victim)
 
     local captured_question
-    package.loaded["lib.nvim.ui.kit"] = {
+    package.loaded["ui.kit"] = {
       confirm = function(opts)
         captured_question = opts.question
         opts.on_answer(opts.choices[1]) -- "Delete assets"
@@ -142,7 +142,7 @@ return function(H)
     H.write_file(asset, "x")
     H.edit(victim)
 
-    package.loaded["lib.nvim.ui.kit"] = {
+    package.loaded["ui.kit"] = {
       confirm = function(opts)
         opts.on_answer(opts.choices[2]) -- "Keep assets"
       end,
@@ -173,7 +173,7 @@ return function(H)
     H.edit(victim)
 
     local confirm_called = false
-    package.loaded["lib.nvim.ui.kit"] = {
+    package.loaded["ui.kit"] = {
       confirm = function()
         confirm_called = true
       end,
