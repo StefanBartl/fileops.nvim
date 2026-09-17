@@ -160,34 +160,23 @@ return function(H)
 
     vim.api.nvim_del_augroup_by_id(group)
 
-    -- BUG: `delete_path`'s existence check accepts a directory
+    -- Regression: `delete_path`'s existence check accepts a directory
     -- (`fn.isdirectory(path) ~= 1` is half of its guard, and
     -- `filetree_assets` can hand it any resolved link target), but the
-    -- deletion itself is `fsops.delete_file` → `uv.fs_unlink`, which can never
-    -- remove a directory. libuv answers EPERM/EISDIR, lib.nvim's retry loop
-    -- treats EPERM as a transient sharing violation and burns the whole retry
-    -- budget on it, and `explain_fs_error` then blames a virus scanner for
-    -- what is really "this is a directory". Pinned, not fixed: the honest fix
-    -- is either to reject directories outright or to delete them recursively,
-    -- and that is a behavioural decision.
+    -- permanent deletion is `fsops.delete_file` → `uv.fs_unlink`, which can
+    -- never remove one. libuv answers EPERM there, lib.nvim's retry loop read
+    -- that as a transient sharing violation and burned the whole retry budget,
+    -- and `explain_fs_error` then blamed a virus scanner for what is really
+    -- "this is a directory". It is refused up front now, with that reason.
     local adir = dir .. "a_directory"
     fn.mkdir(adir, "p")
     local dok, dmsg = file.delete_path(adir, { mode = "permanent", retry = { attempts = 1 } })
-    ok(not dok, "BUG: delete_path can never delete a directory it accepts as input")
-    eq(fn.isdirectory(adir), 1, "BUG: the directory is still there after delete_path")
+    ok(not dok, "delete_path refuses a directory on the permanent path")
+    eq(fn.isdirectory(adir), 1, "and leaves it alone")
     ok(
-      tostring(dmsg):find("delete failed:", 1, true) ~= nil,
-      "BUG: the caller only learns 'delete failed', not 'that is a directory': " .. tostring(dmsg)
+      tostring(dmsg):find("is a directory", 1, true) ~= nil,
+      "saying so, rather than blaming a process holding it open: " .. tostring(dmsg)
     )
-    if H.is_windows() then
-      -- Windows maps unlink-on-a-directory to EPERM, which is also the code a
-      -- real sharing violation uses — so the message ends up blaming a virus
-      -- scanner, and lib.nvim's retry loop spends the full budget first.
-      ok(
-        tostring(dmsg):find("another process is holding the file open", 1, true) ~= nil,
-        "BUG: on Windows the failure blames another process: " .. tostring(dmsg)
-      )
-    end
   end
 
   -- ── the on_before_delete veto runs before anything touches the disk ──────

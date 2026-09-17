@@ -762,6 +762,17 @@ function M.delete_path(path, opts)
     return false, "path does not exist: " .. path
   end
 
+  -- A directory passes the existence check above but the permanent path ends
+  -- in `uv.fs_unlink`, which cannot remove one: libuv answers `EPERM` on
+  -- Windows, the retry loop reads that as a transient sharing violation and
+  -- spends its whole budget on it, and the message then blames a virus
+  -- scanner. Say what is actually wrong instead. Trashing a directory is a
+  -- different matter -- the OS trash backend handles it -- so only the
+  -- permanent path is refused here.
+  if opts.mode ~= "trash" and fn.isdirectory(path) == 1 then
+    return false, "delete failed: " .. path .. " is a directory"
+  end
+
   local ok, msg = delete_path_from_disk(path, opts)
   if ok then
     M.notify_change("delete", path, opts)

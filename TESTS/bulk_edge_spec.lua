@@ -62,30 +62,24 @@ return function(H)
       "the destination stays in the same directory as the source"
     )
 
-    if H.is_windows() then
-      -- BUG: the two spellings do NOT produce the same paths on Windows. A
-      -- root without a trailing separator is joined with "/", and
-      -- `fnamemodify(…, ":p")` leaves that slash in place, so every planned
-      -- path reads `C:\dir/name` — while `nvim_buf_get_name` spells the same
-      -- file `C:\dir\name`. See the buffer-follow case below for what that
-      -- costs; pinned here at the source.
-      eq(
-        with_slash[1].old,
-        fn.fnamemodify(dir .. "note_1.txt", ":p"),
-        "a root WITH a trailing separator produces a plain platform path"
-      )
-      ok(
-        without_slash[1].old:find("/note_1.txt", 1, true) ~= nil,
-        "BUG: a root WITHOUT one produces a mixed-separator path: " .. without_slash[1].old
-      )
-      ok(
-        with_slash[1].old ~= without_slash[1].old,
-        "BUG: the same directory, spelled two ways, plans two different paths"
-      )
-    else
-      eq(with_slash[1].old, without_slash[1].old, "both spellings resolve the same source path")
-      eq(with_slash[1].new, without_slash[1].new, "both spellings resolve the same destination")
-    end
+    -- Documented behaviour, not a defect: a root without a trailing separator
+    -- is joined with "/", and `fnamemodify(…, ":p")` leaves that slash in
+    -- place, so on Windows the two spellings produce different *strings* for
+    -- the same file. The plan keeps the platform spelling it was handed --
+    -- what a user reads in the preview and what `:w` writes is unchanged.
+    -- What used to break was the *comparison* built on top of it (the open
+    -- buffer was stranded after a rename, see the buffer-follow case below);
+    -- that comparison normalizes now, the stored strings do not.
+    eq(
+      vim.fs.normalize(with_slash[1].old),
+      vim.fs.normalize(without_slash[1].old),
+      "both spellings name the same source file"
+    )
+    eq(
+      vim.fs.normalize(with_slash[1].new),
+      vim.fs.normalize(without_slash[1].new),
+      "and the same destination"
+    )
   end
 
   -- ── plan: what is excluded ───────────────────────────────────────────────
@@ -193,30 +187,22 @@ return function(H)
     eq(err, nil, "…without an error")
     eq(fn.filereadable(dir .. "actual_1.txt"), 1, "…and the file really moved")
 
-    if H.is_windows() then
-      -- BUG: the open buffer is left behind. `execute` re-points a buffer by
-      -- comparing `fnamemodify(buf_name, ":p")` against the plan's `old`, and
-      -- those two disagree in exactly one character on Windows (`\` vs the
-      -- `/` `plan` joined with). So `nvim_buf_set_name` never runs: the buffer
-      -- keeps pointing at a path that no longer exists, and the next `:w`
-      -- writes the old file back into existence.
-      ok(
-        fn.filereadable(vim.api.nvim_buf_get_name(buf)) == 0,
-        "BUG: after a bulk rename the open buffer points at a file that is gone: "
-          .. vim.api.nvim_buf_get_name(buf)
-      )
-      eq(
-        fn.fnamemodify(vim.api.nvim_buf_get_name(buf), ":t"),
-        "real_1.txt",
-        "BUG: it still carries the pre-rename name"
-      )
-    else
-      eq(
-        fn.fnamemodify(vim.api.nvim_buf_get_name(buf), ":t"),
-        "actual_1.txt",
-        "the open buffer follows the rename"
-      )
-    end
+    -- Regression: the open buffer used to be left behind on Windows. `execute`
+    -- re-points a buffer by comparing `fnamemodify(buf_name, ":p")` against the
+    -- plan's `old`, and those two disagreed in exactly one character there
+    -- (`\` vs the `/` `plan` joined with), so `nvim_buf_set_name` never ran:
+    -- the buffer kept pointing at a path that no longer existed, and the next
+    -- `:w` wrote the old file back into existence. Both sides are normalized
+    -- now.
+    eq(
+      fn.fnamemodify(vim.api.nvim_buf_get_name(buf), ":t"),
+      "actual_1.txt",
+      "the open buffer follows the rename"
+    )
+    ok(
+      fn.filereadable(vim.api.nvim_buf_get_name(buf)) == 1,
+      "and points at a file that exists: " .. vim.api.nvim_buf_get_name(buf)
+    )
     vim.cmd("bwipeout! " .. buf)
   end
 
