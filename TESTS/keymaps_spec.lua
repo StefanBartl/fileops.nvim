@@ -273,17 +273,13 @@ return function(H)
     restore_trash()
 
     eq(fn.filereadable(victim), 0, "the delete key removes the file")
-    -- BUG: it removes it PERMANENTLY, whatever `delete.mode` says. `:File
-    -- delete` reads `config.delete` (mode, on_before_delete) plus the
-    -- git-aware/retry/refresh flags and hands them to `delete_current`; the
-    -- keymap calls `delete_fn({})` and passes none of it. Since the default
-    -- flipped to "trash", the documented safety net simply does not apply to
-    -- the default `<leader>dcf` key — the file is unlinked with no undo, and
-    -- an `on_before_delete` hook never runs either. Pinned, not fixed:
-    -- the fix changes what a destructive default key does.
-    ok(not trashed, "BUG: the delete key ignores delete.mode = 'trash' and unlinks directly")
+    -- Regression: the keymap used to call `delete_fn({})` and pass no config at
+    -- all, so it kept unlinking permanently after the default flipped to
+    -- "trash" — the documented safety net did not apply to the default key,
+    -- and an `on_before_delete` hook never ran either.
+    ok(trashed, "the delete key honours delete.mode = 'trash'")
 
-    -- The same gap for the veto hook.
+    -- The same for the veto hook: it runs, and `false` stops the deletion.
     local hook_ran = false
     config.setup({
       delete = {
@@ -299,8 +295,8 @@ return function(H)
     H.write_file(second, "bye")
     H.edit(second)
     actions.delete.rhs()
-    ok(not hook_ran, "BUG: the delete key never consults delete.on_before_delete")
-    eq(fn.filereadable(second), 0, "…so a hook that would have vetoed did not stop it")
+    ok(hook_ran, "the delete key consults delete.on_before_delete")
+    eq(fn.filereadable(second), 1, "…and a vetoing hook keeps the file")
 
     -- The forced form is the `!` as a key: it deletes a modified buffer's file
     -- where the plain key refuses.

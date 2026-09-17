@@ -143,12 +143,18 @@ comment says why it was pinned instead of fixed.
    the two disagree in one character, and `nvim_buf_set_name` never runs:
    after the rename the buffer points at a file that no longer exists, and the
    next `:w` writes the old name back into being.
-3. **`bindings/keymaps.lua` — the delete key ignores `delete.mode`**
-   (`keymaps_spec.lua`). `:File delete` reads `config.delete` (the mode and
-   `on_before_delete`) plus the git-aware/retry/refresh flags; the keymap
-   calls `delete_fn({})` and passes none of them. Since the default flipped to
-   `"trash"`, the default `<leader>dcf` still unlinks the file permanently,
-   with no undo, and never runs an `on_before_delete` hook.
+3. **`bindings/keymaps.lua` — the delete key ignored `delete.mode`** —
+   **fixed**, assertions kept as regression guards (`keymaps_spec.lua`).
+   `:File delete` reads `config.delete` (the mode and `on_before_delete`)
+   plus the git-aware/retry/refresh flags; the keymap called `delete_fn({})`
+   and passed none of them, so once the default flipped to `"trash"` the
+   default delete key still unlinked the file permanently, with no undo, and
+   never ran an `on_before_delete` hook. `delete_fn` now reads
+   `delete.mode`/`delete.on_before_delete` per invocation — the way the other
+   actions in that file read their config, so a later `setup()` still
+   applies — while `force` stays the caller's. The git-aware/retry/refresh
+   flags are deliberately still not pulled in: the keymaps never carried
+   them, and adding them is a separate decision.
 4. **`ops/file.lua` — `delete_path` accepts directories it cannot delete**
    (`file_delete_spec.lua`). Its existence check lets a directory through, but
    the deletion is `uv.fs_unlink`. On Windows libuv answers `EPERM`, which

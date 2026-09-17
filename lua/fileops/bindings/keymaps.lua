@@ -144,18 +144,35 @@ end
 ---`fileops.integrations.filetree_assets` — a no-op when that plugin isn't
 ---installed or the feature is off). Shared by the `delete`/`delete_force`
 ---keymaps, mirroring the `:File delete` Ex command in bindings/usrcmds.lua.
+---
+---`delete.mode`/`delete.on_before_delete` are read here, per invocation, the
+---same way the other actions in this file read their config -- not captured at
+---registration time, so a later `setup()` still applies. Passing only `force`
+---(as this did) meant the keymaps ignored `delete.mode` entirely and kept
+---deleting permanently after the default moved to "trash", and never called
+---the `on_before_delete` veto.
+---
+---`git_aware`/`retry`/`refresh_explorers` are deliberately not pulled in: the
+---keymaps never carried them, and adding them here is a separate decision from
+---honouring the delete mode.
 ---@param opts { force?: boolean }
 ---@return fun()
 local function delete_fn(opts)
   return function()
+    local dcfg = config.get().delete or {}
+    local dopts = vim.tbl_extend("force", {
+      mode = dcfg.mode,
+      on_before_delete = dcfg.on_before_delete,
+    }, opts)
+
     filetree_assets.confirm(file.current_path(), function(approved_assets)
-      local ok = notify.report(file.delete_current(opts))
+      local ok = notify.report(file.delete_current(dopts))
       -- Only cascade once the primary file is actually gone: `delete_current`
       -- can legitimately return false (unsaved buffer, an `on_before_delete`
       -- veto, a filesystem error), and the assets were only ever "orphaned"
       -- on the assumption that deletion went through.
       if ok and approved_assets then
-        filetree_assets.delete(approved_assets, opts)
+        filetree_assets.delete(approved_assets, dopts)
       end
     end)
   end
