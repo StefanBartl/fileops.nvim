@@ -10,6 +10,8 @@
 Every `{path}`/`{dest}` argument below is itself optional: omit it and the
 command opens a `vim.ui.input` prompt instead of erroring. Cancelling the
 prompt (`<Esc>` or an empty answer) is a silent no-op, same as `vim.ui.input`.
+`:File rename` (no `{dest}`) pre-fills the prompt with the current file's
+name so you edit it in place instead of retyping it.
 
 Tab-completion for these arguments is relative to the **current buffer's
 directory**, not Neovim's cwd — `:File rename <Tab>` browses files next to
