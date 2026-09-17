@@ -275,9 +275,11 @@ end
 ---prompt is a silent no-op (matches vim.ui.input's own convention).
 ---@param prompt_label string
 ---@param cb fun(input: string)
-local function prompt_dest(prompt_label, cb)
+---@param default? string  Pre-filled prompt content (e.g. the current filename).
+local function prompt_dest(prompt_label, cb, default)
   require("ui.kit").input({
     title = prompt_label,
+    default = default,
     on_submit = function(input)
       if not input or input == "" then
         return
@@ -285,6 +287,18 @@ local function prompt_dest(prompt_label, cb)
       cb(input)
     end,
   })
+end
+
+---@internal
+---Current buffer's bare filename (`:t`), for pre-filling the rename prompt
+---so the user edits the existing name instead of typing it from scratch.
+---@return string|nil
+local function cur_filename()
+  local name = vim.api.nvim_buf_get_name(0)
+  if name == "" then
+    return nil
+  end
+  return vim.fn.fnamemodify(name, ":t")
 end
 
 ---@internal
@@ -450,7 +464,7 @@ local function dispatch(subcmd, fargs, bang, count)
     else
       prompt_dest("File rename: ", function(d)
         report(file.rename(d, ropts))
-      end)
+      end, cur_filename())
     end
   elseif subcmd == "move" then
     local dest = resolve_dest(fargs)
