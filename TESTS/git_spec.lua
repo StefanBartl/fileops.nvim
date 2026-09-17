@@ -40,6 +40,26 @@ return function(H)
   eq(vim.fn.filereadable(dest_path), 1, "mv: new path exists")
   ok(git.is_tracked(dest_path), "mv: new path is still tracked")
 
+  -- A git that cannot be started is "not tracked", not a crash: every caller
+  -- treats unknown the same as untracked.
+  ok(
+    not git.is_tracked(tracked_path, "fileops-no-such-git-executable"),
+    "is_tracked: false when the configured git executable cannot run"
+  )
+
+  -- mv/rm surface git's own stderr instead of a bare "failed".
+  local bad_mv_ok, bad_mv_err = git.mv(dir .. "does_not_exist.txt", dir .. "elsewhere.txt")
+  ok(not bad_mv_ok, "mv: fails for a source git does not know")
+  ok(type(bad_mv_err) == "string" and bad_mv_err ~= "", "mv: reports why: " .. tostring(bad_mv_err))
+
+  local bad_rm_ok, bad_rm_err = git.rm(dir .. "does_not_exist.txt")
+  ok(not bad_rm_ok, "rm: fails for a path git does not know")
+  ok(type(bad_rm_err) == "string" and bad_rm_err ~= "", "rm: reports why: " .. tostring(bad_rm_err))
+
+  local unstartable_ok, unstartable_err = git.rm(untracked_path, "fileops-no-such-git-executable")
+  ok(not unstartable_ok, "rm: fails when the configured git executable cannot run")
+  ok(type(unstartable_err) == "string", "…with an error string rather than a raised error")
+
   -- rm: removes from disk and the index
   local rm_ok, rm_err = git.rm(dest_path)
   ok(rm_ok, "rm succeeds: " .. tostring(rm_err))

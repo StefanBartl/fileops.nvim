@@ -68,10 +68,21 @@ Work in a scratch directory. Several subcommands delete files.
 
 ## Tests
 
-`TESTS/` is a [plenary.nvim](https://github.com/nvim-lua/plenary.nvim)
-busted-style suite that works against a temporary directory, never the
-repository. [GitHub Actions](../.github/workflows/ci.yml) runs it on every push
-and PR to `main`.
+`TESTS/` is a headless spec suite with no test framework of its own: each
+`*_spec.lua` returns a function that receives the shared harness
+(`TESTS/harness.lua`), and `TESTS/run.lua` runs the specs listed in it. Run it
+from the repo root with
+
+```sh
+nvim --headless -i NONE -u NONE -c "set rtp+=." -c "luafile TESTS/run.lua" -c "qa!"
+```
+
+Every fixture lives under `vim.fn.tempname()` — the suite never operates on
+the repository. [GitHub Actions](../.github/workflows/ci.yml) runs it on every
+push and PR to `main`, once on its own and once with neo-tree.nvim and
+nvim-tree.lua checked out as siblings. [`TESTS/README.md`](../TESTS/README.md)
+lists what each spec covers, what is deliberately left out, and the bugs
+currently held in place by a regression assertion.
 
 ## Workflow
 

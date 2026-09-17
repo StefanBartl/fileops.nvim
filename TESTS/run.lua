@@ -56,6 +56,25 @@ local function add_lib_nvim()
   return nil
 end
 
+-- fileops's own modules, additionally registered on `package.path` by
+-- absolute path.
+--
+-- `set rtp+=.` (the documented invocation, and the one CI runs) is a RELATIVE
+-- runtimepath entry, resolved against the cwd at lookup time — so the first
+-- spec that changes cwd breaks every `require("fileops.…")` that has not been
+-- resolved yet, purely as a function of spec order. The absolute entry below
+-- makes module lookup independent of that.
+local function add_self()
+  local root = vim.fs.normalize(vim.fn.fnamemodify(dir .. "..", ":p"))
+  package.path = table.concat({
+    root .. "/lua/?.lua",
+    root .. "/lua/?/init.lua",
+    package.path,
+  }, ";")
+end
+
+add_self()
+
 local lib_path = add_lib_nvim()
 if not lib_path then
   print("FAIL  cannot locate lib.nvim (a runtime dependency of fileops.nvim).")
@@ -65,30 +84,46 @@ end
 
 local specs = {
   "config_spec.lua",
+  "notify_spec.lua",
   "cycle_spec.lua",
+  "cycle_edge_spec.lua",
   "file_spec.lua",
+  "file_paths_spec.lua",
+  "file_delete_spec.lua",
   "bulk_spec.lua",
+  "bulk_edge_spec.lua",
   "git_spec.lua",
   "git_async_spec.lua",
   "usrcmds_spec.lua",
+  "usrcmds_dispatch_spec.lua",
+  "keymaps_spec.lua",
+  "autocmds_spec.lua",
+  "init_api_spec.lua",
+  "health_menu_spec.lua",
   "filetree_assets_spec.lua",
   "explorer_integration_spec.lua",
 }
 
 local failed = 0
+local total = 0
 for _, name in ipairs(specs) do
+  local before = H.checks
   local run = dofile(dir .. name)
   local ok, err = pcall(run, H)
+  local ran = H.checks - before
+  total = total + ran
   if ok then
-    print(("ok    %s"):format(name))
+    print(("ok    %-32s %4d checks"):format(name, ran))
   else
     failed = failed + 1
-    print(("FAIL  %s\n      %s"):format(name, tostring(err)))
+    print(("FAIL  %-32s %4d checks\n      %s"):format(name, ran, tostring(err)))
   end
 end
 
+print(("\n%d spec(s), %d checks"):format(#specs, total))
+
 if failed > 0 then
-  print(("\n%d spec(s) failed"):format(failed))
+  print(("%d spec(s) failed"):format(failed))
   os.exit(1)
 end
 
