@@ -88,10 +88,17 @@ function M.execute(plan, opts)
       local ok, err = fsops.rename_file(item.old, item.new)
       if ok then
         renamed = renamed + 1
-        local old_abs = fn.fnamemodify(item.old, ":p")
+        -- Normalized on both sides: `item.old` was joined with `/` (see
+        -- `plan`), while `nvim_buf_get_name` spells the same file with `\` on
+        -- Windows, and `:p` leaves separators as it finds them. Comparing the
+        -- raw forms never matched there, so the open buffer kept pointing at
+        -- the old name after the rename -- and the next `:w` wrote that file
+        -- back into existence.
+        local old_abs = vim.fs.normalize(fn.fnamemodify(item.old, ":p"))
         for _, b in ipairs(api.nvim_list_bufs()) do
           if
-            api.nvim_buf_is_valid(b) and fn.fnamemodify(api.nvim_buf_get_name(b), ":p") == old_abs
+            api.nvim_buf_is_valid(b)
+            and vim.fs.normalize(fn.fnamemodify(api.nvim_buf_get_name(b), ":p")) == old_abs
           then
             pcall(api.nvim_buf_set_name, b, item.new)
           end

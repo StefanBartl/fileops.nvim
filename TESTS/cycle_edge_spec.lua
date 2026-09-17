@@ -340,23 +340,15 @@ return function(H)
     ---@cast root string
     ok(cycle.navigate(root, "next", sopts, 1), "navigate with follow_symlinks=false returns ok")
 
-    if H.is_windows() then
-      -- BUG: on Windows this does not move. `index_of` cannot find the current
-      -- file (mixed separators), so `navigate` appends it to the listing as a
-      -- fourth entry; `\` sorts after `/`, so the appended copy lands last and
-      -- `next` wraps straight back onto the same file. `:File next`/`:File
-      -- prev` are therefore a silent no-op for anyone who sets
-      -- `cycle.follow_symlinks = false`. Pinned rather than fixed: the fix is
-      -- to normalize separators in `canon`, which changes the path shape every
-      -- caller of `list_files` sees.
-      eq(
-        fn.expand("%:t"),
-        "one.txt",
-        "BUG: follow_symlinks=false on Windows — next stays on the current file"
-      )
-    else
-      eq(fn.expand("%:t"), "three.txt", "follow_symlinks=false still walks the listing on POSIX")
-    end
+    -- Regression: on Windows this used not to move at all. `index_of` could
+    -- not find the current file (the listing joined with `/`, the buffer name
+    -- came back with `\`), so `navigate` appended it to the listing as a
+    -- fourth entry; `\` sorts after `/`, the appended copy landed last, and
+    -- `next` wrapped straight back onto the same file -- `:File next`/`:File
+    -- prev` were a silent no-op for anyone setting `follow_symlinks = false`.
+    -- `canon` normalizes separators now, so both sides of the comparison are
+    -- spelled the same way.
+    eq(fn.expand("%:t"), "three.txt", "follow_symlinks=false walks the listing on every platform")
 
     -- The default (realpath) path is unaffected, which is why this has stayed
     -- invisible: both sides are normalized before they are compared.

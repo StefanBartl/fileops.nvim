@@ -396,24 +396,16 @@ return function(H)
     eq(fn.filereadable(bdir .. "memo_2.txt"), 1, "…all of them")
     ok(H.notified(done, "2 file(s) renamed"), "…and reports how many")
 
-    if H.is_windows() then
-      -- BUG: the buffer the user was looking at is left pointing at the file
-      -- that no longer exists — see bulk_edge_spec.lua for the cause (the
-      -- plan's paths and the buffer name disagree on one separator). This is
-      -- the shape the user meets it in: `:File bulk rename`, then the open
-      -- buffer is a phantom.
-      eq(
-        fn.filereadable(vim.api.nvim_buf_get_name(open_buf)),
-        0,
-        "BUG: :File bulk rename leaves the open buffer on a path that is gone"
-      )
-    else
-      eq(
-        fn.fnamemodify(vim.api.nvim_buf_get_name(open_buf), ":t"),
-        "memo_1.txt",
-        ":File bulk rename re-points the open buffer"
-      )
-    end
+    -- Regression, in the shape a user meets it: on Windows the buffer was left
+    -- pointing at a file that no longer existed, because the plan's paths and
+    -- the buffer name disagreed on one separator (see bulk_edge_spec.lua).
+    -- `execute` normalizes both sides of that comparison now.
+    eq(
+      fn.fnamemodify(vim.api.nvim_buf_get_name(open_buf), ":t"),
+      "memo_1.txt",
+      ":File bulk rename re-points the open buffer"
+    )
+    eq(fn.filereadable(vim.api.nvim_buf_get_name(open_buf)), 1, "…onto a file that exists")
 
     -- Nothing matched: a plain message, and no dialog.
     reset()

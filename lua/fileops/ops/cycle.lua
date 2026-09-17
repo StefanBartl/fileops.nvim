@@ -31,6 +31,24 @@ local function canon(p, follow)
   return fn.fnamemodify(p, ":p")
 end
 
+---@internal
+---A path in the one spelling used for *comparing* two of them.
+---
+---`canon` keeps whatever separators it was handed -- and the two sides here
+---disagree on Windows: the listing joins with `/`, while `nvim_buf_get_name`
+---hands back `\`. That made `index_of` never match the current file, so
+---`navigate` appended it to the listing as an extra entry, `\` sorted it last,
+---and `next` wrapped straight back onto it: cycling was a silent no-op with
+---`follow_symlinks = false`.
+---
+---Only comparisons go through this. The paths the plugin stores, opens and
+---shows keep their platform spelling, so nothing a user sees or yanks changes.
+---@param p string
+---@return string
+local function comparable(p)
+  return vim.fs.normalize(p)
+end
+
 -- ─── Directory listing ───────────────────────────────────────────────────────
 
 ---Return the root directory to scan according to config.
@@ -164,9 +182,11 @@ end
 ---@param ci boolean  Case-insensitive comparison.
 ---@return integer|nil
 local function index_of(files, current, ci)
-  local key = ci and current:lower() or current
+  local key = comparable(current)
+  key = ci and key:lower() or key
   for i = 1, #files do
-    local v = ci and files[i]:lower() or files[i]
+    local v = comparable(files[i])
+    v = ci and v:lower() or v
     if v == key then
       return i
     end
