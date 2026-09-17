@@ -165,18 +165,16 @@ return function(H)
       "…and the window state records the current set"
     )
 
-    -- BUG: re-editing the SAME file in the same window is a BufWinEnter with
-    -- no BufWinLeave in front of it. Three fresh matches are added and the
-    -- window variable is overwritten, so the previous three can never be
-    -- deleted — every `:e` on a file leaks another set for the life of the
-    -- window. Invisible (the extra matches highlight the same lines with the
-    -- same groups) but unbounded. Pinned, not fixed: the fix is to clear the
-    -- recorded ids at the top of the BufWinEnter handler, which is a change
-    -- to a feature that is on by default.
+    -- Regression: re-editing the SAME file in the same window is a
+    -- BufWinEnter with no BufWinLeave in front of it. Three fresh matches were
+    -- added and the window variable overwritten, so the previous three could
+    -- never be deleted — every `:e` leaked another set for the life of the
+    -- window. Invisible (same lines, same groups) but unbounded. The handler
+    -- clears the recorded ids before adding its own now.
     H.edit(dir .. "plain.txt")
-    eq(#fn.getmatches(), 6, "BUG: re-editing the same file leaks a second set of matches")
+    eq(#fn.getmatches(), 3, "re-editing the same file replaces the matches instead of leaking")
     H.edit(dir .. "plain.txt")
-    eq(#fn.getmatches(), 9, "BUG: …and another one every time")
+    eq(#fn.getmatches(), 3, "…however often it is repeated")
     fn.clearmatches()
 
     drop_group("fileops_conflict_marks_on")

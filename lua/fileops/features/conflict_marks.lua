@@ -16,6 +16,23 @@ local function augroup(name)
   return autocmd.group("fileops_conflict_marks_" .. name, true)
 end
 
+---Remove this module's matches from the current window, if it has any.
+---
+---Both ends of the lifecycle need it: `BufWinLeave` to tidy up, and
+---`BufWinEnter` because re-editing the same file in the same window fires
+---without a `BufWinLeave` in front of it, which used to strand the previous
+---three matches on the window with their ids overwritten.
+---@return nil
+function M.clear_window_matches()
+  local ids = vim.w._fileops_conflict_match_ids
+  if type(ids) == "table" then
+    for _, id in ipairs(ids) do
+      pcall(fn.matchdelete, id)
+    end
+  end
+  vim.w._fileops_conflict_match_ids = nil
+end
+
 ---Register the BufWinEnter/BufWinLeave conflict-marker highlight autocmds if enabled.
 ---@param cfg FileOps.ConflictMarksConfig
 ---@return nil
@@ -26,6 +43,13 @@ function M.setup(cfg)
   end
 
   autocmd.create("BufWinEnter", function()
+    -- Clear first: re-editing the same file in the same window is a
+    -- BufWinEnter with no BufWinLeave in front of it, so without this the
+    -- three previous ids were overwritten while their matches stayed on the
+    -- window -- unremovable, and one more set per `:e`. Invisible (same
+    -- patterns, same groups) but unbounded.
+    M.clear_window_matches()
+
     local id_a = fn.matchadd(cfg.hl_a or "DiffDelete", [[^<<<<<<< .\+$]])
     local id_b = fn.matchadd(cfg.hl_b or "DiffChange", [[^=======\s*$]])
     local id_c = fn.matchadd(cfg.hl_c or "DiffAdd", [[^>>>>>>> .\+$]])
@@ -36,13 +60,7 @@ function M.setup(cfg)
   })
 
   autocmd.create("BufWinLeave", function()
-    local ids = vim.w._fileops_conflict_match_ids
-    if type(ids) == "table" then
-      for _, id in ipairs(ids) do
-        pcall(fn.matchdelete, id)
-      end
-    end
-    vim.w._fileops_conflict_match_ids = nil
+    M.clear_window_matches()
   end, {
     group = augroup("off"),
     desc = "[fileops] Clear conflict marker highlights",
