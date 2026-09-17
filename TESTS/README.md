@@ -120,29 +120,32 @@ another with respect to them.
   where `plan` normalizes the trailing separator. A directory that does not
   exist simply lists as empty.
 
-## Pinned bugs
+## Bugs this suite found
 
-Assertions marked `BUG:` in the source pin *current* behaviour that is wrong,
-so that fixing it is a deliberate, visible change rather than a surprise. Each
-comment says why it was pinned instead of fixed.
+Five defects came out of writing it. All five are **fixed**; the assertions
+that pinned them stayed on as regression guards, so the behaviour cannot drift
+back unnoticed.
 
-1. **`ops/cycle.lua` — `follow_symlinks = false` freezes navigation on
-   Windows** (`cycle_edge_spec.lua`). `list_files` joins entries as
-   `dir .. "/" .. name`; with `follow_symlinks` off, `canon` falls back to
+1. **`ops/cycle.lua` — `follow_symlinks = false` froze navigation on
+   Windows** (`cycle_edge_spec.lua`) — **fixed.** `list_files` joins entries as
+   `dir .. "/" .. name`; with `follow_symlinks` off, `canon` fell back to
    `fnamemodify(":p")`, which leaves that `/` in place, while
    `nvim_buf_get_name` spells the same file with `\`. `index_of` therefore
-   never finds the current file, `navigate` appends it as an extra listing
-   entry, `\` sorts after `/` so the copy lands last — and `next` wraps
-   straight back onto the same file. `:File next`/`:File prev` are a silent
-   no-op for anyone who sets that option.
-2. **`ops/bulk.lua` — a bulk rename strands the open buffer on Windows**
-   (`bulk_edge_spec.lua`, `usrcmds_dispatch_spec.lua`). `plan` joins with `/`
-   whenever its root carries no trailing separator — which is exactly what
-   `cycle.get_root_dir`, and therefore `:File bulk rename`, passes. `execute`
-   re-points open buffers by comparing that path against `nvim_buf_get_name`,
-   the two disagree in one character, and `nvim_buf_set_name` never runs:
-   after the rename the buffer points at a file that no longer exists, and the
-   next `:w` writes the old name back into being.
+   never found the current file, `navigate` appended it as an extra listing
+   entry, `\` sorted the copy last, and `next` wrapped straight back onto the
+   same file. Comparisons now run through a `comparable()` helper that
+   normalizes separators; the paths the plugin stores, opens and shows keep
+   their platform spelling.
+2. **`ops/bulk.lua` — a bulk rename stranded the open buffer on Windows**
+   (`bulk_edge_spec.lua`, `usrcmds_dispatch_spec.lua`) — **fixed.** `execute`
+   re-points open buffers by comparing the plan's path against
+   `nvim_buf_get_name`; the two disagreed in one character, `nvim_buf_set_name`
+   never ran, and after the rename the buffer pointed at a file that no longer
+   existed — the next `:w` wrote the old name back into being. Both sides of
+   that comparison are normalized now. The plan's own strings are unchanged, so
+   a root spelled with and without a trailing separator still produces
+   different *strings* for the same file; that is asserted as documented
+   behaviour rather than as a defect.
 3. **`bindings/keymaps.lua` — the delete key ignored `delete.mode`** —
    **fixed**, assertions kept as regression guards (`keymaps_spec.lua`).
    `:File delete` reads `config.delete` (the mode and `on_before_delete`)
@@ -155,17 +158,21 @@ comment says why it was pinned instead of fixed.
    applies — while `force` stays the caller's. The git-aware/retry/refresh
    flags are deliberately still not pulled in: the keymaps never carried
    them, and adding them is a separate decision.
-4. **`ops/file.lua` — `delete_path` accepts directories it cannot delete**
-   (`file_delete_spec.lua`). Its existence check lets a directory through, but
-   the deletion is `uv.fs_unlink`. On Windows libuv answers `EPERM`, which
-   lib.nvim's retry loop treats as a transient sharing violation (so the full
-   retry budget is spent first) and `explain_fs_error` then blames a virus
-   scanner for what is really "this is a directory".
-5. **`features/conflict_marks.lua` — matches leak per `:e`**
-   (`autocmds_spec.lua`). Re-editing the same file in the same window is a
-   `BufWinEnter` with no `BufWinLeave` in front of it: three fresh matches are
-   added and the recorded ids are overwritten, so the previous set can never
-   be deleted. Invisible (same lines, same groups) but unbounded.
+4. **`ops/file.lua` — `delete_path` accepted directories it could never
+   delete** (`file_delete_spec.lua`) — **fixed.** Its existence check let a
+   directory through, but the permanent deletion is `uv.fs_unlink`. On Windows
+   libuv answers `EPERM`, which lib.nvim's retry loop treats as a transient
+   sharing violation (so the full budget was spent first) and
+   `explain_fs_error` then blamed a virus scanner for what is really "this is a
+   directory". The permanent path refuses a directory up front now, with that
+   reason; trashing one still works, since the OS backend handles it.
+5. **`features/conflict_marks.lua` — matches leaked per `:e`**
+   (`autocmds_spec.lua`) — **fixed.** Re-editing the same file in the same
+   window is a `BufWinEnter` with no `BufWinLeave` in front of it: three fresh
+   matches were added and the recorded ids overwritten, so the previous set
+   could never be deleted. Invisible (same lines, same groups) but unbounded.
+   Both handlers now go through one `clear_window_matches()` helper, and
+   `BufWinEnter` calls it before adding its own.
 
 Two related quirks are asserted as *documented* behaviour rather than as bugs:
 `:saveas` normalizes the buffer name it stores while the `:file` command
