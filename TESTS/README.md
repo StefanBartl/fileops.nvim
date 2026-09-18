@@ -25,7 +25,7 @@ to the `specs` list in `run.lua`. `H` is the shared harness:
 | Helper | What it does |
 | --- | --- |
 | `H.eq` / `H.ok` | The two assertions. Both count into the per-spec total. |
-| `H.tmpdir()` | A fresh, empty directory under `vim.fn.tempname()`. |
+| `H.tmpdir()` | A fresh, empty directory under `vim.fn.tempname()`, with symlinks resolved. |
 | `H.write_file(path, content)` | Write a fixture, creating parent directories. |
 | `H.edit(path)` | `:edit` a path and return its bufnr. |
 | `H.is_windows()` | For the cases that pin platform-specific path behaviour. |
@@ -43,6 +43,16 @@ Two rules the whole suite follows:
   three specs that test git-awareness (and each skips itself if `git` cannot
   run). Everything else that shells out is replaced at `package.loaded`
   before the call that would resolve it — see below.
+
+`H.tmpdir()` hands its directory back with symlinks already resolved, and a
+spec should build every expected path on top of it rather than on a raw
+`vim.fn.tempname()`. On macOS `$TMPDIR` is `/var/folders/…` and `/var` is a
+symlink to `/private/var`: Neovim resolves that when it names a buffer, and
+`getcwd()` reports the resolved form, while `fnamemodify(…, ":p")` does not
+resolve anything. An expected path joined onto the raw temp name therefore
+compares as unequal to the very same file read back off a buffer — a
+difference in spelling, not in behaviour. Resolving in the fixture keeps both
+sides of such a comparison in one spelling from the start.
 
 ## Doubles, and why
 
