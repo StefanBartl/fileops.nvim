@@ -7,8 +7,23 @@ on:
 
 jobs:
   test:
-    name: tests (headless)
-    runs-on: ubuntu-latest
+    name: tests (headless, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # One platform failing must not cancel the others: which of the three
+      # broke is the whole information content of this job. This plugin is
+      # file operations end to end -- rename, trash, permissions -- so a
+      # platform-specific break here is the likeliest kind there is.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    defaults:
+      run:
+        # Windows runners default to PowerShell, where the quoting in the
+        # `nvim -c "..."` invocation below parses differently. One shell on
+        # all three keeps the run step itself from being the thing that
+        # differs between platforms.
+        shell: bash
     steps:
       - uses: actions/checkout@v5
         with:
