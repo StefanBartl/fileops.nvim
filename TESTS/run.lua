@@ -98,6 +98,7 @@ local specs = {
   "usrcmds_dispatch_spec.lua",
   "keymaps_spec.lua",
   "autocmds_spec.lua",
+  "on_hold_preview_spec.lua",
   "init_api_spec.lua",
   "health_menu_spec.lua",
   "filetree_assets_spec.lua",

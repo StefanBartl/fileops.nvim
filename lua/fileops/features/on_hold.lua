@@ -35,6 +35,15 @@ local function augroup(name)
 end
 
 ---@internal
+---`max_len` is documented (DEFAULTS.lua, @types) as "this many characters",
+---but a byte count and a character count only agree for pure ASCII: `#s` and
+---`string.sub` both index bytes, so a previous line containing any
+---multi-byte UTF-8 character (accented letters, an em dash, …) near the cut
+---point used to be sliced mid-character, handing `nvim_buf_set_extmark` a
+---malformed byte sequence for its `virt_text` (it does not reject one — it
+---renders it, mangled). `strchars`/`strcharpart` count and slice by
+---character instead, which for plain ASCII input is identical to the old
+---byte math and so changes nothing for the common case.
 ---@param s string
 ---@param max_len integer
 ---@return string
@@ -43,13 +52,13 @@ local function truncate(s, max_len)
     return ""
   end
   local n = math.max(0, tonumber(max_len or 0) or 0)
-  if #s <= n then
+  if fn.strchars(s) <= n then
     return s
   end
   if n <= 2 then
-    return s:sub(1, n)
+    return fn.strcharpart(s, 0, n)
   end
-  return s:sub(1, n - 2) .. " …"
+  return fn.strcharpart(s, 0, n - 2) .. " …"
 end
 
 ---@internal
@@ -213,9 +222,15 @@ local function get_previous_line_async(git_cmd, file, lnum, cwd, cb)
             cb(nil)
           end)
         end
+        -- `git show <rev>:<path>` resolves `<path>` against the repository
+        -- root, never against the filesystem — an absolute path here always
+        -- fails with "path '...' does not exist in '<rev>'" even though the
+        -- exact same path is fine as `git blame`'s pathspec above. `cwd` is
+        -- already this file's own directory, so `./<basename>` is the form
+        -- git resolves relative to *that* instead.
         local show_started = pcall(function()
           vim.system(
-            { git_cmd, "show", sha .. ":" .. file },
+            { git_cmd, "show", sha .. ":./" .. fn.fnamemodify(file, ":t") },
             { text = true, cwd = cwd },
             function(blob_res)
               vim.schedule(function()
