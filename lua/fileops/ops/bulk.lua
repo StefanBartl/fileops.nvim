@@ -13,6 +13,45 @@ local uv = vim.uv or vim.loop
 ---@field old string  Absolute current path.
 ---@field new string  Absolute path after applying the pattern/replacement.
 
+---@internal
+---A path in the one spelling used for *comparing* two of them.
+---
+---`execute` looks an open buffer up by its path, so this is a key, and a key
+---that changes with the spelling its caller happened to use is not one. Two
+---things make two spellings of a single file differ:
+---
+---  1. Separators. `plan` joins with `/`, `nvim_buf_get_name` hands back `\`
+---     on Windows, and `:p` leaves separators as it finds them.
+---  2. Symlinks on the way to the file. Neovim resolves those when it names a
+---     buffer on Unix (`fix_fname`), `:p` does not. On macOS
+---     that is the everyday case rather than an exotic one: the whole temp
+---     tree hangs off `/var`, a symlink to `/private/var`, so a plan rooted
+---     there never matched the buffer Neovim had named `/private/var/…` --
+---     the same file.
+---
+---Only the *directory* is resolved, not the full path: `execute` asks this
+---question after the rename has already happened, when `item.old` no longer
+---exists and `fs_realpath` would fail on it. The directory it lived in is
+---still there, and it is the part symlinks are reached through anyway.
+---
+---Only comparisons go through this. The paths the plugin renames to, reports
+---and hands to `nvim_buf_set_name` keep their platform spelling, so nothing a
+---user sees changes.
+---@param p string
+---@return string
+local function comparable(p)
+  local abs = vim.fs.normalize(fn.fnamemodify(p, ":p"))
+  local dir, tail = abs:match("^(.*)/([^/]*)$")
+  if not dir or dir == "" then
+    return abs
+  end
+  local real = uv.fs_realpath and uv.fs_realpath(dir)
+  if type(real) ~= "string" or real == "" then
+    return abs
+  end
+  return vim.fs.normalize(real) .. "/" .. tail
+end
+
 ---Build a rename plan for the regular files directly inside `dir` (no
 ---recursion) whose name changes under `name:gsub(pattern, replacement)`.
 ---Files the pattern doesn't match, or that gsub leaves unchanged, are
@@ -88,18 +127,15 @@ function M.execute(plan, opts)
       local ok, err = fsops.rename_file(item.old, item.new)
       if ok then
         renamed = renamed + 1
-        -- Normalized on both sides: `item.old` was joined with `/` (see
-        -- `plan`), while `nvim_buf_get_name` spells the same file with `\` on
-        -- Windows, and `:p` leaves separators as it finds them. Comparing the
-        -- raw forms never matched there, so the open buffer kept pointing at
-        -- the old name after the rename -- and the next `:w` wrote that file
-        -- back into existence.
-        local old_abs = vim.fs.normalize(fn.fnamemodify(item.old, ":p"))
+        -- Canonicalized on both sides (see `comparable`): the plan's spelling
+        -- of a path and the one `nvim_buf_get_name` answers with are routinely
+        -- different strings for one file. Comparing the raw forms left the
+        -- open buffer pointing at the name the rename had just vacated -- and
+        -- the next `:w` wrote that file back into existence.
+        local old_key = comparable(item.old)
         for _, b in ipairs(api.nvim_list_bufs()) do
-          if
-            api.nvim_buf_is_valid(b)
-            and vim.fs.normalize(fn.fnamemodify(api.nvim_buf_get_name(b), ":p")) == old_abs
-          then
+          local name = api.nvim_buf_is_valid(b) and api.nvim_buf_get_name(b) or ""
+          if name ~= "" and comparable(name) == old_key then
             pcall(api.nvim_buf_set_name, b, item.new)
           end
         end

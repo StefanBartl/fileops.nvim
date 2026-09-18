@@ -34,10 +34,30 @@ function H.ok(v, msg)
 end
 
 --- Create a fresh, empty scratch directory under vim.fn.tempname().
+---
+--- Handed out with symlinks already resolved, which is what makes this suite
+--- comparable to the paths the plugin reports. On macOS `$TMPDIR` is
+--- `/var/folders/…` and `/var` is a symlink to `/private/var`: Neovim resolves
+--- that when it names a buffer on Unix (`fix_fname`) and `getcwd()` reports
+--- the resolved form too, while `fnamemodify(…, ":p")` leaves the raw
+--- spelling alone. A spec that joined an expected path onto the
+--- raw `tempname()` and compared it against a path the plugin had read off a
+--- buffer was therefore comparing the two spellings of one directory and
+--- failing on the difference alone.
+---
+--- Resolving here rather than at each assertion keeps the fixture in the one
+--- spelling the platform itself uses, so both sides of such a comparison start
+--- out equal and a real disagreement still shows. A no-op on Linux and
+--- Windows, where the temp directory is not reached through a symlink.
 ---@return string dir  Absolute path with a trailing slash.
 function H.tmpdir()
   local dir = vim.fn.tempname()
   vim.fn.mkdir(dir, "p")
+  local uv = vim.uv or vim.loop
+  local real = uv.fs_realpath and uv.fs_realpath(dir)
+  if type(real) == "string" and real ~= "" then
+    dir = real
+  end
   return vim.fn.fnamemodify(dir, ":p")
 end
 

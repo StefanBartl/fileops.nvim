@@ -227,6 +227,50 @@ return function(H)
     vim.cmd("bwipeout! " .. buf)
   end
 
+  -- ── execute: a plan rooted at a symlinked directory ──────────────────────
+  -- The same buffer lookup as above, against the other way two strings can
+  -- spell one path. Neovim resolves symlinks when it names a buffer, so a
+  -- buffer opened inside a linked directory is named through the link's
+  -- target, while a plan rooted at the link keeps the link's own spelling --
+  -- `:p` does not resolve. macOS reaches its whole temp tree through such a
+  -- link (`/var` -> `/private/var`), which makes this the everyday case there
+  -- rather than an exotic one. Without resolving both sides, `execute` renames
+  -- the file but leaves the buffer pointing at the name it just vacated, and
+  -- the next `:w` writes the old file back into existence.
+  --
+  -- Needs a directory link the platform will actually create: a junction on
+  -- Windows (no elevation required), a plain symlink elsewhere. Skipped, not
+  -- faked, where even that is refused.
+  do
+    local uv = vim.uv or vim.loop
+    local real = H.tmpdir()
+    local link = H.tmpdir() .. "linked"
+    local target = real:gsub("[\\/]$", "")
+    pcall(uv.fs_symlink, target, link, { dir = true, junction = true })
+
+    if fn.isdirectory(link) == 1 then
+      H.write_file(real .. "via_1.txt", "1")
+      local buf = H.edit(real .. "via_1.txt")
+
+      local plan = bulk.plan(link, "^via_", "through_")
+      eq(#plan, 1, "a plan rooted at the link sees the file behind it")
+
+      local renamed, err = bulk.execute(plan, { refresh_explorers = false })
+      eq(renamed, 1, "execute renames it")
+      eq(err, nil, "…without an error")
+      eq(
+        fn.fnamemodify(vim.api.nvim_buf_get_name(buf), ":t"),
+        "through_1.txt",
+        "the open buffer follows a rename planned through a symlinked root"
+      )
+      ok(
+        fn.filereadable(vim.api.nvim_buf_get_name(buf)) == 1,
+        "…and points at a file that exists: " .. vim.api.nvim_buf_get_name(buf)
+      )
+      vim.cmd("bwipeout! " .. buf)
+    end
+  end
+
   -- ── execute: nothing to do ───────────────────────────────────────────────
   do
     local renamed, err = bulk.execute({}, {})
