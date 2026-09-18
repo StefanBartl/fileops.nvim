@@ -81,7 +81,8 @@ function M.check()
   -- lib.nvim.buffer.open_background — both already hard requires with no
   -- pcall, so this plugin has never actually run standalone). Only
   -- notify's own styling is a genuinely soft, cosmetic fallback.
-  if pcall(require, "lib.nvim.bindings.usercmd.composer") then
+  local has_composer = pcall(require, "lib.nvim.bindings.usercmd.composer")
+  if has_composer then
     ok("lib.nvim detected (:File command layer available)")
   else
     err("lib.nvim not found — :File will fail to register", { 'Install "StefanBartl/lib.nvim"' })
@@ -116,7 +117,13 @@ function M.check()
     ok("gitsigns.nvim not found — on_hold falls back to previous-content preview")
   end
 
-  require("lib.nvim.bindings.usercmd.composer").checkhealth("File")
+  -- Guarded by the same detection as above: the "lib.nvim not found" branch
+  -- already issued its warning, so this must not go on to require() the
+  -- exact module just reported missing — that would crash the check with an
+  -- uncaught error instead of degrading to the report already given.
+  if has_composer then
+    require("lib.nvim.bindings.usercmd.composer").checkhealth("File")
+  end
 end
 
 return M

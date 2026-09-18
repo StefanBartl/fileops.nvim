@@ -83,6 +83,7 @@ another with respect to them.
 | `usrcmds_dispatch_spec.lua` | `bindings/usrcmds.lua`: every `:File[!]` subcommand through the real Ex command, the `%` scope form, the prompts and their defaults, the config flags the dispatch folds in (`retry`, `git_aware`, `session_compat`, `delete.mode`), bulk rename end to end, and completion for every slot. |
 | `keymaps_spec.lua` | `bindings/keymaps.lua`: the declared action set, both family switches, per-key overrides, and what every action's `rhs` does. |
 | `autocmds_spec.lua` | `bindings/autocmds.lua` (auto-mkdir, remote skipping), `features/conflict_marks.lua`, `features/on_hold.lua`'s event mapping and guards, and `bindings/init.lua`'s wiring. |
+| `on_hold_preview_spec.lua` | `features/on_hold.lua`'s preview itself: the git blame/show fallback against a real temp repo, `truncate()`'s character-vs-byte handling, `only_tracked`, an uncommitted line, the `gitsigns.preview_hunk_inline()` branch (including its own failure), `restore_view`, and the cleanup autocmd. |
 | `init_api_spec.lua` | `init.lua`: `setup()` and its idempotence, plus every public API function. |
 | `health_menu_spec.lua` | `health.lua` against a recorded `vim.health`, and `integrations/menu.lua`'s entries and what they run. |
 | `filetree_assets_spec.lua` | `integrations/filetree_assets.lua`: the cascade-delete-assets seam behind `:File delete`. |
@@ -104,11 +105,6 @@ another with respect to them.
 - **`ops/file.lua`'s `reload_explorers`/`refresh_explorers`** beyond their
   `package.loaded[…]` guard — they need real neo-tree/nvim-tree instances,
   which is what the separate `explorer_integration_spec.lua` job is for.
-- **`features/on_hold.lua`'s preview itself** — it chains `git blame` into
-  `git show` and prefers `gitsigns.preview_hunk_inline()`. The event mapping
-  per configured mode, the mode/buftype/file-name guards and the "not a repo"
-  exit are covered; rendering the virtual text would need a real repo plus two
-  subprocesses per idle event.
 - **`lib.nvim.fs.trash`'s backends and `lib.nvim.cross.fs.lock`'s holder
   lookup** — other repo, other suite. What is asserted here is the argument
   fileops hands them and how it reports their answer.
@@ -122,9 +118,9 @@ another with respect to them.
 
 ## Bugs this suite found
 
-Five defects came out of writing it. All five are **fixed**; the assertions
-that pinned them stayed on as regression guards, so the behaviour cannot drift
-back unnoticed.
+Eight defects came out of writing it and a later re-audit round. All eight are
+**fixed**; the assertions that pinned them stayed on as regression guards, so
+the behaviour cannot drift back unnoticed.
 
 1. **`ops/cycle.lua` — `follow_symlinks = false` froze navigation on
    Windows** (`cycle_edge_spec.lua`) — **fixed.** `list_files` joins entries as
@@ -173,6 +169,38 @@ back unnoticed.
    could never be deleted. Invisible (same lines, same groups) but unbounded.
    Both handlers now go through one `clear_window_matches()` helper, and
    `BufWinEnter` calls it before adding its own.
+6. **`health.lua` — `:checkhealth fileops` crashed instead of degrading when
+   `lib.nvim` was genuinely absent** (`health_menu_spec.lua`) — **fixed.**
+   The check correctly detected a missing
+   `lib.nvim.bindings.usercmd.composer` and reported it with
+   `vim.health.error(...)`, but then unconditionally called
+   `require("lib.nvim.bindings.usercmd.composer").checkhealth("File")` at the
+   end of `M.check()` regardless — a bare `require()` of the exact module it
+   had just reported missing, which throws and aborts the whole report
+   instead of ending on the warning already given. That final call is now
+   gated on the same detection.
+7. **`features/on_hold.lua` — the committed-line preview had never actually
+   rendered anything** (`on_hold_preview_spec.lua`) — **fixed.**
+   `get_previous_line_async` built `git show <sha>:<file>` from
+   `nvim_buf_get_name`'s absolute path; `git show`'s `<rev>:<path>` resolves
+   `<path>` against the repository root, not the filesystem, so the call
+   always failed with `fatal: path '...' does not exist in '<rev>'` and the
+   chain silently ended at `cb(nil)` — no crash, no notification, just a
+   fallback preview that had never once rendered outside
+   `gitsigns.preview_hunk_inline()`. `cwd` is already the file's own
+   directory, so `git show` now asks for
+   `sha .. ":./" .. fnamemodify(file, ":t")`, which git resolves relative to
+   that `cwd` instead.
+8. **`features/on_hold.lua` — `truncate()` could slice a multi-byte
+   character in half** (`on_hold_preview_spec.lua`) — **fixed.** `max_len` is
+   documented (`DEFAULTS.lua`, `@types`) as "this many characters", but
+   `truncate()` measured and cut with `#s`/`string.sub`, both byte-indexed —
+   identical to a character count for plain ASCII, but a previous line
+   containing any multi-byte UTF-8 character near the cut point could be
+   split mid-character, handing `nvim_buf_set_extmark` a malformed byte
+   sequence for its `virt_text` (it does not reject one — it renders the
+   mangled bytes). Now measured and cut with `vim.fn.strchars`/
+   `vim.fn.strcharpart`, a no-op change for the plain-ASCII case.
 
 Two related quirks are asserted as *documented* behaviour rather than as bugs:
 `:saveas` normalizes the buffer name it stores while the `:file` command

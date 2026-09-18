@@ -97,6 +97,59 @@ return function(H)
     ok(#report > 10, "the composer route check contributes to the same report")
   end
 
+  -- BUG: `M.check()` used to call straight into
+  -- `lib.nvim.bindings.usercmd.composer` unconditionally at the end, after
+  -- already reporting it missing a few lines earlier — so an environment
+  -- without lib.nvim turned a graceful "lib.nvim not found" warning into an
+  -- uncaught error instead of a completed report. Simulate that environment
+  -- via `package.preload` (the module can't actually be uninstalled from
+  -- this process, since other specs need the real one).
+  do
+    local composer_mod = "lib.nvim.bindings.usercmd.composer"
+    local real_composer = package.loaded[composer_mod]
+    package.loaded[composer_mod] = nil
+    package.preload[composer_mod] = function()
+      error("module '" .. composer_mod .. "' not found (simulated)")
+    end
+
+    local report = {}
+    local function record(kind)
+      return function(msg, advice)
+        report[#report + 1] = { kind = kind, msg = tostring(msg), advice = advice }
+      end
+    end
+    local real_health = vim.health
+    vim.health = {
+      start = record("start"),
+      ok = record("ok"),
+      warn = record("warn"),
+      error = record("error"),
+      info = record("info"),
+    }
+
+    local health_ok, health_err = pcall(function()
+      require("fileops.health").check()
+    end)
+
+    vim.health = real_health
+    package.loaded[composer_mod] = real_composer
+    package.preload[composer_mod] = nil
+
+    ok(
+      health_ok,
+      "checkhealth degrades gracefully when lib.nvim is absent instead of erroring: "
+        .. tostring(health_err)
+    )
+
+    local found_missing = false
+    for _, entry in ipairs(report) do
+      if entry.kind == "error" and entry.msg:find("lib.nvim not found", 1, true) then
+        found_missing = true
+      end
+    end
+    ok(found_missing, "…and the report still names the missing dependency")
+  end
+
   -- ── menu ─────────────────────────────────────────────────────────────────
   do
     -- Mirrors ui.contextmenu's own contract: `entry` gates itself and returns
