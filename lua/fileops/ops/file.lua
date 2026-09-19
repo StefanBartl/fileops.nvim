@@ -674,7 +674,11 @@ end
 ---@param opts { mode?: "trash"|"permanent", git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string, retry?: FileOps.RetryConfig }
 ---@return boolean ok, string msg
 local function delete_path_from_disk(path, opts)
-  local trash = opts.mode == "trash"
+  -- Anything other than the literal "permanent" degrades to the documented
+  -- default ("trash"): unset (a caller of the public Lua API that never
+  -- merged in `config.get().delete`) and an invalid/mistyped value must both
+  -- land on the safer behavior, not on permanent, unrecoverable deletion.
+  local trash = opts.mode ~= "permanent"
   local tracked = opts.git_aware and git.is_tracked(path, opts.git_cmd)
   local used_git = false
   local ok, err
@@ -713,7 +717,8 @@ end
 
 ---Delete the file of the current buffer from disk and close the buffer.
 ---Git-aware deletion (`opts.git_aware` + not `opts.git_warn_only`) only
----applies when `opts.mode` is `"permanent"` (or unset) — trashing a file is
+---applies when `opts.mode` is `"permanent"` — an unset or unrecognized mode
+---defaults to `"trash"` (see `delete_path_from_disk`), and trashing a file is
 ---a different operation than `git rm`, so trash mode always uses the trash
 ---path and just notes tracked-ness in the message.
 ---@param opts? { force?: boolean, mode?: "trash"|"permanent", on_before_delete?: (fun(path: string): boolean|nil), refresh_explorers?: boolean, git_aware?: boolean, git_warn_only?: boolean, git_cmd?: string, retry?: FileOps.RetryConfig }
@@ -789,7 +794,9 @@ function M.delete_path(path, opts)
   -- scanner. Say what is actually wrong instead. Trashing a directory is a
   -- different matter -- the OS trash backend handles it -- so only the
   -- permanent path is refused here.
-  if opts.mode ~= "trash" and fn.isdirectory(path) == 1 then
+  -- Kept in sync with `delete_path_from_disk`'s own trash/permanent decision:
+  -- only an explicit "permanent" takes the fs_unlink path this guards against.
+  if opts.mode == "permanent" and fn.isdirectory(path) == 1 then
     return false, "delete failed: " .. path .. " is a directory"
   end
 
