@@ -69,6 +69,46 @@ return function(H)
   eq(k.keymaps.lhs.prev_replace, "<leader>pf", "untouched lhs key keeps default")
   eq(k.keymaps.cycle, true, "master switch untouched by lhs override")
 
+  -- ERR-50: an unknown top-level key, and an unknown key nested one level
+  -- deep, are both dropped before the merge instead of surviving as dead
+  -- fields next to the real option -- and reported via issues().
+  local function has_issue(needle)
+    for _, i in ipairs(config.issues()) do
+      if i:find(needle, 1, true) then
+        return true
+      end
+    end
+    return false
+  end
+
+  config.setup({ delete = { mode2 = "trash" }, cycle = { open_taget = "split" } })
+  local u = config.get()
+  eq(u.delete.mode, "trash", "the unknown delete.mode2 didn't reach the merge")
+  eq(u.cycle.open_target, "replace", "the unknown cycle.open_taget didn't reach the merge")
+  eq(u.delete.mode2, nil, "delete.mode2 was not written into the active config")
+  ok(has_issue("mode2"), "issues() names the unknown delete.mode2 key")
+  ok(has_issue("did you mean"), "…with a did-you-mean hint for a close typo")
+
+  -- ERR-22: an invalid delete.mode degrades to the default instead of to its
+  -- opposite, and is reported the same way.
+  config.setup({ delete = { mode = "Trash" } })
+  eq(config.get().delete.mode, "trash", "an invalid delete.mode falls back to the default")
+  ok(has_issue("delete.mode"), "issues() names the rejected delete.mode value")
+
+  -- clean setup() reports no issues
+  config.setup({})
+  eq(#config.issues(), 0, "a clean setup() call reports no issues")
+
+  -- ERR-53: a sub-table reference a consumer captured (the shape
+  -- bindings.autocmds hands to on_hold/auto_mkdir/conflict_marks) survives a
+  -- second setup() call -- the merge mutates it in place instead of
+  -- replacing it, so the reference doesn't go stale.
+  local held_on_hold = config.get().on_hold
+  config.setup({ on_hold = { enable = true, throttle_ms = 500 } })
+  ok(held_on_hold == config.get().on_hold, "on_hold keeps its table identity across setup()")
+  eq(held_on_hold.enable, true, "…and the held reference sees the new value")
+  eq(held_on_hold.throttle_ms, 500, "…for every field that changed")
+
   -- reset
   config.setup({})
 end
