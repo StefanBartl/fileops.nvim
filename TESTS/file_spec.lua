@@ -316,8 +316,12 @@ return function(H)
 
     -- delete: warn_only=false uses git rm
     H.edit(renamed_b)
-    local dgok, dgmsg =
-      file.delete_current({ force = true, git_aware = true, git_warn_only = false })
+    local dgok, dgmsg = file.delete_current({
+      force = true,
+      mode = "permanent",
+      git_aware = true,
+      git_warn_only = false,
+    })
     ok(dgok, "git_aware git-rm delete succeeds: " .. tostring(dgmsg))
     ok(dgmsg:find("(git rm)", 1, true) ~= nil, "git-rm message notes git rm: " .. tostring(dgmsg))
     eq(vim.fn.filereadable(renamed_b), 0, "git rm: file removed from disk")
