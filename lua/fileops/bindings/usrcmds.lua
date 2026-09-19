@@ -115,6 +115,16 @@ local CYCLE_TARGET_MAP = {
 ---happens to be. Absolute-looking input (`~`, `/`, or a Windows drive
 ---letter) is left alone. Candidates come back as full absolute paths — that
 ---keeps them unambiguous regardless of cwd once the command actually runs.
+---
+---The buffer's directory is resolved before it is used as the completion
+---base. `getcompletion(..., "file")` is a glob, and a Windows 8.3 short name
+---is not one it can match: a user name longer than eight characters gets an
+---alias, so `nvim_buf_get_name` hands back `C:\Users\RUNNER~1\…`, no directory
+---entry is literally called `RUNNER~1`, and the completion came back empty --
+---`:File rename <Tab>` offered nothing at all for those users. `fs_realpath`
+---puts the directory in the spelling the file system itself uses, which is the
+---one the glob can match. A no-op everywhere else, 8.3 aliases included, once
+---the user name is short enough not to get one.
 ---@param arg_lead string
 ---@return string[]
 local function complete_from_bufdir(arg_lead)
@@ -125,6 +135,12 @@ local function complete_from_bufdir(arg_lead)
   local bufdir = vim.fn.expand("%:p:h")
   if bufdir == "" or vim.fn.isdirectory(bufdir) ~= 1 then
     return vim.fn.getcompletion(arg_lead, "file")
+  end
+
+  local uv = vim.uv or vim.loop
+  local real = uv.fs_realpath and uv.fs_realpath(bufdir)
+  if type(real) == "string" and real ~= "" then
+    bufdir = real
   end
 
   return vim.fn.getcompletion(bufdir .. "/" .. arg_lead, "file")

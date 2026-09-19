@@ -86,9 +86,8 @@ return function(H)
     ok(sok, "touch: a name containing spaces: " .. tostring(smsg))
     eq(fn.filereadable(spaced), 1, "touch: the spaced file exists under exactly that name")
 
-    -- `resolve_path` runs the raw input through `fn.expand`, where `%` and `#`
-    -- are the current/alternate file. They must survive as literal characters
-    -- in a file name — expand() only substitutes them as whole arguments.
+    -- `%` and `#` are the current/alternate file to `expand()`. They must
+    -- survive as literal characters in a file name.
     local percent = dir .. "re%port.txt"
     ok(file.touch(percent), "touch: a name containing '%'")
     eq(fn.filereadable(percent), 1, "touch: '%' stayed literal in the file name")
@@ -97,12 +96,89 @@ return function(H)
     ok(file.touch(hashed), "touch: a name containing '#'")
     eq(fn.filereadable(hashed), 1, "touch: '#' stayed literal in the file name")
 
-    -- Glob metacharacters in a name that does not exist yet: `expand()` finds
-    -- no match and returns the pattern unchanged, which is what makes the
-    -- create work at all.
     local bracketed = dir .. "notes[draft].txt"
     ok(file.touch(bracketed), "touch: a name containing glob brackets")
     eq(fn.filereadable(bracketed), 1, "touch: the bracketed name exists verbatim")
+  end
+
+  -- ── glob metacharacters with something for them to match ─────────────────
+  -- The case above passes for the wrong reason as long as nothing matches:
+  -- `expand()` hands an unmatched pattern back unchanged, so a destination
+  -- that does not exist yet looks literal even when it is being globbed. Put a
+  -- file in reach of the pattern and the difference shows.
+  --
+  -- `resolve_path` used `fn.expand`, so `[`, `?` and `*` in a destination were
+  -- wildcards: `:File rename note[1].md` next to an existing `note1.md`
+  -- resolved to *that* file and refused with "destination already exists",
+  -- naming a path the user never typed — or, with the bang, overwrote it.
+  -- A glob is the wrong tool for a destination by definition: the file is not
+  -- supposed to exist yet, so there is nothing legitimate for it to match.
+  -- `expand_path` expands `~` and `$VAR` only, and leaves the rest alone.
+  --
+  -- The decoys have to sit in the CWD, and that is the second half of the bug:
+  -- a relative destination is anchored on the buffer's directory, but
+  -- `fn.expand` globbed it against the cwd — so the file it matched could come
+  -- from a directory that has nothing to do with the operation.
+  do
+    local gdir = H.tmpdir()
+    local prev_cwd = fn.getcwd()
+    H.write_file(gdir .. "note1.md", "decoy")
+    H.write_file(gdir .. "note2.md", "decoy")
+    H.write_file(gdir .. "src.md", "source")
+    H.edit(gdir .. "src.md")
+    vim.cmd("cd " .. fn.fnameescape(gdir))
+
+    local rok, rmsg = file.rename("note[1].md")
+    ok(rok, "rename to a bracketed destination succeeds: " .. tostring(rmsg))
+    eq(fn.filereadable(gdir .. "note[1].md"), 1, "…creating the bracketed name itself")
+    eq(fn.readfile(gdir .. "note1.md")[1], "decoy", "…and leaving the file it could match alone")
+    eq(
+      fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":t"),
+      "note[1].md",
+      "…and naming the buffer after the destination, not after the match"
+    )
+
+    -- `edit_new` reaches `resolve_path` by a different route than `rename`
+    -- does, and names the buffer without touching the disk at all. Brackets
+    -- rather than `?` or `*`, which Windows refuses in a file name outright.
+    ok(file.edit_new("note[2].md"), "edit_new: a name containing glob brackets")
+    eq(
+      fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":t"),
+      "note[2].md",
+      "edit_new names the buffer after the path it was given, not after note2.md"
+    )
+
+    -- The Windows everyday case, and the one that turned the CI matrix red: a
+    -- user name longer than eight characters gets an 8.3 alias, so paths come
+    -- back spelled `C:\Users\RUNNER~1\...`. Neovim treats a `~` ANYWHERE in an
+    -- Ex command's file argument as a wildcard, not just a leading one, and
+    -- `fnameescape` never escapes it — so every such path was re-globbed on
+    -- its way through `:file`/`:edit`. A `~` inside a name reproduces that on
+    -- any platform.
+    local tilde_dir = gdir .. "held~1"
+    vim.fn.mkdir(tilde_dir, "p")
+    local tilde = tilde_dir .. "/inside.md"
+    ok(file.edit_new(tilde), "edit_new: a path with a '~' in a directory component")
+    eq(
+      fn.fnamemodify(vim.api.nvim_buf_get_name(0), ":h:t"),
+      "held~1",
+      "…keeps the '~' component in the buffer name: " .. vim.api.nvim_buf_get_name(0)
+    )
+
+    -- A LEADING `~` is still a home-directory reference, which is what
+    -- `expand_path` is there to keep doing — `:File new ~/…` is documented.
+    local home = (vim.uv or vim.loop).os_homedir()
+    if type(home) == "string" and home ~= "" then
+      vim.cmd("enew")
+      ok(file.edit_new("~/.fileops_spec_tilde.txt"), "edit_new: a leading '~' still expands")
+      ok(
+        vim.api.nvim_buf_get_name(0):find("~", 1, true) == nil,
+        "…to the home directory: " .. vim.api.nvim_buf_get_name(0)
+      )
+      vim.cmd("enew!")
+    end
+
+    vim.cmd("cd " .. fn.fnameescape(prev_cwd))
   end
 
   -- Relative input is anchored on the BUFFER's directory for the ops that act
@@ -202,14 +278,17 @@ return function(H)
       "save_as re-points the buffer (like :saveas)"
     )
 
-    -- Worth spelling out, because two ops that look alike disagree here:
-    -- `:saveas` normalizes the name Neovim stores, while the `:file` command
-    -- behind `edit_new`/`rename` keeps whatever separators it was handed —
-    -- and `resolve_path` joins a relative destination onto its base with "/".
-    -- On Windows a renamed buffer therefore carries a mixed-separator name.
-    -- Harmless on its own (every API here accepts both), but it is the same
-    -- root cause as the `follow_symlinks = false` pin in cycle_edge_spec.lua
-    -- and the bulk-rename pin in bulk_edge_spec.lua.
+    -- One spelling per path, whichever op produced it. `resolve_path` joins a
+    -- relative destination onto its base with "/", so on Windows every op that
+    -- takes one used to leave a mixed-separator buffer name behind —
+    -- `C:\dir\sub/NEW.md`, the same file as `C:\dir\sub\NEW.md` and unequal to
+    -- it as a string. That is the second spelling the `follow_symlinks = false`
+    -- pin in cycle_edge_spec.lua and the bulk-rename pin in bulk_edge_spec.lua
+    -- both have to normalize away at their comparison sites; `resolve_path`
+    -- unifies separators now, so it is no longer minted in the first place.
+    --
+    -- Pinned for both ops together, because they used to disagree: `:saveas`
+    -- normalized the name and the `:file` behind `rename` did not.
     if H.is_windows() then
       eq(
         fn.expand("%:p"):find("/", 1, true),
@@ -220,9 +299,10 @@ return function(H)
       H.write_file(mixed_src, "x")
       H.edit(mixed_src)
       ok(file.rename("mixed_renamed.txt"), "rename with a relative destination succeeds")
-      ok(
-        vim.api.nvim_buf_get_name(0):find("/mixed_renamed.txt", 1, true) ~= nil,
-        "…but leaves a '/' in the buffer name: " .. vim.api.nvim_buf_get_name(0)
+      eq(
+        vim.api.nvim_buf_get_name(0):find("/", 1, true),
+        nil,
+        "…and leaves an all-backslash buffer name too: " .. vim.api.nvim_buf_get_name(0)
       )
       eq(
         fn.filereadable(dir .. "mixed_renamed.txt"),

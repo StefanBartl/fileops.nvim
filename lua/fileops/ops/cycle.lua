@@ -10,6 +10,7 @@
 local M = {}
 
 local notify = require("fileops.util.notify")
+local excmd = require("fileops.util.excmd")
 local open_background = require("lib.nvim.buffer.open_background")
 local api, fn = vim.api, vim.fn
 local uv = vim.uv or vim.loop
@@ -229,7 +230,6 @@ function M.open_path(path, opts)
   end
 
   local target = opts.open_target or "replace"
-  local esc = fn.fnameescape(path)
 
   -- Prompt for modified buffer when replacing. This branch is an interactive
   -- confirm dialog (kit.confirm) with no synchronous caller to report back
@@ -251,10 +251,7 @@ function M.open_path(path, opts)
             return
           end
         end
-        local cmd = (choice == "Discard changes and open") and "edit! " or "edit "
-        pcall(function()
-          vim.cmd(cmd .. esc)
-        end)
+        pcall(excmd.with_path, "edit", path, { bang = choice == "Discard changes and open" })
       end,
     })
     return true, nil
@@ -262,9 +259,7 @@ function M.open_path(path, opts)
 
   if target == "replace" then
     local old = bufnr
-    local ok, err = pcall(function()
-      vim.cmd("edit " .. esc)
-    end)
+    local ok, err = pcall(excmd.with_path, "edit", path)
     if not ok then
       return false, "open failed: " .. tostring(err)
     end
@@ -274,19 +269,14 @@ function M.open_path(path, opts)
     end
     return true, nil
   elseif target == "current" then
-    local ok, err = pcall(function()
-      vim.cmd("edit " .. esc)
-    end)
+    local ok, err = pcall(excmd.with_path, "edit", path)
     if not ok then
       return false, "open failed: " .. tostring(err)
     end
     return true, nil
   elseif target == "split" or target == "vsplit" then
-    local cmd = (target == "split") and "split " or "vsplit "
     local cur = win
-    local ok, err = pcall(function()
-      vim.cmd(cmd .. esc)
-    end)
+    local ok, err = pcall(excmd.with_path, target, path)
     if not ok then
       return false, target .. " failed: " .. tostring(err)
     end
@@ -299,9 +289,7 @@ function M.open_path(path, opts)
     end
     return true, nil
   elseif target == "tab" then
-    local ok, err = pcall(function()
-      vim.cmd("tabedit " .. esc)
-    end)
+    local ok, err = pcall(excmd.with_path, "tabedit", path)
     if not ok then
       return false, "tabedit failed: " .. tostring(err)
     end

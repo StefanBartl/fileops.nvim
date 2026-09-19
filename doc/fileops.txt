@@ -837,6 +837,7 @@ Checks:
     util/
       notify.lua             "[fileops] " notifier; soft lib.nvim.notify use
       git.lua                argv-only git helpers for the git_aware feature
+      excmd.lua              file-taking Ex commands run on the path as given
     ops/
       cycle.lua              directory listing, navigate, open_path, jump_edge
       file.lua               create/rename/move/duplicate/copy/delete/touch/info/…

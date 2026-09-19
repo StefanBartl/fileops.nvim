@@ -10,6 +10,8 @@
 local M = {}
 
 local fsops = require("lib.nvim.cross.fs.mutate")
+local expand_path = require("lib.nvim.cross.fs.expand_path")
+local excmd = require("fileops.util.excmd")
 local git = require("fileops.util.git")
 local api, fn = vim.api, vim.fn
 local uv = vim.uv or vim.loop
@@ -38,7 +40,7 @@ end
 
 ---@internal
 ---Whether `p` already denotes an absolute location (POSIX root, Windows
----drive letter or UNC share). `~` is not checked here — `fn.expand` has
+---drive letter or UNC share). `~` is not checked here — `expand_path` has
 ---already turned it into an absolute path by the time this is called.
 ---@param p string
 ---@return boolean
@@ -55,6 +57,31 @@ end
 ---bufdir-relative completion in `bindings.usrcmds` offers. Without a base,
 ---a relative path resolves against Neovim's cwd, which for a buffer opened
 ---from elsewhere in the tree silently lands the file in a different folder.
+---
+---The expansion is `lib.nvim.cross.fs.expand_path` — the same one the `path`
+---argument type in `bindings.usrcmds` uses — and deliberately *not*
+---`fn.expand`. This string is a destination the user typed: `~` and `$VAR`
+---in it are references to expand, but `*`, `?`, `[` and `{` are characters in
+---a file name. `fn.expand` globs them, so `:File rename note[1].md` resolved
+---to whichever existing file the pattern `note[1].md` matched — `note1.md` —
+---and renamed to that, or refused with "destination already exists" naming a
+---path the user never typed. A glob is also the wrong tool by definition
+---here: the destination of a rename does not exist yet, so there is nothing
+---for it to match.
+---
+---Separators are unified afterwards, which `fn.expand` used to do as a side
+---effect of globbing. That half of it is worth keeping and is the point of
+---this function: the result is a buffer name, a notification, and the key the
+---rest of the plugin compares paths on, and this is where the second spelling
+---of one path was being minted. A relative destination is joined onto its base
+---with `/`, so `:File rename NEW.md` on Windows produced
+---`C:\dir\sub/NEW.md` — the same file as `C:\dir\sub\NEW.md` and unequal to it
+---as a string. `ops/bulk.lua` and `ops/cycle.lua` both carry a normalizing
+---`comparable` for exactly this; unifying at the source is what makes those
+---belt-and-braces rather than load-bearing.
+---
+---Only on Windows: a backslash is an ordinary character in a POSIX file name,
+---so rewriting one there would corrupt the path rather than respell it.
 ---@param raw string
 ---@param base? string  Directory to resolve relative input against.
 ---@return string|nil abs  Absolute path, or nil on error.
@@ -62,15 +89,23 @@ local function resolve_path(raw, base)
   if type(raw) ~= "string" or raw == "" then
     return nil
   end
-  local exp = fn.expand(raw)
-  if exp == "" then
+  local exp = expand_path(raw)
+  if type(exp) ~= "string" or exp == "" then
     return nil
   end
   if base and base ~= "" and not is_absolute(exp) then
     exp = base .. "/" .. exp
   end
   local abs = fn.fnamemodify(exp, ":p")
-  return (abs ~= "") and abs or nil
+  if abs == "" then
+    return nil
+  end
+  if fn.has("win32") == 1 then
+    -- The separator Neovim itself writes into a buffer name: `\`, unless
+    -- 'shellslash' tells it otherwise.
+    abs = (abs:gsub("[\\/]", vim.o.shellslash and "/" or "\\"))
+  end
+  return abs
 end
 
 ---@internal
@@ -203,11 +238,10 @@ function M.edit_new(path, opts)
     return false, perr
   end
 
-  local esc = fn.fnameescape(abs)
-  local cmd = "file " .. esc
-  local ok, err = pcall(function()
-    vim.cmd(cmd)
-  end)
+  -- `nvim_buf_set_name` is `:file` without the command line: the name is used
+  -- exactly as resolved, instead of being expanded a second time. See
+  -- `util/excmd.lua` for why that second expansion is never wanted here.
+  local ok, err = pcall(api.nvim_buf_set_name, 0, abs)
   if not ok then
     return false, "file command failed: " .. tostring(err)
   end
@@ -243,11 +277,7 @@ function M.save_as(path, opts)
     return false, perr
   end
 
-  local esc = fn.fnameescape(abs)
-  local cmd = opts.bang and "saveas! " or "saveas "
-  local ok, err = pcall(function()
-    vim.cmd(cmd .. esc)
-  end)
+  local ok, err = pcall(excmd.with_path, "saveas", abs, { bang = opts.bang })
   if not ok then
     return false, "saveas failed: " .. tostring(err)
   end
@@ -273,11 +303,7 @@ function M.write_to(path, opts)
     return false, perr
   end
 
-  local esc = fn.fnameescape(abs)
-  local cmd = opts.bang and "write! " or "write "
-  local ok, err = pcall(function()
-    vim.cmd(cmd .. esc)
-  end)
+  local ok, err = pcall(excmd.with_path, "write", abs, { bang = opts.bang })
   if not ok then
     return false, "write to failed: " .. tostring(err)
   end
@@ -420,11 +446,10 @@ local function move_or_rename(new_path, opts)
     end
   end
 
-  -- Update buffer to point at new path
-  local esc = fn.fnameescape(abs)
-  pcall(function()
-    vim.cmd("file " .. esc)
-  end)
+  -- Update buffer to point at new path. `nvim_buf_set_name` rather than
+  -- `:file`, so the name is the one just resolved and not whatever a second
+  -- round of wildcard expansion made of it (see `util/excmd.lua`).
+  pcall(api.nvim_buf_set_name, b, abs)
   if reload then
     -- reload from disk so signs/diagnostics reset
     pcall(function()
@@ -442,9 +467,7 @@ local function move_or_rename(new_path, opts)
   -- Third-party session managers (possession.nvim, sessions.nvim, ...) can
   -- react to the `User FileopsChanged` autocmd fired just above instead.
   if opts.session_compat and vim.v.this_session ~= "" then
-    pcall(function()
-      vim.cmd("mksession! " .. fn.fnameescape(vim.v.this_session))
-    end)
+    pcall(excmd.with_path, "mksession", vim.v.this_session, { bang = true })
   end
 
   local suffix = tracked and (used_git and " (git mv)" or " (git-tracked)") or ""
@@ -555,10 +578,7 @@ function M.duplicate(new_path, opts)
   end
 
   if open then
-    local esc = fn.fnameescape(abs)
-    pcall(function()
-      vim.cmd("edit " .. esc)
-    end)
+    pcall(excmd.with_path, "edit", abs)
   end
 
   M.notify_change(verb == "copied" and "copy" or "duplicate", abs, opts)
@@ -934,9 +954,7 @@ local function refresh_explorers(dir)
       local buf = api.nvim_win_get_buf(win)
       if api.nvim_buf_is_valid(buf) and vim.bo[buf].filetype == "netrw" then
         pcall(api.nvim_win_call, win, function()
-          pcall(function()
-            vim.cmd("edit " .. fn.fnameescape(dir))
-          end)
+          pcall(excmd.with_path, "edit", dir)
         end)
       end
     end
@@ -967,9 +985,7 @@ function M.cd_here(opts)
 
   local scope = opts.scope
   local cmd = (scope == "cd" or scope == "tcd") and scope or "lcd"
-  local ok, err = pcall(function()
-    vim.cmd(cmd .. " " .. fn.fnameescape(dir))
-  end)
+  local ok, err = pcall(excmd.with_path, cmd, dir)
   if not ok then
     return false, "cd failed: " .. tostring(err)
   end

@@ -357,4 +357,37 @@ return function(H)
     ok(cycle.navigate(root, "next", topts, 1), "follow_symlinks=true navigates")
     eq(fn.expand("%:t"), "three.txt", "follow_symlinks=true: alphabetical next after one.txt")
   end
+
+  -- ── open_path: a file name a wildcard could match ────────────────────────
+  -- `open_path` ran `vim.cmd("edit " .. fn.fnameescape(path))`, and Neovim
+  -- expands an Ex command's file argument a second time, as a wildcard.
+  -- `fnameescape` cannot stop it: `[` is a legal character in a Windows file
+  -- name, so a backslash in front of one would be part of the name rather than
+  -- an escape, and `fnameescape` leaves it alone there on purpose. Cycling
+  -- onto `step[1].txt` therefore opened `step1.txt` instead — a different
+  -- file, silently, and only when that other file happened to exist. The path
+  -- goes through `nvim_cmd` with `magic.file = false` now, so it is used
+  -- exactly as the directory listing produced it.
+  --
+  -- Not Windows-only: the same second expansion runs everywhere.
+  -- Stepping off `step1.txt` is the sharp version of the case: it is exactly
+  -- the file the pattern `step[1].txt` matches, so with the second expansion
+  -- in place `next` re-opened the file it started on and went nowhere.
+  do
+    local gdir = H.tmpdir()
+    H.write_file(gdir .. "step1.txt", "decoy")
+    H.write_file(gdir .. "step[1].txt", "wanted")
+    local gopts = opts_with({ open_target = "current", pattern = "*.txt" })
+
+    H.edit(gdir .. "step1.txt")
+    local groot = cycle.get_root_dir(gopts)
+    ---@cast groot string
+    ok(cycle.navigate(groot, "next", gopts, 1), "navigate onto a bracketed file name returns ok")
+    eq(fn.expand("%:t"), "step[1].txt", "…and opens that file, not the one the glob matches")
+    eq(
+      vim.api.nvim_buf_get_lines(0, 0, -1, false)[1],
+      "wanted",
+      "…with the bracketed file's own contents"
+    )
+  end
 end

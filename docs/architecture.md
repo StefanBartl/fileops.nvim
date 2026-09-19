@@ -19,6 +19,9 @@ lua/fileops/
                            lib.nvim.notify when lib.nvim is installed
     git.lua                Argv-only git helpers (is_tracked/mv/rm) for git_aware,
                            plus async twins (is_tracked_async/mv_async/rm_async)
+    excmd.lua              File-taking Ex commands run on the path as given
+                           (nvim_cmd with magic.file = false), so an already
+                           resolved path is not expanded a second time
   ops/
     cycle.lua              Directory listing, indexing, navigation, open_path,
                             jump_edge (first/last)
