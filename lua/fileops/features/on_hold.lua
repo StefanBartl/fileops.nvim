@@ -415,12 +415,20 @@ function M.setup(cfg)
         if not prev or prev == "" or not still_valid() then
           return
         end
+        -- `lnum` was captured before two subprocess round-trips
+        -- (`git blame` -> `git show`); `still_valid()` re-checks buffer/window
+        -- liveness but not line count, so a shrink in between (`:e!`, an
+        -- external reload, undo of a large paste) would otherwise write this
+        -- extmark past the buffer's last line instead of skipping a stale write.
+        if lnum > api.nvim_buf_line_count(buf) then
+          return
+        end
 
         local virt = truncate(prev, tonumber(cfg.max_len or 160) or 160)
         local pos = (cfg.right_align and "right_align") or "eol"
         local pref = (cfg.prefix ~= nil) and tostring(cfg.prefix) or "previous: "
 
-        api.nvim_buf_set_extmark(buf, NS, lnum - 1, 0, {
+        pcall(api.nvim_buf_set_extmark, buf, NS, lnum - 1, 0, {
           virt_text = { { pref .. virt, cfg.hl_prev or "Comment" } },
           virt_text_pos = pos,
           priority = tonumber(cfg.virt_priority or 1000) or 1000,
