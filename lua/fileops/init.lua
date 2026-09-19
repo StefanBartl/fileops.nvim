@@ -5,9 +5,17 @@ local M = {}
 local _setup_done = false
 
 ---Configure and activate fileops.
+---
+---A second call is a no-op by design: bindings (keymaps, user commands,
+---autocmds) are registered once, and re-registering them is not supported.
+---It says so explicitly instead of discarding the argument in silence.
 ---@param user_opts FileOps.Config|nil
 function M.setup(user_opts)
   if _setup_done then
+    require("fileops.util.notify").warn(
+      "setup() already called; ignoring this call and its options "
+        .. "(re-configuring after the first setup() is not supported)"
+    )
     return
   end
   _setup_done = true
