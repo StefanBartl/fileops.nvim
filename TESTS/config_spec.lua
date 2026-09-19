@@ -147,6 +147,30 @@ return function(H)
   eq(config.get().on_hold.modes[1], "n", "a valid array on_hold.modes is kept as-is")
   eq(#config.issues(), 0, "a valid array on_hold.modes reports no issue")
 
+  -- ERR-22: on_hold.ignore_buftypes of the wrong type degrades to the
+  -- default instead of reaching features/on_hold.lua's unguarded
+  -- `vim.tbl_contains(ignore_buftypes, bt)` -- which crashes for any
+  -- truthy non-table (a string included), and since that call runs on
+  -- every CursorHold, not just once during setup, an unvalidated value
+  -- would otherwise repeat the crash indefinitely.
+  config.setup({ on_hold = { ignore_buftypes = "nofile" } })
+  ok(
+    vim.deep_equal(config.get().on_hold.ignore_buftypes, config.DEFAULTS.on_hold.ignore_buftypes),
+    "non-table on_hold.ignore_buftypes falls back to the default"
+  )
+  ok(
+    has_issue("on_hold.ignore_buftypes"),
+    "issues() names the rejected on_hold.ignore_buftypes value"
+  )
+
+  config.setup({ on_hold = { ignore_buftypes = { "nofile", "terminal" } } })
+  eq(
+    config.get().on_hold.ignore_buftypes[1],
+    "nofile",
+    "a valid on_hold.ignore_buftypes table is kept as-is"
+  )
+  eq(#config.issues(), 0, "a valid on_hold.ignore_buftypes reports no issue")
+
   -- clean setup() reports no issues
   config.setup({})
   eq(#config.issues(), 0, "a clean setup() call reports no issues")
