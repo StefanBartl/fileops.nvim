@@ -10,20 +10,18 @@ return function(H)
 
   -- ── plan: input validation ───────────────────────────────────────────────
   do
-    -- A directory that is not there yields an empty plan and NO error:
-    -- `vim.fs.dir` returns an iterator that simply produces nothing rather
-    -- than raising, so `plan`'s "cannot read directory" guard only catches a
-    -- hard failure (a non-string root). The caller's own "no files matched"
-    -- message covers this case, and the only root it ever passes is the
-    -- current buffer's own directory.
+    -- A directory that is not there is reported, not silently treated as
+    -- "nothing matched": `vim.fs.dir` itself never raises (its iterator just
+    -- produces nothing for a missing/unreadable directory), so `plan` checks
+    -- with `isdirectory` first instead of relying on a `pcall` that guards a
+    -- failure mode that doesn't happen.
     local missing = H.tmpdir() .. "no_such_directory"
     local plan, err = bulk.plan(missing, "^a", "b")
     eq(#plan, 0, "plan on a missing directory returns an empty plan")
-    eq(err, nil, "…and reports no error, because listing it simply yields nothing")
-
-    -- (That guard is therefore hard to reach at all: everything `vim.fs.dir`
-    -- would raise on — a nil or non-string root — already raises one line
-    -- earlier, where `plan` normalizes the trailing separator.)
+    ok(
+      tostring(err):find("cannot read directory", 1, true) ~= nil,
+      "…and reports it as unreadable, not as zero matches: " .. tostring(err)
+    )
 
     local dir = H.tmpdir()
     H.write_file(dir .. "file.txt", "x")
