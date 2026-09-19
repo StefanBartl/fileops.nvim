@@ -10,7 +10,7 @@ require("fileops").setup({
     wrap                = true,         -- Wrap around at directory boundary
     follow_symlinks     = true,         -- Resolve symlinks for comparisons
     root                = "buffer_dir", -- "buffer_dir"|"cwd"|"buffer_dir_recursive"|"cwd_recursive"
-    confirm_on_modified = true,         -- vim.ui.select prompt when buffer is modified
+    confirm_on_modified = true,         -- ui.kit confirm dialog when buffer is modified (requires ui.nvim)
     case_insensitive    = true,         -- Case-insensitive sort and comparison
     pattern             = nil,          -- Glob filter (e.g. "*.lua"), overridable via :File next's [glob] arg
   },
