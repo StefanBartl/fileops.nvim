@@ -142,6 +142,8 @@ end
 ---@param dir string
 ---@param opts FileOps.CycleConfig
 ---@return string[] files  Absolute, canonicalized paths.
+---@return string|nil err  Set when `dir` itself could not be read; an empty,
+---error-free `files` means the directory was read fine and nothing matched.
 local function list_files(dir, opts)
   local acc = {}
   local ci = opts.case_insensitive
@@ -149,12 +151,15 @@ local function list_files(dir, opts)
   if opts.root == "buffer_dir_recursive" or opts.root == "cwd_recursive" then
     collect_recursive(dir, opts, acc)
   else
-    local ok, err_or_iter = pcall(vim.fs.dir, dir)
-    if not ok then
-      -- dir does not exist or is not readable; return empty list
-      return acc
+    -- `pcall(vim.fs.dir, dir)` never fails here -- `vim.fs.dir` builds a
+    -- lazy iterator and only the first `next()` call would touch the
+    -- filesystem, by which point it just yields nothing for a missing/
+    -- unreadable directory. Check with `isdirectory` first so "no files"
+    -- and "no such directory" don't collapse onto the same empty result.
+    if fn.isdirectory(dir) ~= 1 then
+      return acc, "cannot read directory: " .. dir
     end
-    for name, t in err_or_iter do
+    for name, t in vim.fs.dir(dir) do
       local is_file = classify_entry(dir .. "/" .. name, t)
       local hidden = name:sub(1, 1) == "."
       if
@@ -173,7 +178,7 @@ local function list_files(dir, opts)
     end
     return a < b
   end)
-  return acc
+  return acc, nil
 end
 
 ---@internal
@@ -317,7 +322,10 @@ end
 function M.navigate(dir, mode, opts, count)
   count = validate_count(count)
 
-  local files = list_files(dir, opts)
+  local files, list_err = list_files(dir, opts)
+  if list_err then
+    return false, list_err
+  end
   if #files == 0 then
     return false, "no files in directory"
   end
@@ -373,7 +381,10 @@ end
 ---@return boolean ok
 ---@return string|nil msg
 function M.jump_edge(dir, edge, opts)
-  local files = list_files(dir, opts)
+  local files, list_err = list_files(dir, opts)
+  if list_err then
+    return false, list_err
+  end
   if #files == 0 then
     return false, "no files in directory"
   end

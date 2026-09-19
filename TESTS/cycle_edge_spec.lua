@@ -256,6 +256,24 @@ return function(H)
     ok(not jok, "jump_edge in an empty directory fails")
     eq(jmsg, "no files in directory", "…and says so")
 
+    -- A directory that isn't there is a different failure from one that is
+    -- there but empty (ERR-11): both used to collapse onto "no files in
+    -- directory" because `vim.fs.dir` never raises for a missing directory.
+    local missing = empty .. "no_such_subdir"
+    local mnok, mnmsg = cycle.navigate(missing, "next", opts_with({}), 1)
+    ok(not mnok, "navigate against a missing directory fails")
+    ok(
+      tostring(mnmsg):find("cannot read directory", 1, true) ~= nil,
+      "…distinctly from an empty one: " .. tostring(mnmsg)
+    )
+
+    local mjok, mjmsg = cycle.jump_edge(missing, "first", opts_with({}))
+    ok(not mjok, "jump_edge against a missing directory fails")
+    ok(
+      tostring(mjmsg):find("cannot read directory", 1, true) ~= nil,
+      "…distinctly from an empty one: " .. tostring(mjmsg)
+    )
+
     vim.cmd("enew")
     local bok, bmsg = cycle.navigate(dir, "next", opts_with({}), 1)
     ok(not bok, "navigate from a nameless buffer fails")
