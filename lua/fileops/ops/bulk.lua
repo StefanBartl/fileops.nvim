@@ -70,12 +70,16 @@ function M.plan(dir, pattern, replacement, opts)
   -- callers differ); normalize once so joins below never double it up.
   local base = dir:match("[\\/]$") and dir or (dir .. "/")
 
-  local ok, iter = pcall(vim.fs.dir, dir)
-  if not ok then
+  -- `pcall(vim.fs.dir, dir)` never fails here -- `vim.fs.dir` builds a lazy
+  -- iterator and only the first `next()` call would touch the filesystem, by
+  -- which point it just yields nothing for a missing/unreadable directory.
+  -- Check with `isdirectory` first so this `"cannot read directory"` return
+  -- is reachable instead of dead code.
+  if fn.isdirectory(dir) ~= 1 then
     return {}, "cannot read directory: " .. dir
   end
 
-  for name, t in iter do
+  for name, t in vim.fs.dir(dir) do
     local hidden = name:sub(1, 1) == "."
     if opts.include_hidden or not hidden then
       local full = base .. name

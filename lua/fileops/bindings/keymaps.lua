@@ -117,7 +117,11 @@ local function bulk_rename()
           -- `bang`, `refresh_explorers`) are not configurable from `setup()`.
           -- Passing the empty table outright says so, instead of looking like
           -- a setting a reader could go and set.
-          local plan = bulk.plan(dir, pattern, replacement or "", {})
+          local plan, plan_err = bulk.plan(dir, pattern, replacement or "", {})
+          if plan_err then
+            notify.error("bulk rename: " .. plan_err)
+            return
+          end
           -- `execute` answers `(renamed_count, err)`, not `(ok, msg)`, so
           -- `notify.report` was handed a number as its `ok` and nil as its
           -- message -- and reports nothing at all when the message is nil.
