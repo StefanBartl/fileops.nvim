@@ -211,6 +211,18 @@ the behaviour cannot drift back unnoticed.
    sequence for its `virt_text` (it does not reject one — it renders the
    mangled bytes). Now measured and cut with `vim.fn.strchars`/
    `vim.fn.strcharpart`, a no-op change for the plain-ASCII case.
+9. **`bindings/usrcmds.lua` — `complete_from_bufdir` went silently empty for
+   a buffer directory containing a glob metacharacter** (`usrcmds_dispatch_spec.lua`)
+   — **fixed.** It fed the buffer's directory straight into
+   `getcompletion(..., "file")`, which reads its argument as a *pattern*, not
+   a path; a directory like `notes[final]/` or `[Project]/` made every
+   candidate vanish with no error, so `:File rename <Tab>` offered nothing
+   for that buffer (completion-only — the path could still be typed by
+   hand). `complete_from_bufdir` is scandir-based now (`vim.fs.dir` via the
+   new `scandir_prefix` helper), which reads a directory as a path, and
+   splits `arg_lead` itself into an already-typed directory segment plus the
+   trailing partial name so nested-path completion (`subdir/partial<Tab>`)
+   keeps working the same as it did through `getcompletion`.
 
 Two related quirks are asserted as *documented* behaviour rather than as bugs:
 `:saveas` normalizes the buffer name it stores while the `:file` command

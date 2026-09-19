@@ -590,6 +590,41 @@ return function(H)
     eq(#absolute, 1, "an absolute lead is completed against that directory")
     ok(absolute[1]:find("sibling_two.txt", 1, true) ~= nil, "…finding the right file")
 
+    -- Nested-path completion: arg_lead may carry an already-typed directory
+    -- segment ("subdir/partial<Tab>") ahead of the partial name being
+    -- completed. This is the main risk of a scandir-based rewrite of
+    -- `complete_from_bufdir` (XP-01), so it gets its own case.
+    H.write_file(cdir .. "nested/deep_one.txt", "x")
+    H.write_file(cdir .. "nested/deep_two.txt", "x")
+    local nested = path_type.complete("nested/deep_o")
+    eq(#nested, 1, "nested-path completion narrows within the subdirectory")
+    ok(
+      nested[1]:find("deep_one.txt", 1, true) ~= nil,
+      "…finding the right nested file: " .. tostring(nested[1])
+    )
+    local nested_all = path_type.complete("nested/")
+    eq(#nested_all, 2, "an empty partial after a subdirectory lists everything in it")
+
+    -- A buffer directory containing a glob metacharacter must still
+    -- complete. `getcompletion`/`glob` read their argument as a *pattern*,
+    -- so a literal `[`/`]` in the path made every candidate vanish with no
+    -- error (XP-01). `complete_from_bufdir` is scandir-based now, reading
+    -- the directory as a path rather than pattern syntax.
+    local glob_dir = H.tmpdir() .. "[glob]_dir/"
+    H.write_file(glob_dir .. "glob_sibling.txt", "x")
+    H.edit(glob_dir .. "glob_sibling.txt")
+    local glob_matches = path_type.complete("glob_s")
+    eq(
+      #glob_matches,
+      1,
+      "a buffer directory containing glob metacharacters still completes (XP-01)"
+    )
+    ok(
+      glob_matches[1]:find("glob_sibling.txt", 1, true) ~= nil,
+      "…finding the right file: " .. tostring(glob_matches[1])
+    )
+    H.edit(cdir .. "sibling_one.txt")
+
     -- rename/duplicate's first slot additionally offers the `%` scope token.
     local first_slot = argtypes.get("FILEOPS_DEST_FIRST")
     eq(first_slot.complete("")[1], "%", "FILEOPS_DEST_FIRST offers '%' first on an empty lead")
