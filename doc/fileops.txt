@@ -41,6 +41,13 @@ injection risk, fully cross-platform (Windows and Unix).
     (lib.nvim.cross.fs.mutate), and background buffer opening
     (lib.nvim.buffer.open_background). Only notify's own styling is a
     genuinely soft, cosmetic fallback.
+  - ui.nvim (https://github.com/StefanBartl/ui.nvim) — REQUIRED. ui.kit backs
+    every prompt fileops has no other UI for — the missing-destination
+    prompt (:File rename/move/duplicate/copy/touch/new with no argument), the
+    modified-buffer confirm on :File next/:File prev, and :File bulk rename /
+    the bulk-rename keymap. Lazily required, so nothing loads it until one of
+    those runs, but there is no fallback: the default keymaps and several
+    :File subcommands raise an error without it.
 
 ==============================================================================
 3. INSTALLATION                                         *fileops-installation*
@@ -48,7 +55,7 @@ injection risk, fully cross-platform (Windows and Unix).
 lazy.nvim: >lua
   {
     "StefanBartl/fileops.nvim",
-    dependencies = { "StefanBartl/lib.nvim" }, -- required
+    dependencies = { "StefanBartl/lib.nvim", "StefanBartl/ui.nvim" }, -- both required
     event = "VeryLazy",
     opts  = {},
   }
@@ -57,7 +64,7 @@ lazy.nvim: >lua
 packer.nvim / pckr.nvim: >lua
   use({
     "StefanBartl/fileops.nvim",
-    requires = { "StefanBartl/lib.nvim" }, -- required
+    requires = { "StefanBartl/lib.nvim", "StefanBartl/ui.nvim" }, -- both required
     config = function()
       require("fileops").setup()
     end,
@@ -170,8 +177,10 @@ cycle.root ~
   cause an infinite walk). Default: `"buffer_dir"`.
 
 cycle.confirm_on_modified ~
-  Show a `vim.ui.select` prompt when the buffer has unsaved changes and
-  `open_target = "replace"`. Default: `true`.
+  Show a `ui.kit.confirm` dialog ("Save and open" / "Discard changes and
+  open" / "Cancel") when the buffer has unsaved changes and
+  `open_target = "replace"`. Requires ui.nvim — there is no fallback.
+  Default: `true`.
 
 cycle.case_insensitive ~
   Sort and compare filenames case-insensitively. Default: `true`.
@@ -355,8 +364,9 @@ A single command that dispatches to all file operations.
 it is always implied when omitted.
 
 Every `{path}`/`{dest}` argument below is itself optional: omit it and the
-command opens a |vim.ui.input()| prompt instead of erroring. Cancelling the
-prompt (<Esc> or an empty answer) is a silent no-op.
+command opens a `ui.kit.input` prompt instead of erroring (requires ui.nvim
+— there is no fallback). Cancelling the prompt (<Esc> or an empty answer) is
+a silent no-op.
 
 Tab-completion for these arguments is relative to the current buffer's
 directory, not Neovim's cwd — `:File rename <Tab>` browses files next to the
@@ -555,7 +565,8 @@ default (`session_compat.enable`, see |fileops-config|).
   unchanged, are left alone.
 
   Shows a preview of every `old -> new` pair, then asks for confirmation via
-  |vim.ui.select()| before touching disk. `!` allows overwriting existing
+  a `ui.kit.confirm` dialog ("Rename N file(s)" / "Cancel"; requires ui.nvim
+  — there is no fallback) before touching disk. `!` allows overwriting existing
   destinations; without it a conflicting destination is skipped and
   reported (other files in the batch still get renamed). Any open buffer
   pointing at a renamed file is re-pointed at the new path (no reload — same
@@ -810,7 +821,8 @@ cd_here({opts})                                      *fileops.cd_here()*
 Checks:
   - Neovim >= 0.9
   - `vim.uv` / `vim.loop` available
-  - `vim.ui.select` available
+  - `ui.kit` (ui.nvim) detected (required — backs every prompt: the
+    missing-destination prompt, the modified-buffer confirm, bulk rename)
   - `vim.fs.dir` available
   - Plugin loaded (guard flag set)
   - `lib.nvim` detected (required — the `:File` command layer)
@@ -857,6 +869,14 @@ Module load order: util → ops → config → bindings → init
 unconditionally. Only notifications are a genuinely soft, cosmetic
 fallback: if `lib.nvim.notify` is present it is used for styling,
 otherwise fileops.nvim falls back to plain `vim.notify`.
+
+`ui.nvim` is likewise required: `ui.kit` is a bare, unguarded `require` at
+every call site backing an interactive prompt fileops has no other UI for
+(`ops/cycle.lua`'s modified-buffer confirm, `bindings/usrcmds.lua`'s
+missing-destination prompt and bulk-rename confirm, `bindings/keymaps.lua`,
+and `integrations/filetree_assets.lua` / `integrations/menu.lua`). There is
+no `vim.ui.select`/`vim.ui.input` fallback; without ui.nvim those prompts
+raise an error when triggered.
 
 ==============================================================================
 vim:tw=78:ts=8:noet:ft=help:norl:
