@@ -281,6 +281,49 @@ return function(H)
     vim.o.updatetime = prev_updatetime
   end
 
+  -- ── on_hold.ignore_buftypes: ERR-22, degrades instead of crashing on ────
+  -- every CursorHold. config.setup() is the real entry point (not
+  -- on_hold.setup() directly, as above) so the whole path -- validation,
+  -- merge, and the feature module actually receiving the degraded value --
+  -- is exercised end to end, matching how bindings/init.lua wires it up.
+  do
+    local on_hold = require("fileops.features.on_hold")
+    local prev_updatetime = vim.o.updatetime
+
+    local cfg = config.setup({
+      on_hold = {
+        enable = true,
+        modes = "n",
+        throttle_ms = 0,
+        git_cmd = "fileops-no-such-git-executable",
+        ignore_buftypes = "nofile",
+      },
+    })
+    local reported = false
+    for _, i in ipairs(config.issues()) do
+      if i:find("on_hold.ignore_buftypes", 1, true) then
+        reported = true
+      end
+    end
+    ok(reported, "config.issues() reports the degraded on_hold.ignore_buftypes")
+    ok(
+      vim.deep_equal(cfg.on_hold.ignore_buftypes, config.DEFAULTS.on_hold.ignore_buftypes),
+      "the degraded on_hold.ignore_buftypes falls back to the default table"
+    )
+    on_hold.setup(cfg.on_hold)
+
+    vim.cmd("enew")
+    vim.bo.buftype = "nofile"
+    ok(
+      pcall(vim.api.nvim_exec_autocmds, "CursorHold", {}),
+      "a non-table on_hold.ignore_buftypes no longer throws on CursorHold"
+    )
+
+    drop_group("fileops_on_hold_preview")
+    drop_group("fileops_on_hold_modeclear")
+    vim.o.updatetime = prev_updatetime
+  end
+
   -- ── bindings/init: what gets wired ───────────────────────────────────────
   do
     pcall(vim.api.nvim_del_user_command, "File")

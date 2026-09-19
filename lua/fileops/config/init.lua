@@ -227,6 +227,29 @@ local function validate_on_hold_modes(opts, issues)
 end
 
 ---@internal
+---Reject an `on_hold.ignore_buftypes` that isn't a table, degrading to the
+---default instead of reaching `features/on_hold.lua`'s `normal_buf_allowed`
+---unguarded: it feeds a bare `vim.tbl_contains(ignore_buftypes, bt)`, which
+---crashes for anything truthy that isn't a table (a string included) -- and
+---since that call runs on every `CursorHold`, not just once during setup,
+---an unvalidated value repeats the crash indefinitely instead of failing
+---once and being reported.
+---@param opts table
+---@param issues string[]
+local function validate_on_hold_ignore_buftypes(opts, issues)
+  local oh = opts.on_hold
+  if type(oh) ~= "table" or oh.ignore_buftypes == nil then
+    return
+  end
+  if type(oh.ignore_buftypes) ~= "table" then
+    issues[#issues + 1] = ("on_hold.ignore_buftypes %s is not a table; using default"):format(
+      tostring(oh.ignore_buftypes)
+    )
+    oh.ignore_buftypes = nil
+  end
+end
+
+---@internal
 ---Copy `src` into `dst` in place: a sub-table `dst` already has keeps its
 ---identity, only its contents change. `bindings.autocmds` hands sub-tables
 ---of this config straight to feature modules (`auto_mkdir`, `on_hold`,
@@ -253,9 +276,9 @@ end
 
 ---Merge user opts over defaults and store result. Unknown keys (typos in a
 ---nested option included), an invalid `delete.mode`, an invalid
----`retry.attempts`/`retry.backoff_ms`, and an invalid `on_hold.modes` are
----reported here, before the merge, and dropped rather than silently kept --
----see `issues()`.
+---`retry.attempts`/`retry.backoff_ms`, an invalid `on_hold.modes`, and an
+---invalid `on_hold.ignore_buftypes` are reported here, before the merge, and
+---dropped rather than silently kept -- see `issues()`.
 ---@param user_opts FileOps.Config|nil
 ---@return FileOps.Config
 function M.setup(user_opts)
@@ -266,6 +289,7 @@ function M.setup(user_opts)
   validate_delete_mode(opts, issues)
   validate_retry(opts, issues)
   validate_on_hold_modes(opts, issues)
+  validate_on_hold_ignore_buftypes(opts, issues)
   _issues = issues
 
   local merged = vim.tbl_deep_extend("force", vim.deepcopy(M.DEFAULTS), opts)
