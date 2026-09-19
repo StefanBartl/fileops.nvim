@@ -95,6 +95,58 @@ return function(H)
   eq(config.get().delete.mode, "trash", "an invalid delete.mode falls back to the default")
   ok(has_issue("delete.mode"), "issues() names the rejected delete.mode value")
 
+  -- ERR-22: retry.attempts/backoff_ms of the wrong type or out of range
+  -- degrade to their defaults instead of reaching
+  -- lib.nvim.cross.fs.mutate's unguarded `math.max(1, attempts)` /
+  -- `backoff_ms * math.pow(...)` -- a non-number `attempts` crashes the
+  -- former outright, not just a zero/negative one.
+  config.setup({ retry = { attempts = "six", backoff_ms = -5 } })
+  local rt = config.get().retry
+  eq(
+    rt.attempts,
+    config.DEFAULTS.retry.attempts,
+    "non-number retry.attempts falls back to the default"
+  )
+  eq(
+    rt.backoff_ms,
+    config.DEFAULTS.retry.backoff_ms,
+    "negative retry.backoff_ms falls back to the default"
+  )
+  ok(has_issue("retry.attempts"), "issues() names the rejected retry.attempts value")
+  ok(has_issue("retry.backoff_ms"), "issues() names the rejected retry.backoff_ms value")
+
+  config.setup({ retry = { attempts = 0 } })
+  eq(
+    config.get().retry.attempts,
+    config.DEFAULTS.retry.attempts,
+    "zero retry.attempts falls back to the default"
+  )
+  ok(has_issue("retry.attempts"), "issues() names the rejected zero retry.attempts")
+
+  config.setup({ retry = { attempts = 3 } })
+  eq(config.get().retry.attempts, 3, "a valid retry.attempts is kept as-is")
+  eq(#config.issues(), 0, "a valid retry.attempts reports no issue")
+
+  -- ERR-22: on_hold.modes of the wrong type degrades to the default instead
+  -- of reaching features/on_hold.lua's unguarded `ipairs(modes)` -- which
+  -- crashes for anything that isn't a string, during on_hold.setup() itself
+  -- (i.e. plugin init, as soon as on_hold.enable = true), not just later.
+  config.setup({ on_hold = { modes = 5 } })
+  eq(
+    config.get().on_hold.modes,
+    config.DEFAULTS.on_hold.modes,
+    "non-string/table on_hold.modes falls back to the default"
+  )
+  ok(has_issue("on_hold.modes"), "issues() names the rejected on_hold.modes value")
+
+  config.setup({ on_hold = { modes = "nv" } })
+  eq(config.get().on_hold.modes, "nv", "a valid string on_hold.modes is kept as-is")
+  eq(#config.issues(), 0, "a valid on_hold.modes reports no issue")
+
+  config.setup({ on_hold = { modes = { "n", "v" } } })
+  eq(config.get().on_hold.modes[1], "n", "a valid array on_hold.modes is kept as-is")
+  eq(#config.issues(), 0, "a valid array on_hold.modes reports no issue")
+
   -- clean setup() reports no issues
   config.setup({})
   eq(#config.issues(), 0, "a clean setup() call reports no issues")

@@ -164,6 +164,69 @@ local function validate_delete_mode(opts, issues)
 end
 
 ---@internal
+---Reject a `retry.attempts`/`retry.backoff_ms` that isn't a usable number,
+---degrading each to its default instead of reaching `lib.nvim.cross.fs.mutate`
+---unguarded: `attempts` feeds a bare `math.max(1, attempts)` there -- a
+---non-number crashes it outright, not just a negative or zero one, which
+---`math.max` already clamps -- and `backoff_ms` feeds `backoff_ms *
+---math.pow(...)`, which only breaks once a transient failure actually
+---triggers a retry, so a bad value here would otherwise sit latent until
+---then.
+---@param opts table
+---@param issues string[]
+local function validate_retry(opts, issues)
+  local r = opts.retry
+  if type(r) ~= "table" then
+    return
+  end
+  if r.attempts ~= nil then
+    local a = r.attempts
+    if type(a) ~= "number" or a ~= math.floor(a) or a < 1 then
+      issues[#issues + 1] = ("retry.attempts %s is not a positive integer; using default %d"):format(
+        tostring(a),
+        M.DEFAULTS.retry.attempts
+      )
+      r.attempts = nil
+    end
+  end
+  if r.backoff_ms ~= nil then
+    local b = r.backoff_ms
+    if type(b) ~= "number" or b < 0 then
+      issues[#issues + 1] = ("retry.backoff_ms %s is not a non-negative number; using default %d"):format(
+        tostring(b),
+        M.DEFAULTS.retry.backoff_ms
+      )
+      r.backoff_ms = nil
+    end
+  end
+end
+
+---@internal
+---Reject an `on_hold.modes` that is neither a string nor a table, degrading
+---to the default instead of reaching `features/on_hold.lua`'s
+---`effective_events`/`mode_allowed` unguarded: both fall through to a bare
+---`ipairs(modes)` for anything that isn't a string, which crashes outright
+---for a number/boolean/etc. -- and `effective_events` runs during
+---`on_hold.setup()` itself, i.e. this crashes plugin init as soon as
+---`on_hold.enable = true`, not just on the next CursorHold.
+---@param opts table
+---@param issues string[]
+local function validate_on_hold_modes(opts, issues)
+  local oh = opts.on_hold
+  if type(oh) ~= "table" or oh.modes == nil then
+    return
+  end
+  local m = oh.modes
+  if type(m) ~= "string" and type(m) ~= "table" then
+    issues[#issues + 1] = ("on_hold.modes %s is not a string or table; using default %q"):format(
+      tostring(m),
+      M.DEFAULTS.on_hold.modes
+    )
+    oh.modes = nil
+  end
+end
+
+---@internal
 ---Copy `src` into `dst` in place: a sub-table `dst` already has keeps its
 ---identity, only its contents change. `bindings.autocmds` hands sub-tables
 ---of this config straight to feature modules (`auto_mkdir`, `on_hold`,
@@ -189,8 +252,10 @@ local function deep_assign(dst, src)
 end
 
 ---Merge user opts over defaults and store result. Unknown keys (typos in a
----nested option included) and an invalid `delete.mode` are reported here,
----before the merge, and dropped rather than silently kept -- see `issues()`.
+---nested option included), an invalid `delete.mode`, an invalid
+---`retry.attempts`/`retry.backoff_ms`, and an invalid `on_hold.modes` are
+---reported here, before the merge, and dropped rather than silently kept --
+---see `issues()`.
 ---@param user_opts FileOps.Config|nil
 ---@return FileOps.Config
 function M.setup(user_opts)
@@ -199,6 +264,8 @@ function M.setup(user_opts)
 
   drop_unknown(opts, SCHEMA, "", issues)
   validate_delete_mode(opts, issues)
+  validate_retry(opts, issues)
+  validate_on_hold_modes(opts, issues)
   _issues = issues
 
   local merged = vim.tbl_deep_extend("force", vim.deepcopy(M.DEFAULTS), opts)
