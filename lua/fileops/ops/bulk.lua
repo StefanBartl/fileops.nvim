@@ -166,8 +166,16 @@ function M.execute(plan, opts)
         local old_key = comparable(item.old)
         for _, b in ipairs(api.nvim_list_bufs()) do
           if key_of(b) == old_key then
-            pcall(api.nvim_buf_set_name, b, item.new)
-            buf_key[b] = comparable(item.new)
+            -- Only advance the memo when the rename actually took (e.g. not
+            -- E95, another buffer already named item.new): on failure the
+            -- buffer's real name -- and so its key -- didn't change, and
+            -- advancing the memo anyway would hide it from a later item in
+            -- this same batch that should also match it by its true,
+            -- still-old name.
+            local set_ok = pcall(api.nvim_buf_set_name, b, item.new)
+            if set_ok then
+              buf_key[b] = comparable(item.new)
+            end
           end
         end
         file.notify_change("rename", item.new, { refresh_explorers = opts.refresh_explorers })
