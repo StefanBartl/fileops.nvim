@@ -148,17 +148,20 @@ local function list_files(dir, opts)
   local acc = {}
   local ci = opts.case_insensitive
 
+  -- `pcall(vim.fs.dir, dir)` never fails here -- `vim.fs.dir` builds a lazy
+  -- iterator and only the first `next()` call would touch the filesystem,
+  -- by which point it just yields nothing for a missing/unreadable
+  -- directory. Check with `isdirectory` first, for both branches below, so
+  -- "no files" and "no such directory" don't collapse onto the same empty
+  -- result -- `collect_recursive` relies on the very same lazy-iterator
+  -- behavior for the root `dir` it's first called with.
+  if fn.isdirectory(dir) ~= 1 then
+    return acc, "cannot read directory: " .. dir
+  end
+
   if opts.root == "buffer_dir_recursive" or opts.root == "cwd_recursive" then
     collect_recursive(dir, opts, acc)
   else
-    -- `pcall(vim.fs.dir, dir)` never fails here -- `vim.fs.dir` builds a
-    -- lazy iterator and only the first `next()` call would touch the
-    -- filesystem, by which point it just yields nothing for a missing/
-    -- unreadable directory. Check with `isdirectory` first so "no files"
-    -- and "no such directory" don't collapse onto the same empty result.
-    if fn.isdirectory(dir) ~= 1 then
-      return acc, "cannot read directory: " .. dir
-    end
     for name, t in vim.fs.dir(dir) do
       local is_file = classify_entry(dir .. "/" .. name, t)
       local hidden = name:sub(1, 1) == "."

@@ -274,6 +274,23 @@ return function(H)
       "…distinctly from an empty one: " .. tostring(mjmsg)
     )
 
+    -- The recursive root modes route through `collect_recursive`, a separate
+    -- code path from the non-recursive branch above: a missing directory
+    -- must fail the same way there too, not silently report "no files".
+    local rnok, rnmsg = cycle.navigate(missing, "next", opts_with({ root = "buffer_dir_recursive" }), 1)
+    ok(not rnok, "navigate against a missing directory fails in recursive mode")
+    ok(
+      tostring(rnmsg):find("cannot read directory", 1, true) ~= nil,
+      "…distinctly from an empty one: " .. tostring(rnmsg)
+    )
+
+    local rjok, rjmsg = cycle.jump_edge(missing, "first", opts_with({ root = "cwd_recursive" }))
+    ok(not rjok, "jump_edge against a missing directory fails in recursive mode")
+    ok(
+      tostring(rjmsg):find("cannot read directory", 1, true) ~= nil,
+      "…distinctly from an empty one: " .. tostring(rjmsg)
+    )
+
     vim.cmd("enew")
     local bok, bmsg = cycle.navigate(dir, "next", opts_with({}), 1)
     ok(not bok, "navigate from a nameless buffer fails")
