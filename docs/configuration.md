@@ -104,3 +104,14 @@ require("fileops").setup({
 See [Keymaps](keymaps.md) for details on the `keymaps` table, and
 [Autocommands](autocommands.md) for `auto_mkdir`, `on_hold`, and
 `conflict_marks`.
+
+## Validation
+
+An unknown option — including a typo in a nested key, e.g. `cycle = {
+open_taget = "split"}` — is dropped before the merge instead of silently
+riding along as a dead field, and an invalid `delete.mode` falls back to its
+default (`"trash"`) rather than to its opposite. Both are reported by
+`:checkhealth fileops`, under the `config:` line.
+
+Calling `setup()` a second time is a no-op: bindings are registered once, and
+it warns instead of silently discarding the options you passed.
