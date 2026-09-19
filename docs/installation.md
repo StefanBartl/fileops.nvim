@@ -7,6 +7,14 @@
   the `:File` command layer (`lib.nvim.bindings.usercmd.composer`), notifications, the
   injection-safe file primitives behind create/rename/duplicate/delete
   (`lib.nvim.cross.fs.mutate`), and background buffer opening
+- [ui.nvim](https://github.com/StefanBartl/ui.nvim) — **required**. `ui.kit`
+  backs every prompt fileops has no other UI for — the missing-destination
+  prompt (`:File rename/move/duplicate/copy/touch/new` with no argument), the
+  modified-buffer confirm on `:File next`/`:File prev`, and `:File bulk
+  rename` / the bulk-rename keymap — and `ui.contextmenu` backs the optional
+  context-menu integration (`fileops.integrations.menu`). Lazily required, so
+  nothing loads it until one of those runs, but there is no fallback: the
+  default keymaps and several `:File` subcommands raise an error without it.
 
 No CLI tools are required — all I/O goes through libuv directly, which is
 what keeps behaviour identical on Windows and Unix.
@@ -20,7 +28,6 @@ Each detected at runtime and degrading to nothing when absent:
 | [filetree.nvim](https://github.com/StefanBartl/filetree.nvim), neo-tree, nvim-tree | Refreshed in place after a tree-changing operation |
 | [which-key.nvim](https://github.com/folke/which-key.nvim) | Labels for the optional keymaps |
 | [nvzone/menu](https://github.com/nvzone/menu) | A host for the context-menu entries — see [Integrations](FEATURES/INTEGRATIONS.md) |
-| [ui.nvim](https://github.com/StefanBartl/ui.nvim) | `ui.kit`/`ui.contextmenu` back the missing-destination prompt, bulk-rename, the modified-buffer confirm, and the context-menu entries — lazily required, so nothing loads it until one of those runs |
 
 ## Installation
 
@@ -36,7 +43,7 @@ Each detected at runtime and degrading to nothing when absent:
 ```lua
 {
   "StefanBartl/fileops.nvim",
-  dependencies = { "StefanBartl/lib.nvim" },
+  dependencies = { "StefanBartl/lib.nvim", "StefanBartl/ui.nvim" },
   event = "VeryLazy",
   opts = {},
 }
@@ -51,7 +58,7 @@ not after it.
 ```lua
 use({
   "StefanBartl/fileops.nvim",
-  requires = { "StefanBartl/lib.nvim" }, -- required
+  requires = { "StefanBartl/lib.nvim", "StefanBartl/ui.nvim" }, -- both required
   config = function()
     require("fileops").setup()
   end,
@@ -62,6 +69,7 @@ use({
 
 ```vim
 Plug 'StefanBartl/lib.nvim'  " required
+Plug 'StefanBartl/ui.nvim'   " required
 Plug 'StefanBartl/fileops.nvim'
 ```
 ```lua

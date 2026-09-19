@@ -47,11 +47,27 @@ function M.check()
     err("libuv not found; file I/O will fail")
   end
 
-  -- vim.ui.select (used for confirm_on_modified dialog)
-  if type(vim.ui) == "table" and type(vim.ui.select) == "function" then
-    ok("vim.ui.select is available")
+  -- ui.nvim (ui.kit): required by every interactive prompt fileops has no
+  -- other UI for -- the missing-destination prompt, the modified-buffer
+  -- confirm, and bulk rename (see docs/installation.md).
+  if pcall(require, "ui.kit") then
+    ok("ui.nvim detected (ui.kit prompts available)")
   else
-    warn("vim.ui.select is unavailable; confirm_on_modified dialogs will not work")
+    warn(
+      "ui.nvim not found — the missing-destination prompt, the modified-buffer "
+        .. "confirm and bulk rename will raise an error when triggered",
+      { 'Install "StefanBartl/ui.nvim"' }
+    )
+  end
+
+  -- config validation from the last setup() call (unknown keys, rejected values)
+  local cfg_issues = require("fileops.config").issues()
+  if #cfg_issues == 0 then
+    ok("config: no unknown/invalid options from the last setup() call")
+  else
+    for _, issue in ipairs(cfg_issues) do
+      warn("config: " .. issue)
+    end
   end
 
   -- vim.fs.dir (used for directory listing)

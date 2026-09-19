@@ -38,11 +38,17 @@ return function(H)
     local real_check = package.loaded[check_mod]
     package.loaded[check_mod] = nil
 
+    -- ui.kit is not on this suite's runtimepath (see harness.lua); stub it so
+    -- this "complete install" run sees it the way an install with ui.nvim
+    -- actually present would.
+    local restore_ui_kit = H.stub("ui.kit", {})
+
     local health_ok, health_err = pcall(function()
       require("fileops.health").check()
     end)
     vim.health = real_health
     package.loaded[check_mod] = real_check
+    restore_ui_kit()
 
     ok(health_ok, ":checkhealth fileops runs to completion: " .. tostring(health_err))
 
@@ -60,11 +66,14 @@ return function(H)
 
     ok(find("ok", "Neovim >= 0.9"), "the Neovim version is reported")
     ok(find("ok", "libuv available"), "libuv is reported")
-    ok(find("ok", "vim.ui.select"), "vim.ui.select is reported")
     ok(find("ok", "vim.fs.dir"), "vim.fs.dir is reported")
     ok(find("ok", "lib.nvim detected"), "lib.nvim is reported as present (it is a hard dependency)")
     ok(find("ok", "lib.nvim.notify in use"), "the notifier in use is reported")
     ok(find("ok", "plugin loaded"), "the loaded guard set by setup() is reported")
+    -- ui.nvim is a hard dependency too (see docs/installation.md); stubbed
+    -- above for this block, the same way "a complete install" is simulated.
+    ok(find("ok", "ui.nvim detected"), "ui.nvim is reported as present")
+    ok(find("ok", "config: no unknown/invalid options"), "a clean config reports no issues")
 
     -- Every optional dependency reports as `ok` whether or not it is
     -- installed — "not installed (not required)" is a finding, not a problem,
