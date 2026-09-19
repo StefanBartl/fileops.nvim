@@ -120,6 +120,33 @@ function M.execute(plan, opts)
   local renamed = 0
   local first_err = nil
 
+  -- Every open buffer's canonical name, memoized per buffer rather than
+  -- recomputed from scratch for every renamed item: `comparable()` does a
+  -- real `uv.fs_realpath()` syscall, and a plain per-item, per-buffer
+  -- re-derive is O(items x buffers) -- a bulk rename of 30 files with 40
+  -- buffers open is up to 1200 blocking syscalls for what is, for all but
+  -- the handful of buffers actually being renamed, the same answer every
+  -- time. A buffer's key only changes when THIS loop renames it
+  -- (`nvim_buf_set_name` below), so the memo is kept in sync there instead
+  -- of invalidated wholesale -- correctness for a rename *chain* within one
+  -- batch (a.txt->b.txt then b.txt->c.txt, with a buffer open on a.txt)
+  -- depends on that: freezing the memo before the loop would leave a
+  -- buffer's entry pointing at its pre-batch name and miss a later item
+  -- that should also move it.
+  local buf_key = {}
+  ---@param b integer
+  ---@return string|false key  `false` for an unnamed/invalid buffer
+  local function key_of(b)
+    local cached = buf_key[b]
+    if cached ~= nil then
+      return cached
+    end
+    local name = api.nvim_buf_is_valid(b) and api.nvim_buf_get_name(b) or ""
+    local k = name ~= "" and comparable(name) or false
+    buf_key[b] = k
+    return k
+  end
+
   for _, item in ipairs(plan) do
     if fn.filereadable(item.new) == 1 and not opts.bang then
       first_err = first_err or ("destination already exists (use ! to overwrite): " .. item.new)
@@ -134,9 +161,9 @@ function M.execute(plan, opts)
         -- the next `:w` wrote that file back into existence.
         local old_key = comparable(item.old)
         for _, b in ipairs(api.nvim_list_bufs()) do
-          local name = api.nvim_buf_is_valid(b) and api.nvim_buf_get_name(b) or ""
-          if name ~= "" and comparable(name) == old_key then
+          if key_of(b) == old_key then
             pcall(api.nvim_buf_set_name, b, item.new)
+            buf_key[b] = comparable(item.new)
           end
         end
         file.notify_change("rename", item.new, { refresh_explorers = opts.refresh_explorers })
