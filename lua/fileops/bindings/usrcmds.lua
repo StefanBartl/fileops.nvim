@@ -109,6 +109,37 @@ local CYCLE_TARGET_MAP = {
 -- non-path args map onto enums (CD_SCOPES/CYCLE_TARGETS/PATH_MODES).
 
 ---@internal
+---Names in `dir` (bare, not full paths) that start with `prefix`, read
+---straight off the filesystem via `vim.fs.dir` -- never through a glob, so a
+---directory name or `prefix` itself containing a glob metacharacter (`[`,
+---`]`, `*`, `?`, `{`, `}`) is just a literal to compare against, not pattern
+---syntax that fails to match or matches the wrong thing (XP-01: `getcompletion`
+---and `glob` both read their argument as a pattern). Dotfiles are excluded
+---unless `prefix` itself starts with `.`, mirroring `getcompletion`'s own
+---convention so a bare `<Tab>` doesn't suddenly surface `.git` and friends.
+---An unreadable/missing `dir` yields no names rather than erroring, same as
+---`getcompletion` would.
+---@param dir string
+---@param prefix string
+---@return string[] names  Sorted, bare entry names (files and directories).
+local function scandir_prefix(dir, prefix)
+  local out = {}
+  local ok, iter = pcall(vim.fs.dir, dir)
+  if not ok then
+    return out
+  end
+  local show_hidden = prefix:sub(1, 1) == "."
+  for name in iter do
+    local hidden = name:sub(1, 1) == "."
+    if (show_hidden or not hidden) and name:sub(1, #prefix) == prefix then
+      out[#out + 1] = name
+    end
+  end
+  table.sort(out)
+  return out
+end
+
+---@internal
 ---Complete `arg_lead` relative to the current buffer's directory instead of
 ---cwd (`getcompletion`'s default base), so `:File rename <Tab>` browses
 ---files next to the buffer being edited rather than wherever Neovim's cwd
@@ -116,15 +147,24 @@ local CYCLE_TARGET_MAP = {
 ---letter) is left alone. Candidates come back as full absolute paths — that
 ---keeps them unambiguous regardless of cwd once the command actually runs.
 ---
+---This is scandir-based (`scandir_prefix`), not glob-based: a path is a
+---path here, never a pattern, so a buffer directory containing a glob
+---metacharacter (`[Project]`, `notes{final}`, …) still completes instead of
+---silently returning nothing (XP-01). `arg_lead` may itself carry
+---already-typed directory segments (`:File rename subdir/partial<Tab>`) --
+---only the piece after the last separator is the partial name being
+---completed; everything before it is more directory to descend into first,
+---so nested-path completion keeps working the same as it did through
+---`getcompletion`.
+---
 ---The buffer's directory is resolved before it is used as the completion
----base. `getcompletion(..., "file")` is a glob, and a Windows 8.3 short name
----is not one it can match: a user name longer than eight characters gets an
----alias, so `nvim_buf_get_name` hands back `C:\Users\RUNNER~1\…`, no directory
----entry is literally called `RUNNER~1`, and the completion came back empty --
----`:File rename <Tab>` offered nothing at all for those users. `fs_realpath`
----puts the directory in the spelling the file system itself uses, which is the
----one the glob can match. A no-op everywhere else, 8.3 aliases included, once
----the user name is short enough not to get one.
+---base. A Windows 8.3 short name (`C:\Users\RUNNER~1\…`, the alias a user
+---name longer than eight characters gets) is a perfectly real path and
+---`vim.fs.dir` reads it fine either way; `fs_realpath` here is only about
+---returning candidates spelled the way the filesystem itself spells them,
+---which is friendlier to read back than the short alias. A no-op everywhere
+---else, 8.3 aliases included, once the user name is short enough not to get
+---one.
 ---@param arg_lead string
 ---@return string[]
 local function complete_from_bufdir(arg_lead)
@@ -143,7 +183,24 @@ local function complete_from_bufdir(arg_lead)
     bufdir = real
   end
 
-  return vim.fn.getcompletion(bufdir .. "/" .. arg_lead, "file")
+  local typed_dir, partial = arg_lead:match("^(.*)[/\\]([^/\\]*)$")
+  local scan_dir = bufdir
+  if typed_dir then
+    scan_dir = bufdir .. "/" .. typed_dir
+  else
+    partial = arg_lead
+  end
+
+  if vim.fn.isdirectory(scan_dir) ~= 1 then
+    return {}
+  end
+
+  local names = scandir_prefix(scan_dir, partial)
+  local out = {}
+  for i, name in ipairs(names) do
+    out[i] = scan_dir .. "/" .. name
+  end
+  return out
 end
 
 composer.register_type("FILEOPS_DEST_FIRST", {
