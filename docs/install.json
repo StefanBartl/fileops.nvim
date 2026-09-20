@@ -1,0 +1,20 @@
+{
+  "tools": [
+    {
+      "bin": "git",
+      "required": false,
+      "why": "Backs the two opt-in git features: the ambient `on_hold` line-diff preview (argv-only `git blame`/`git show`, fully async) and `git_aware` (`git ls-files` to note tracked files, `git mv`/`git rm` when `warn_only = false`). Every filesystem operation itself goes through libuv and needs no CLI tool. Usually already present.",
+      "pkg": {
+        "apt": "git",
+        "dnf": "git",
+        "pacman": "git",
+        "zypper": "git",
+        "apk": "git",
+        "brew": "git",
+        "winget": "Git.Git",
+        "scoop": "git",
+        "choco": "git"
+      }
+    }
+  ]
+}

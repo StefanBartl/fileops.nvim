@@ -103,6 +103,7 @@ local specs = {
   "health_menu_spec.lua",
   "filetree_assets_spec.lua",
   "explorer_integration_spec.lua",
+  "install_spec_spec.lua",
 }
 
 local failed = 0
