@@ -28,6 +28,12 @@ Each detected at runtime and degrading to nothing when absent:
 | [filetree.nvim](https://github.com/StefanBartl/filetree.nvim), neo-tree, nvim-tree | Refreshed in place after a tree-changing operation |
 | [which-key.nvim](https://github.com/folke/which-key.nvim) | Labels for the optional keymaps |
 | [nvzone/menu](https://github.com/nvzone/menu) | A host for the context-menu entries — see [Integrations](FEATURES/INTEGRATIONS.md) |
+| `git` | The two opt-in git features: the `on_hold` line-diff preview and `git_aware`. Every filesystem operation itself needs no CLI tool |
+
+`git` is declared in [install.json](install.json) and read by lib.nvim's
+[deps module](https://github.com/StefanBartl/lib.nvim/blob/main/lua/lib/nvim/deps/README.md):
+`:Lib deps show fileops.nvim` says what is missing and why it matters, and
+`:Lib deps install fileops.nvim` offers to install it, asking first.
 
 ## Installation
 

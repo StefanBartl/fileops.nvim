@@ -133,6 +133,15 @@ function M.check()
     ok("gitsigns.nvim not found — on_hold falls back to previous-content preview")
   end
 
+  -- The declared external tools (docs/install.json): a pointer to
+  -- `:Lib deps show`, not a second report -- the checks above already say
+  -- more per tool. Silent when lib.nvim.deps is absent (an older lib.nvim).
+  local ok_deps, deps_health = pcall(require, "lib.nvim.deps.health")
+  if ok_deps and type(deps_health.pointer_for) == "function" then
+    start("fileops: declared tools (lib.nvim.deps)")
+    deps_health.pointer_for("fileops.nvim")
+  end
+
   -- Guarded by the same detection as above: the "lib.nvim not found" branch
   -- already issued its warning, so this must not go on to require() the
   -- exact module just reported missing — that would crash the check with an
