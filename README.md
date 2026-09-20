@@ -31,18 +31,18 @@ shell.
 Start at [docs/README.md](docs/README.md) — what's where, and which question
 each page answers.
 
-**The Basics**
+### The Basics
 
 - [Requirements](docs/installation.md#requirements) — Neovim version, required and optional plugins.
 - [Installation](docs/installation.md) — every plugin manager.
 - [Quickstart](docs/quickstart.md) — the first thing to run after installing.
 
-**What it does**
+### What it does
 
 - [Features](docs/FEATURES/README.md) — one page per area, with the reasoning behind each.
 - [Around it](docs/around-it.md) — how this plugin's scope differs from its siblings in the collection.
 
-**Configuration & Commands**
+### Configuration & Commands
 
 - [All options](docs/configuration.md) — every `setup()` option and its default.
 - [Commands](docs/commands.md) / [Bindings cheatsheet](docs/BINDINGS.md) — full usage and examples for every `:File` subcommand.
@@ -50,7 +50,7 @@ each page answers.
 - [Autocommands](docs/autocommands.md) — the `User FileopsChanged` event and what fires it.
 - [Lua API](docs/api.md) — calling fileops.nvim functions directly from Lua.
 
-**The Rest**
+### The Rest
 
 - [Integrations](docs/FEATURES/INTEGRATIONS.md) — context menu, explorer refresh, which-key labels.
 - [Health check](docs/FEATURES/INTEGRATIONS.md#checkhealth-fileops) — what `:checkhealth fileops` reports.

@@ -31,7 +31,7 @@ Each detected at runtime and degrading to nothing when absent:
 
 ## Installation
 
-**When to use which:**
+### When to use which:
 
 | Variant | Startup impact | When to use |
 |---|---|---|

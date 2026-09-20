@@ -152,7 +152,7 @@ order) works the same as unfiltered navigation. Matching uses
 :File! next              → bypass modified-buffer confirm
 ```
 
-**Target values:**
+### Target values:
 
 | Arg | Behaviour |
 |---|---|
