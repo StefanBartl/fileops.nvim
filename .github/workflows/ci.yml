@@ -9,6 +9,7 @@ jobs:
   test:
     name: tests (headless, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       # One platform failing must not cancel the others: which of the three
       # broke is the whole information content of this job. This plugin is
@@ -43,11 +44,20 @@ jobs:
           version: stable
       - name: Run TESTS suite
         working-directory: fileops.nvim
-        run: nvim --headless -i NONE -u NONE -c "set rtp+=." -c "luafile TESTS/run.lua" -c "qa!"
+        run: |
+          exec > >(tee -a "$RUNNER_TEMP/test-output.log") 2>&1
+          nvim -n --headless -i NONE -u NONE -c "set rtp+=." -c "luafile TESTS/run.lua" -c "qa!"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-output-test-${{ matrix.os }}
+          path: ${{ runner.temp }}/test-output.log
+          if-no-files-found: ignore
 
   explorer-integration:
     name: tests (neo-tree + nvim-tree, headless)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
         with:
@@ -67,29 +77,46 @@ jobs:
         with:
           repository: nvim-neo-tree/neo-tree.nvim
           path: neo-tree.nvim
+          # Pinned to the 2026-09-20 HEAD; bump deliberately, not by drifting.
+          ref: 162f9b953a692b559afe43e38d60afee81e8e79b
       - uses: actions/checkout@v5
         with:
           repository: nvim-tree/nvim-tree.lua
           path: nvim-tree.lua
+          # Pinned to the 2026-09-20 HEAD; bump deliberately, not by drifting.
+          ref: 8d814495983e8db87d02d2f1da293f25b2fd1bdc
       - uses: actions/checkout@v5
         with:
           repository: MunifTanjim/nui.nvim
           path: nui.nvim
+          # Pinned to the 2026-09-20 HEAD; bump deliberately, not by drifting.
+          ref: 10fc361835c856ba4233ef5ea135b919bf3dce97
       - uses: actions/checkout@v5
         with:
           repository: nvim-lua/plenary.nvim
           path: plenary.nvim
+          # Pinned to the 2026-09-20 HEAD; bump deliberately, not by drifting.
+          ref: 74b06c6c75e4eeb3108ec01852001636d85a932b
       - uses: rhysd/action-setup-vim@v1
         with:
           neovim: true
           version: stable
       - name: Run TESTS suite (with explorer deps on rtp)
         working-directory: fileops.nvim
-        run: nvim --headless -i NONE -u NONE -c "set rtp+=." -c "luafile TESTS/run.lua" -c "qa!"
+        run: |
+          exec > >(tee -a "$RUNNER_TEMP/test-output.log") 2>&1
+          nvim -n --headless -i NONE -u NONE -c "set rtp+=." -c "luafile TESTS/run.lua" -c "qa!"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-output-explorer-integration
+          path: ${{ runner.temp }}/test-output.log
+          if-no-files-found: ignore
 
   lint:
     name: lint (stylua + luacheck)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     # Was advisory while the one-time `stylua .` pass the existing style
     # predated was still outstanding. That pass has landed, `stylua --check .`
     # and `luacheck lua` both run clean, and leaving the job non-blocking would
