@@ -126,7 +126,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: stylua --check
-        uses: JohnnyMorganz/stylua-action@v4
+        uses: JohnnyMorganz/stylua-action@v5
         with:
           # Required by the action to fetch the release; without it the step
           # fails with "Parameter token or opts.auth is required" before ever
