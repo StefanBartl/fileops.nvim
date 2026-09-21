@@ -277,7 +277,8 @@ return function(H)
     -- The recursive root modes route through `collect_recursive`, a separate
     -- code path from the non-recursive branch above: a missing directory
     -- must fail the same way there too, not silently report "no files".
-    local rnok, rnmsg = cycle.navigate(missing, "next", opts_with({ root = "buffer_dir_recursive" }), 1)
+    local rnok, rnmsg =
+      cycle.navigate(missing, "next", opts_with({ root = "buffer_dir_recursive" }), 1)
     ok(not rnok, "navigate against a missing directory fails in recursive mode")
     ok(
       tostring(rnmsg):find("cannot read directory", 1, true) ~= nil,
