@@ -2,9 +2,12 @@
 ---Ambient, mode-aware line-diff preview on CursorHold/CursorHoldI.
 ---Prefers gitsigns' `preview_hunk_inline()` when available; otherwise falls
 ---back to rendering the previous committed content of the current line as
----EOL/right-aligned virtual text (via `git blame`/`git show`, argv-only —
----no shell). Per-window throttling and a generation counter guard against
----stale scheduled runs after a mode change.
+---EOL/right-aligned virtual text -- the blame half via gitsuite.nvim's
+---`features.blame.for_location` (optional soft dep, GS-26) when installed,
+---else fileops' own `git blame --porcelain`; the `git show` half is always
+---fileops' own (argv-only -- no shell either way; gitsuite has no
+---blob-content equivalent to delegate that to). Per-window throttling and a
+---generation counter guard against stale scheduled runs after a mode change.
 
 local api, fn = vim.api, vim.fn
 local uv = vim.uv or vim.loop
@@ -196,8 +199,65 @@ local function normal_buf_allowed(ignore_buftypes)
 end
 
 ---@internal
----Async: chains `git blame` → `git show`, neither of which blocks the UI
----thread. `cb` is always called exactly once, scheduled onto the main loop.
+---`git show <rev>:<path>` for line `lnum`, once a blame step (either path
+---below) has resolved `sha` -- nil `sha` (blame found nothing, or the line
+---is uncommitted, whose all-zero sha `git show` simply fails to resolve)
+---calls `cb(nil)` without spawning anything.
+---@param git_cmd string
+---@param file string
+---@param lnum integer
+---@param cwd string
+---@param cb fun(prev_line: string|nil)
+---@param sha string|nil
+---@return nil
+local function show_line_at(git_cmd, file, lnum, cwd, cb, sha)
+  if not sha then
+    return vim.schedule(function()
+      cb(nil)
+    end)
+  end
+  -- `git show <rev>:<path>` resolves `<path>` against the repository
+  -- root, never against the filesystem — an absolute path here always
+  -- fails with "path '...' does not exist in '<rev>'" even though the
+  -- exact same path is fine as `git blame`'s pathspec above. `cwd` is
+  -- already this file's own directory, so `./<basename>` is the form
+  -- git resolves relative to *that* instead.
+  local show_started = pcall(function()
+    vim.system(
+      { git_cmd, "show", sha .. ":./" .. fn.fnamemodify(file, ":t") },
+      { text = true, cwd = cwd },
+      function(blob_res)
+        vim.schedule(function()
+          if blob_res.code ~= 0 then
+            return cb(nil)
+          end
+          local blob = to_lines(blob_res.stdout)
+          if #blob == 0 or lnum > #blob then
+            return cb(nil)
+          end
+          cb(blob[lnum])
+        end)
+      end
+    )
+  end)
+  if not show_started then
+    vim.schedule(function()
+      cb(nil)
+    end)
+  end
+end
+
+---@internal
+---Async: resolves the sha that last touched `lnum`, then `git show`s it --
+---neither step blocks the UI thread. `cb` is always called exactly once,
+---scheduled onto the main loop.
+---
+---gitsuite.nvim (optional soft dep, GS-26) backs the blame step when
+---installed, reusing its parser instead of fileops maintaining its own
+---`git blame --porcelain` SHA extraction. That path always runs plain
+---"git" internally, not `git_cmd` -- the `git show` step below still
+---honours the configured one either way; gitsuite has no equivalent to
+---delegate that half to (see gitsuite's own Querschnittsbefund #1).
 ---@param git_cmd string
 ---@param file string
 ---@param lnum integer
@@ -205,6 +265,14 @@ end
 ---@param cb fun(prev_line: string|nil)
 ---@return nil
 local function get_previous_line_async(git_cmd, file, lnum, cwd, cb)
+  local ok_gitsuite, gitsuite_blame = pcall(require, "gitsuite.features.blame")
+  if ok_gitsuite then
+    gitsuite_blame.for_location(cwd, file, lnum, function(entry, _err)
+      show_line_at(git_cmd, file, lnum, cwd, cb, entry and entry.sha or nil)
+    end)
+    return
+  end
+
   local started = pcall(function()
     vim.system(
       { git_cmd, "blame", "-L", lnum .. "," .. lnum, "--porcelain", "--", file },
@@ -217,40 +285,7 @@ local function get_previous_line_async(git_cmd, file, lnum, cwd, cb)
         end
         local blame = to_lines(blame_res.stdout)
         local sha = #blame > 0 and parse_blame_sha(blame[1]) or nil
-        if not sha then
-          return vim.schedule(function()
-            cb(nil)
-          end)
-        end
-        -- `git show <rev>:<path>` resolves `<path>` against the repository
-        -- root, never against the filesystem — an absolute path here always
-        -- fails with "path '...' does not exist in '<rev>'" even though the
-        -- exact same path is fine as `git blame`'s pathspec above. `cwd` is
-        -- already this file's own directory, so `./<basename>` is the form
-        -- git resolves relative to *that* instead.
-        local show_started = pcall(function()
-          vim.system(
-            { git_cmd, "show", sha .. ":./" .. fn.fnamemodify(file, ":t") },
-            { text = true, cwd = cwd },
-            function(blob_res)
-              vim.schedule(function()
-                if blob_res.code ~= 0 then
-                  return cb(nil)
-                end
-                local blob = to_lines(blob_res.stdout)
-                if #blob == 0 or lnum > #blob then
-                  return cb(nil)
-                end
-                cb(blob[lnum])
-              end)
-            end
-          )
-        end)
-        if not show_started then
-          vim.schedule(function()
-            cb(nil)
-          end)
-        end
+        show_line_at(git_cmd, file, lnum, cwd, cb, sha)
       end
     )
   end)
