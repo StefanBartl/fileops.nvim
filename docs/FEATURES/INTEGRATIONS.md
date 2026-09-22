@@ -53,6 +53,20 @@ directly.
   [docs/autocommands.md#user-fileopschanged](../autocommands.md#user-fileopschanged)
 - **Config:** `opts.explorer.refresh_on_change` (default `true`)
 
+## gitsuite.nvim post-action events (GS-25)
+
+`bindings/autocmds.lua` listens for gitsuite.nvim's `User
+GitsuiteBranchSwitched`/`GitsuiteConflictsResolved` events and reuses the
+same `file.notify_change` path any other tree-changing op goes through — a
+branch switch refreshes explorers with the repo root as `path` (action
+`git-checkout`), a resolved conflict with the buffer's own file (action
+`git-conflict-resolved`). No dependency in either direction: these are
+plain `User` autocmds, so this feature is simply inert without
+gitsuite.nvim installed.
+
+- **Module:** `bindings/autocmds.lua` (`M.attach_gitsuite_events`)
+- **Autocmds:** `User GitsuiteBranchSwitched`, `User GitsuiteConflictsResolved`
+- **Config:** `opts.gitsuite_events.enable` (default `true`)
 
 ## Which-key group labels
 

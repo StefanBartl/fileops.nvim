@@ -119,4 +119,7 @@ return {
     hl_b = "DiffChange", -- "=======" separator
     hl_c = "DiffAdd", -- ">>>>>>>" lines
   },
+  gitsuite_events = {
+    enable = true, -- refresh explorers on gitsuite.nvim's branch-switch/conflict-resolved events
+  },
 }
