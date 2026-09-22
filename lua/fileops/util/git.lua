@@ -3,6 +3,12 @@
 ---every call runs with `cwd` set to the target file's own directory so it
 ---works regardless of Neovim's global cwd.
 ---
+---`is_tracked` (GS-14) delegates to `lib.nvim.git.is_tracked` -- same argv
+---(`ls-files --error-unmatch -- <name>`), `-C <dir>` in place of `cwd = dir`.
+---`mv`/`rm` stay local: lib.nvim.git has no `git mv`/`git rm` wrapper, and
+---with a single consumer, adding one is not (yet) shared infrastructure
+---(`TOOL-PLACEMENT.md` Fall 4).
+---
 ---Each blocking function (`is_tracked`/`mv`/`rm`) has an `_async` twin with
 ---the same argv/cwd contract, built on `vim.system`'s callback form instead
 ---of `:wait()`, for callers that must not block the UI thread.
@@ -10,10 +16,14 @@
 --- CDX: the `_async` twins have no production caller — `features/on_hold.lua`
 --- needs a blame->show chain plus an `is-inside-work-tree` probe and rolls its
 --- own local async helpers instead. Kept because `git_async_spec.lua` exercises
---- them as deliberate public API.
+--- them as deliberate public API. `is_tracked_async` stays its own vim.system
+--- call rather than lib.nvim.git.is_tracked wrapped in vim.schedule() (which
+--- would not actually be async, just synchronous work pretending to be) --
+--- lib.nvim.git has no async is_tracked to delegate to instead.
 local M = {}
 
 local fn = vim.fn
+local lib_git = require("lib.nvim.git")
 
 ---Whether `path` is tracked by git. `false` on any error (not a repo, git
 ---missing, etc.) — callers should treat "unknown" the same as "not tracked".
@@ -21,15 +31,9 @@ local fn = vim.fn
 ---@param git_cmd? string  Defaults to "git".
 ---@return boolean tracked
 function M.is_tracked(path, git_cmd)
-  git_cmd = git_cmd or "git"
   local dir = fn.fnamemodify(path, ":p:h")
   local name = fn.fnamemodify(path, ":t")
-  local ok, res = pcall(function()
-    return vim
-      .system({ git_cmd, "ls-files", "--error-unmatch", "--", name }, { text = true, cwd = dir })
-      :wait()
-  end)
-  return ok and res.code == 0
+  return lib_git.is_tracked(name, { dir = dir }, git_cmd or "git")
 end
 
 ---Rename/move a tracked file via `git mv -f`.
