@@ -151,6 +151,9 @@ packer.nvim / pckr.nvim: >lua
       hl_b = "DiffChange",  -- "=======" separator
       hl_c = "DiffAdd",     -- ">>>>>>>" lines
     },
+    gitsuite_events = {
+      enable = true,  -- refresh explorers on gitsuite.nvim branch-switch/conflict-resolved events
+    },
   })
 <
 
@@ -345,6 +348,12 @@ conflict_marks.hl_b ~
 
 conflict_marks.hl_c ~
   Highlight group for `>>>>>>>` lines. Default: `"DiffAdd"`.
+
+gitsuite_events.enable ~
+  Refresh open explorers on gitsuite.nvim's `User
+  GitsuiteBranchSwitched`/`GitsuiteConflictsResolved` events (GS-25). No
+  dependency in either direction -- these are plain `User` autocmds, so this
+  is a no-op without gitsuite.nvim installed. Default: `true`.
 
 ==============================================================================
 5. THE :File COMMAND                                        *fileops-command*
@@ -695,6 +704,19 @@ conflict_marks (`BufWinEnter`/`BufWinLeave`) ~
   <
   See |fileops-config| for the `conflict_marks.*` option list.
 
+gitsuite_events (`User GitsuiteBranchSwitched`/`GitsuiteConflictsResolved`) ~
+  Refreshes open explorers via the same path `notify_change` uses, reacting
+  to gitsuite.nvim's post-action events (GS-25): a branch switch (action
+  `git-checkout`, `path` = the repo root) or the last conflict marker in a
+  buffer being resolved (action `git-conflict-resolved`, `path` = that
+  buffer's file). No dependency in either direction — these `User` events
+  simply never fire without gitsuite.nvim installed. Enabled by default.
+
+  Disable with: >lua
+    require("fileops").setup({ gitsuite_events = { enable = false } })
+  <
+  See |fileops-config| for the `gitsuite_events.*` option list.
+
 User FileopsChanged ~
   Fired on every op that changes the file tree (`new`, `write`, `saveas`,
   `writeto`, `mkdir`, `touch`, `rename`, `move`, `duplicate`, `copy`,
@@ -844,7 +866,8 @@ Checks:
     bindings/usrcmds.lua     :File command with subcommand dispatch
     bindings/keymaps.lua     Per-key configurable keymap registrations
                               (which-key group labels are a field of the spec)
-    bindings/autocmds.lua    auto_mkdir/on_hold/conflict_marks registration
+    bindings/autocmds.lua    auto_mkdir/on_hold/conflict_marks/gitsuite_events
+                              registration
     health.lua               checkhealth provider
     util/
       notify.lua             "[fileops] " notifier; soft lib.nvim.notify use

@@ -116,6 +116,12 @@
 ---@field hl_b?   string|nil  Highlight group for "=======" separator. Default: "DiffChange".
 ---@field hl_c?   string|nil  Highlight group for ">>>>>>>" lines. Default: "DiffAdd".
 
+---@class FileOps.GitsuiteEventsConfig
+--- Refresh open explorers on gitsuite.nvim's `User GitsuiteBranchSwitched`/
+--- `GitsuiteConflictsResolved` events (GS-25). No dependency either way --
+--- these autocmds simply never fire without gitsuite.nvim installed.
+---@field enable? boolean  Master switch for this feature. Default: true.
+
 ---@class FileOps.Config
 ---@field cycle?          FileOps.CycleConfig          File-cycle options.
 ---@field cd?             FileOps.CdConfig             Change-directory options.
@@ -129,5 +135,6 @@
 ---@field auto_mkdir?     FileOps.AutoMkdirConfig      Auto-create parent dirs before writing (default: enabled).
 ---@field on_hold?        FileOps.OnHoldConfig         Ambient CursorHold line-diff preview (default: disabled; opt-in).
 ---@field conflict_marks? FileOps.ConflictMarksConfig  Conflict-marker highlighting (default: enabled).
+---@field gitsuite_events? FileOps.GitsuiteEventsConfig Explorer refresh on gitsuite.nvim post-action events (default: enabled).
 
 return {}

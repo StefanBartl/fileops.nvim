@@ -21,6 +21,7 @@ function M.setup(cfg)
   require("fileops.bindings.autocmds").attach_auto_mkdir(cfg.auto_mkdir)
   require("fileops.bindings.autocmds").attach_on_hold(cfg.on_hold)
   require("fileops.bindings.autocmds").attach_conflict_marks(cfg.conflict_marks)
+  require("fileops.bindings.autocmds").attach_gitsuite_events(cfg.gitsuite_events)
 end
 
 return M

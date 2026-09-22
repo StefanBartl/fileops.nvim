@@ -324,6 +324,67 @@ return function(H)
     vim.o.updatetime = prev_updatetime
   end
 
+  -- ── gitsuite_events (GS-25) ──────────────────────────────────────────────
+  -- No sibling gitsuite.nvim checkout needed: `User GitsuiteBranchSwitched`/
+  -- `GitsuiteConflictsResolved` are just events, fired here directly via
+  -- nvim_exec_autocmds exactly as gitsuite.nvim's own events.lua does.
+  do
+    autocmds.attach_gitsuite_events({ enable = false })
+    eq(#autocmds_of("fileops_gitsuite_events"), 0, "gitsuite_events = false registers nothing")
+
+    autocmds.attach_gitsuite_events({ enable = true })
+    ok(
+      #autocmds_of("fileops_gitsuite_events") > 0,
+      "gitsuite_events = true registers at least one autocmd"
+    )
+    for _, a in ipairs(autocmds_of("fileops_gitsuite_events")) do
+      eq(a.event, "User", "...on User")
+    end
+
+    local dir = H.tmpdir()
+    local seen = {}
+    local fc_group = vim.api.nvim_create_augroup("fileops_gitsuite_events_spec", { clear = true })
+    vim.api.nvim_create_autocmd("User", {
+      group = fc_group,
+      pattern = "FileopsChanged",
+      callback = function(ev)
+        seen[#seen + 1] = ev.data
+      end,
+    })
+
+    vim.api.nvim_exec_autocmds(
+      "User",
+      { pattern = "GitsuiteBranchSwitched", data = { dir = dir, branch = "feature" } }
+    )
+    eq(#seen, 1, "a branch switch fires FileopsChanged once")
+    eq(seen[1].action, "git-checkout", "...with action git-checkout")
+    eq(seen[1].path, dir, "...and the repo dir as path")
+
+    local bufnr = vim.api.nvim_create_buf(false, true)
+    local target = dir .. "conflicted.txt"
+    vim.api.nvim_buf_set_name(bufnr, target)
+    vim.api.nvim_exec_autocmds(
+      "User",
+      { pattern = "GitsuiteConflictsResolved", data = { bufnr = bufnr } }
+    )
+    eq(#seen, 2, "a conflict resolution fires FileopsChanged too")
+    eq(seen[2].action, "git-conflict-resolved", "...with action git-conflict-resolved")
+    ok(seen[2].path:find("conflicted.txt", 1, true) ~= nil, "...and the buffer's own file as path")
+    pcall(vim.api.nvim_buf_delete, bufnr, { force = true })
+
+    seen = {}
+    local fired_ok = pcall(
+      vim.api.nvim_exec_autocmds,
+      "User",
+      { pattern = "GitsuiteConflictsResolved", data = { bufnr = 999999 } }
+    )
+    ok(fired_ok, "an invalid bufnr does not error")
+    eq(#seen, 0, "...and fires no FileopsChanged")
+
+    vim.api.nvim_del_augroup_by_id(fc_group)
+    drop_group("fileops_gitsuite_events")
+  end
+
   -- ── bindings/init: what gets wired ───────────────────────────────────────
   do
     pcall(vim.api.nvim_del_user_command, "File")

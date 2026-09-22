@@ -82,6 +82,7 @@ local SCHEMA = {
     restore_view = true,
   },
   conflict_marks = { enable = true, hl_a = true, hl_b = true, hl_c = true },
+  gitsuite_events = { enable = true },
 }
 
 ---@internal
