@@ -181,6 +181,40 @@ return function(H)
     drop_group("fileops_conflict_marks_off")
   end
 
+  -- ── conflict_marks: gitsuite.nvim delegation (GS-26, optional) ───────────
+  do
+    local marks = require("fileops.features.conflict_marks")
+    local saved = package.loaded["gitsuite.features.conflict"]
+    local refresh_calls = {}
+    package.loaded["gitsuite.features.conflict"] = {
+      refresh = function(bufnr)
+        refresh_calls[#refresh_calls + 1] = bufnr
+      end,
+    }
+
+    marks.setup({ enable = true })
+    local dir = H.tmpdir()
+    local conflicted = dir .. "conflicted.txt"
+    H.write_file(
+      conflicted,
+      table.concat({ "<<<<<<< HEAD", "ours", "=======", "theirs", ">>>>>>> branch" }, "\n")
+    )
+
+    vim.cmd("only")
+    H.edit(conflicted)
+    eq(#refresh_calls, 1, "with gitsuite.nvim available, BufWinEnter calls its refresh() once")
+    eq(refresh_calls[1], vim.api.nvim_get_current_buf(), "...with the current buffer")
+    eq(
+      vim.w._fileops_conflict_match_ids,
+      nil,
+      "...and never falls through to fileops' own matchadd path"
+    )
+
+    package.loaded["gitsuite.features.conflict"] = saved
+    drop_group("fileops_conflict_marks_on")
+    drop_group("fileops_conflict_marks_off")
+  end
+
   -- ── on_hold: the event wiring ────────────────────────────────────────────
   -- The preview itself chains `git blame` → `git show` in two subprocesses;
   -- what is checked here is which events the feature claims per configured

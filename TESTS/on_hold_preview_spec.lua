@@ -68,6 +68,7 @@ return function(H)
     drop_group("fileops_on_hold_cleanup")
     vim.o.updatetime = prev_updatetime
     package.loaded["gitsigns"] = nil
+    package.loaded["gitsuite.features.blame"] = nil
   end
 
   -- ── happy path: a clean, committed line previews as virtual text ───────────
@@ -358,6 +359,49 @@ return function(H)
 
     api.nvim_exec_autocmds("CursorMoved", {})
     eq(#extmarks_of(buf), 0, "CursorMoved clears it")
+  end
+
+  -- ── the blame half can be delegated to gitsuite.nvim (optional, GS-26) ───
+  do
+    local target = dir .. "held_gitsuite.txt"
+    H.write_file(target, "committed one\ncommitted two\n")
+    run("git", "add", "held_gitsuite.txt")
+    run("git", "commit", "-q", "-m", "add held_gitsuite.txt")
+    local head = run("git", "rev-parse", "HEAD")
+    local sha = vim.trim(head.stdout)
+
+    on_hold.setup({
+      enable = true,
+      modes = "n",
+      throttle_ms = 0,
+      git_cmd = "git",
+      prefer_inline = false,
+    })
+
+    local for_location_calls = {}
+    package.loaded["gitsuite.features.blame"] = {
+      for_location = function(cwd_arg, path_arg, lnum_arg, cb)
+        for_location_calls[#for_location_calls + 1] =
+          { cwd = cwd_arg, path = path_arg, lnum = lnum_arg }
+        cb({ sha = sha }, nil)
+      end,
+    }
+
+    vim.cmd("only")
+    local buf = H.edit(target)
+    api.nvim_buf_set_lines(buf, 0, 1, false, { "buffer-only edit, never written" })
+    api.nvim_win_set_cursor(0, { 1, 0 })
+    api.nvim_exec_autocmds("CursorHold", {})
+
+    local marks = wait_for_extmarks(buf, 1)
+    eq(#marks, 1, "gitsuite.nvim's blame.for_location backs the preview when installed")
+    eq(#for_location_calls, 1, "...and is actually called, exactly once")
+    eq(for_location_calls[1].lnum, 1, "...for the cursor's line")
+    local text = marks[1][4].virt_text[1][1]
+    eq(text, "previous: committed one", "...and the git-show half still renders the real content")
+
+    package.loaded["gitsuite.features.blame"] = nil
+    api.nvim_buf_clear_namespace(buf, NS, 0, -1)
   end
 
   teardown()

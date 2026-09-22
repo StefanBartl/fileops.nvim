@@ -684,10 +684,13 @@ on_hold (`CursorHold`/`CursorHoldI`) ~
   Ambient, mode-aware line-diff preview. Prefers gitsigns'
   `preview_hunk_inline()` when available, otherwise falls back to showing the
   previous committed content of the current line as EOL/right-aligned virtual
-  text (via `git blame`/`git show`, argv-only — no shell). Per-window
-  throttled (`on_hold.throttle_ms`), mode-aware (`on_hold.modes`), and cleared
-  on the next cursor move. Sets `vim.o.updatetime = 100` when enabled.
-  Disabled by default — opt-in.
+  text (via `git blame`/`git show`, argv-only — no shell). The blame half
+  uses gitsuite.nvim's `features.blame.for_location` instead when it is
+  installed (optional soft dep, GS-26) — reuses its parser rather than
+  fileops' own `git blame --porcelain`; the `git show` half is always
+  fileops' own either way. Per-window throttled (`on_hold.throttle_ms`),
+  mode-aware (`on_hold.modes`), and cleared on the next cursor move. Sets
+  `vim.o.updatetime = 100` when enabled. Disabled by default — opt-in.
 
   Enable with: >lua
     require("fileops").setup({ on_hold = { enable = true } })
@@ -696,8 +699,12 @@ on_hold (`CursorHold`/`CursorHoldI`) ~
 
 conflict_marks (`BufWinEnter`/`BufWinLeave`) ~
   Highlights unresolved Git conflict markers (`<<<<<<<`, `=======`,
-  `>>>>>>>`) using `matchadd`/`matchdelete`, scoped per-window. Enabled by
-  default.
+  `>>>>>>>`). Delegates to gitsuite.nvim's own parser/highlighter
+  (`features.conflict.refresh`, optional soft dep, GS-26) when installed —
+  exact marker-length matching, diff3/zdiff3 base sections, ambiguous-region
+  handling, none of which the fixed `matchadd`/`matchdelete` patterns below
+  know about. Falls back to those patterns, per-window, when gitsuite.nvim
+  is absent. Enabled by default.
 
   Disable with: >lua
     require("fileops").setup({ conflict_marks = { enable = false } })

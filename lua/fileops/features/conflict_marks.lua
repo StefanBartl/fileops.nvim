@@ -1,6 +1,10 @@
 ---@module 'fileops.features.conflict_marks'
----Highlight Git conflict markers (<<<<<<< / ======= / >>>>>>>) per-window,
----cleared on window leave.
+---Highlight Git conflict markers (<<<<<<< / ======= / >>>>>>>). Delegates to
+---gitsuite.nvim's own parser/highlighter (`gitsuite.features.conflict`,
+---optional soft dep, GS-26) when installed -- exact marker-length matching,
+---diff3/zdiff3 base sections, ambiguous-region handling, none of which the
+---fixed `matchadd` patterns below know about. Falls back to those patterns,
+---per-window, cleared on window leave, when gitsuite.nvim is absent.
 
 local fn = vim.fn
 local autocmd = require("lib.nvim.bindings.autocmd")
@@ -49,6 +53,18 @@ function M.setup(cfg)
     -- window -- unremovable, and one more set per `:e`. Invisible (same
     -- patterns, same groups) but unbounded.
     M.clear_window_matches()
+
+    -- gitsuite.nvim (optional soft dep, GS-26): its parser matches markers
+    -- by EXACT length (git's `conflict-marker-size`) and understands
+    -- diff3/zdiff3 base sections and ambiguous `=======` lines -- the fixed
+    -- `.\+` patterns below match a same-length-or-longer run too eagerly and
+    -- know nothing about either. Extmarks are buffer-scoped, not
+    -- window-scoped, so no BufWinLeave counterpart is needed on this path.
+    local ok, gitsuite_conflict = pcall(require, "gitsuite.features.conflict")
+    if ok then
+      gitsuite_conflict.refresh(vim.api.nvim_get_current_buf())
+      return
+    end
 
     local id_a = fn.matchadd(cfg.hl_a or "DiffDelete", [[^<<<<<<< .\+$]])
     local id_b = fn.matchadd(cfg.hl_b or "DiffChange", [[^=======\s*$]])

@@ -68,6 +68,33 @@ gitsuite.nvim installed.
 - **Autocmds:** `User GitsuiteBranchSwitched`, `User GitsuiteConflictsResolved`
 - **Config:** `opts.gitsuite_events.enable` (default `true`)
 
+## gitsuite.nvim backing conflict_marks and on_hold (GS-26)
+
+Two more, quieter delegations to `gitsuite.nvim` (optional soft dep, pcall
+per call site — no dependency the other way):
+
+- `features/conflict_marks.lua` calls `gitsuite.features.conflict.refresh(bufnr)`
+  on `BufWinEnter` instead of its own fixed `matchadd` patterns, when
+  gitsuite.nvim is installed. Its parser matches markers by *exact* length
+  (git's `conflict-marker-size`) and understands diff3/zdiff3 base sections
+  and ambiguous `=======` lines — the fixed `^<<<<<<< .\+$`-style patterns
+  match a same-length-or-longer run too eagerly and know neither. Extmarks
+  are buffer-scoped, so this path needs no `BufWinLeave` counterpart; falls
+  back to the original per-window `matchadd` highlighting, `hl_a`/`hl_b`/`hl_c`
+  and all, when gitsuite.nvim is absent.
+- `features/on_hold.lua`'s blame/show fallback chain gets its blame step
+  (which commit last touched the cursor line) from
+  `gitsuite.features.blame.for_location` instead of fileops' own
+  `git blame --porcelain` parsing, when installed. That path always spawns
+  plain `git`, not the configured `on_hold.git_cmd` — the `git show` step
+  right after it still honours that setting either way, since gitsuite has
+  no blob-content equivalent to delegate that half to.
+
+- **Modules:** `features/conflict_marks.lua`, `features/on_hold.lua`
+- **Config:** none of its own — governed by `conflict_marks.enable` /
+  `on_hold.enable` as already documented; whether gitsuite.nvim backs either
+  one is detected at runtime, not configurable
+
 ## Which-key group labels
 
 When [which-key.nvim](https://github.com/folke/which-key.nvim) is installed,
