@@ -142,20 +142,37 @@ return function(H)
     eq(fn.filereadable(dir .. "moved/there.txt"), 1, ":File move created the missing directory")
     eq(fn.getline(1), "one edited", ":File move did not reload the buffer from disk")
 
-    -- Overwriting needs the bang, both ways.
+    -- Overwriting without the bang triggers a confirm instead of just
+    -- failing -- and only actually overwrites once that confirm says yes.
     reset()
     H.write_file(dir .. "occupied.txt", "occupied")
-    local noisy = H.notifications(function()
-      vim.cmd("File move " .. fn.fnameescape(dir .. "occupied.txt"))
-    end)
+    vim.cmd("File move " .. fn.fnameescape(dir .. "occupied.txt"))
+    eq(#calls, 1, "moving onto an existing file without ! asks for confirmation")
+    eq(calls[1].kind, "confirm", "…via ui.kit.confirm")
     ok(
-      H.notified(noisy, "destination already exists"),
-      "moving onto an existing file without ! is refused and reported"
+      calls[1].question:find("destination already exists", 1, true) ~= nil,
+      "…mentioning the existing destination"
     )
-    eq(fn.readfile(dir .. "occupied.txt")[1], "occupied", "…and the destination is untouched")
+    eq(
+      fn.readfile(dir .. "occupied.txt")[1],
+      "occupied",
+      "…and leaves the destination untouched until answered"
+    )
 
-    vim.cmd("File! move " .. fn.fnameescape(dir .. "occupied.txt"))
-    eq(fn.readfile(dir .. "occupied.txt")[1], "one edited", ":File! move overwrites")
+    reset()
+    answers.confirm = true
+    vim.cmd("File move " .. fn.fnameescape(dir .. "occupied.txt"))
+    eq(fn.readfile(dir .. "occupied.txt")[1], "one edited", "…confirming the dialog overwrites")
+
+    -- The bang still bypasses the confirm entirely -- no dialog needed to
+    -- overwrite what the user already said `!` to.
+    reset()
+    H.write_file(dir .. "occupied2.txt", "occupied2")
+    H.write_file(dir .. "movable2.txt", "fresh content")
+    H.edit(dir .. "movable2.txt")
+    vim.cmd("File! move " .. fn.fnameescape(dir .. "occupied2.txt"))
+    eq(#calls, 0, ":File! move skips the confirm")
+    eq(fn.readfile(dir .. "occupied2.txt")[1], "fresh content", "…and overwrites anyway")
   end
 
   -- ── duplicate / copy ─────────────────────────────────────────────────────
@@ -214,19 +231,35 @@ return function(H)
       "delete.mode = 'trash' routes :File delete through the OS trash"
     )
 
-    -- The bang is the force-close: without it a modified buffer is refused.
+    -- Without a bang, a modified buffer triggers an interactive confirm
+    -- instead of just refusing — and only actually deletes once that
+    -- confirm comes back "yes".
     reset()
     local dirty = dir .. "dirty.txt"
     H.write_file(dirty, "saved")
     H.edit(dirty)
     vim.api.nvim_buf_set_lines(0, 0, -1, false, { "unsaved" })
-    local refused = H.notifications(function()
-      vim.cmd("File delete")
-    end)
-    ok(H.notified(refused, "unsaved changes"), ":File delete refuses a modified buffer")
-    eq(fn.filereadable(dirty), 1, "…and leaves the file alone")
+    vim.cmd("File delete")
+    eq(#calls, 1, ":File delete on a modified buffer asks for confirmation")
+    eq(calls[1].kind, "confirm", "…via ui.kit.confirm")
+    ok(calls[1].question:find("unsaved", 1, true) ~= nil, "…mentioning the unsaved changes")
+    eq(fn.filereadable(dirty), 1, "…and leaves the file alone until answered")
+
+    reset()
+    answers.confirm = true
+    vim.cmd("File delete")
+    eq(fn.filereadable(dirty), 0, "…confirming the dialog deletes it")
+
+    -- The bang still bypasses the confirm entirely -- no dialog needed to
+    -- force-close what the user already said `!` to.
+    reset()
+    local dirty2 = dir .. "dirty2.txt"
+    H.write_file(dirty2, "saved")
+    H.edit(dirty2)
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "unsaved" })
     vim.cmd("File! delete")
-    eq(fn.filereadable(dirty), 0, ":File! delete deletes it anyway")
+    eq(#calls, 0, ":File! delete skips the confirm")
+    eq(fn.filereadable(dirty2), 0, "…and deletes it anyway")
   end
 
   -- ── cd ───────────────────────────────────────────────────────────────────

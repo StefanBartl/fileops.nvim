@@ -78,13 +78,14 @@ untouched, never truncated. Doesn't require or open a buffer.
 
 Rename (or move) the current file on disk to `{dest}`. Updates the buffer
 name and **reloads the buffer from disk** afterwards (resets signs/
-diagnostics). Writes unsaved changes before renaming. `!` overwrites an
-existing destination.
+diagnostics). Writes unsaved changes before renaming. An existing
+destination without `!` asks first (`ui.kit.confirm`) instead of just
+failing; `!` overwrites directly, no prompt.
 
 ```
 :File rename newname.lua
 :File rename % newname.lua    (explicit %, same result)
-:File! rename ../moved.lua    (overwrite if exists)
+:File! rename ../moved.lua    (overwrite if exists, no prompt)
 ```
 
 ## `:File[!] move [%] [dest]`
@@ -92,7 +93,8 @@ existing destination.
 Move the current file on disk to `{dest}` (possibly a different directory)
 and update the buffer name — same underlying rename as `rename`, but the
 buffer is **not** reloaded: content and undo history stay exactly as they
-were. `!` overwrites an existing destination.
+were. An existing destination without `!` asks first instead of failing;
+`!` overwrites directly.
 
 ```
 :File move ../elsewhere/file.lua
@@ -101,7 +103,9 @@ were. `!` overwrites an existing destination.
 
 ## `:File[!] duplicate [%] [dest]`
 
-Copy the current file to `{dest}` and open the copy. `!` overwrites.
+Copy the current file to `{dest}` and open the copy. An existing
+destination without `!` asks first instead of failing; `!` overwrites
+directly.
 
 ```
 :File duplicate backup.lua
@@ -111,7 +115,8 @@ Copy the current file to `{dest}` and open the copy. `!` overwrites.
 ## `:File[!] copy [%] [dest]`
 
 Copy the current file to `{dest}` using libuv, like `duplicate`, but without
-opening the copy afterwards. `!` overwrites.
+opening the copy afterwards. An existing destination without `!` asks first
+instead of failing; `!` overwrites directly.
 
 ```
 :File copy backup.lua
@@ -124,15 +129,17 @@ Delete the current file from disk and close the buffer. Sends it to the OS
 trash/recycle bin by default (`delete.mode = "trash"`), or deletes it for
 good via libuv when `delete.mode = "permanent"` — see
 [Configuration](configuration.md). If the
-buffer has unsaved changes, plain `:File delete` refuses (nothing is
-deleted); `!` deletes the file and force-closes the buffer. If
-`delete.on_before_delete` is configured, it runs first and can abort the
-deletion by returning `false` (e.g. to warn about git-tracked files).
+buffer has unsaved changes, plain `:File delete` asks first
+(`ui.kit.confirm`) instead of just refusing — decline or leave it
+unanswered and nothing is deleted; `!` skips the prompt and deletes the
+file + force-closes the buffer directly. If `delete.on_before_delete` is
+configured, it runs first and can abort the deletion by returning `false`
+(e.g. to warn about git-tracked files).
 
 ```
 :File delete
 :File delete %    (same)
-:File! delete     (delete + force-close a modified buffer)
+:File! delete     (delete + force-close a modified buffer, no prompt)
 ```
 
 ## `:[count]File[!] next [target] [glob]` / `:[count]File[!] prev [target] [glob]`

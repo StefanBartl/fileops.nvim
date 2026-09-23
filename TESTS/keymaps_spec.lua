@@ -298,21 +298,44 @@ return function(H)
     ok(hook_ran, "the delete key consults delete.on_before_delete")
     eq(fn.filereadable(second), 1, "…and a vetoing hook keeps the file")
 
-    -- The forced form is the `!` as a key: it deletes a modified buffer's file
-    -- where the plain key refuses.
+    -- The plain key on a modified buffer asks first instead of refusing
+    -- outright -- and only deletes once that confirm comes back "yes".
     config.setup({ delete = { mode = "permanent" } })
     actions = by_name(keymaps.setup(config.get()))
     local dirty = dir .. "dirty.txt"
     H.write_file(dirty, "saved")
     H.edit(dirty)
     vim.api.nvim_buf_set_lines(0, 0, -1, false, { "unsaved" })
-    local refused = H.notifications(function()
-      actions.delete.rhs()
-    end)
-    ok(H.notified(refused, "unsaved changes"), "the plain delete key refuses a modified buffer")
-    eq(fn.filereadable(dirty), 1, "…and the file survives")
+
+    local asked = {}
+    local restore_kit_delete = H.stub("ui.kit", {
+      confirm = function(o)
+        asked[#asked + 1] = o.question
+      end,
+    })
+    actions.delete.rhs()
+    eq(#asked, 1, "the plain delete key asks for confirmation on a modified buffer")
+    ok(asked[1]:find("unsaved changes", 1, true) ~= nil, "…mentioning the unsaved changes")
+    eq(fn.filereadable(dirty), 1, "…and the file survives until answered")
+    restore_kit_delete()
+
+    restore_kit_delete = H.stub("ui.kit", {
+      confirm = function(o)
+        o.on_answer(o.choices[1])
+      end,
+    })
+    actions.delete.rhs()
+    eq(fn.filereadable(dirty), 0, "…confirming the dialog deletes it")
+    restore_kit_delete()
+
+    -- delete_force still bypasses the confirm entirely -- no dialog needed
+    -- to force-close what the key already means.
+    local dirty2 = dir .. "dirty2.txt"
+    H.write_file(dirty2, "saved")
+    H.edit(dirty2)
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "unsaved" })
     actions.delete_force.rhs()
-    eq(fn.filereadable(dirty), 0, "the delete_force key deletes it anyway")
+    eq(fn.filereadable(dirty2), 0, "the delete_force key deletes a modified buffer without asking")
   end
 
   -- ── the filetree.nvim cascade seam ───────────────────────────────────────

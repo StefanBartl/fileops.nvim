@@ -33,13 +33,15 @@ you commit to a destination.
 
 ## The three-way delete guard
 
-`:File delete` refuses outright if the buffer has unsaved changes — nothing
-is deleted, not even a partial write. `:File! delete` force-closes and
-deletes. If you've configured `delete.on_before_delete`, it runs *before*
-either of those checks touch the disk and can veto the deletion by returning
-`false` — the one hook point to add your own "warn on git-tracked files"
-gate, since fileops itself only *notes* tracked-ness via `git_aware`, it
-never blocks a delete on it by default.
+`:File delete` on a buffer with unsaved changes asks first (`ui.kit.confirm`
+— "delete anyway (force-close)?"): decline or leave it unanswered and
+nothing is deleted, not even a partial write. `:File! delete` skips that
+prompt and force-closes and deletes directly. If you've configured
+`delete.on_before_delete`, it runs *before* either of those checks touch the
+disk and can veto the deletion by returning `false` — the one hook point to
+add your own "warn on git-tracked files" gate, since fileops itself only
+*notes* tracked-ness via `git_aware`, it never blocks a delete on it by
+default.
 
 ```lua
 require("fileops").setup({
