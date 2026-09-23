@@ -22,12 +22,10 @@ local bulk = require("fileops.ops.bulk")
 local notify = require("fileops.util.notify")
 local config = require("fileops.config")
 local keymap = require("lib.nvim.bindings.keymap")
--- Soft dependency on filetree.nvim's refs engine (cascade-delete-assets) —
--- a no-op module when that plugin isn't installed. Same integration
--- `:File delete` uses (see fileops.bindings.usrcmds); the interactive
--- `delete`/`delete_force` keymaps are the more commonly used path and must
--- not silently skip it.
-local filetree_assets = require("fileops.integrations.filetree_assets")
+-- Shared with `:File delete` (bindings/usrcmds.lua): the
+-- confirm-on-unsaved-changes step, then delete + cascade-delete-assets
+-- (filetree.nvim's refs engine, a no-op when that plugin isn't installed).
+local delete_confirm = require("fileops.bindings.delete_confirm")
 
 local M = {}
 
@@ -143,18 +141,15 @@ local function bulk_rename()
 end
 
 ---@internal
----Delete the current buffer's file, offering to cascade-delete any now-
----orphaned assets it links to (filetree.nvim's `refs.outgoing_assets`, via
----`fileops.integrations.filetree_assets` — a no-op when that plugin isn't
----installed or the feature is off). Shared by the `delete`/`delete_force`
----keymaps, mirroring the `:File delete` Ex command in bindings/usrcmds.lua.
+---Delete the current buffer's file. Shared by the `delete`/`delete_force`
+---keymaps via `fileops.bindings.delete_confirm`, the same module
+---`:File delete` (bindings/usrcmds.lua) calls -- one place for the
+---confirm-on-unsaved-changes step and the cascade-delete-assets sequence,
+---instead of each binding surface carrying its own copy.
 ---
 ---`delete.mode`/`delete.on_before_delete` are read here, per invocation, the
 ---same way the other actions in this file read their config -- not captured at
----registration time, so a later `setup()` still applies. Passing only `force`
----(as this did) meant the keymaps ignored `delete.mode` entirely and kept
----deleting permanently after the default moved to "trash", and never called
----the `on_before_delete` veto.
+---registration time, so a later `setup()` still applies.
 ---
 ---`git_aware`/`retry`/`refresh_explorers` are deliberately not pulled in: the
 ---keymaps never carried them, and adding them here is a separate decision from
@@ -168,17 +163,7 @@ local function delete_fn(opts)
       mode = dcfg.mode,
       on_before_delete = dcfg.on_before_delete,
     }, opts)
-
-    filetree_assets.confirm(file.current_path(), function(approved_assets)
-      local ok = notify.report(file.delete_current(dopts))
-      -- Only cascade once the primary file is actually gone: `delete_current`
-      -- can legitimately return false (unsaved buffer, an `on_before_delete`
-      -- veto, a filesystem error), and the assets were only ever "orphaned"
-      -- on the assumption that deletion went through.
-      if ok and approved_assets then
-        filetree_assets.delete(approved_assets, dopts)
-      end
-    end)
+    delete_confirm.run(dopts)
   end
 end
 

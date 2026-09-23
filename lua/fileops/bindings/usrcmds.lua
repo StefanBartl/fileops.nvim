@@ -9,9 +9,9 @@ local file = require("fileops.ops.file")
 local cycle = require("fileops.ops.cycle")
 local bulk = require("fileops.ops.bulk")
 local config = require("fileops.config")
--- Soft dependency on filetree.nvim's refs engine (cascade-delete-assets) —
--- a no-op module when that plugin isn't installed. See its own doc header.
-local filetree_assets = require("fileops.integrations.filetree_assets")
+-- Shared with the delete/delete_force keymaps (bindings/keymaps.lua): the
+-- confirm-on-unsaved-changes step, then delete + cascade-delete-assets.
+local delete_confirm = require("fileops.bindings.delete_confirm")
 
 -- ─── Subcommand catalogue ─────────────────────────────────────────────────────
 
@@ -363,6 +363,42 @@ local function prompt_dest(prompt_label, cb, default)
 end
 
 ---@internal
+---Detects `ops/file.lua`'s own "destination already exists (use ! to
+---overwrite)" error text -- the one case where a failure is really a
+---declined-by-default choice, not a real error.
+---@param msg string|nil
+---@return boolean
+local function is_overwrite_error(msg)
+  return type(msg) == "string" and msg:find("use ! to overwrite", 1, true) ~= nil
+end
+
+---@internal
+---Run `fn(dest, opts)` (one of file.rename/move/duplicate/copy); on the
+---"destination already exists" error, offer to overwrite instead of just
+---reporting it and leaving the user to retype the command with `!`. A
+---decline is a silent no-op, matching `prompt_dest`'s own convention for a
+---cancelled prompt.
+---@param fn fun(dest: string, opts: table): boolean, string|nil
+---@param dest string
+---@param opts table
+local function run_with_overwrite_confirm(fn, dest, opts)
+  local ok, err = fn(dest, opts)
+  if ok or opts.bang or not is_overwrite_error(err) then
+    report(ok, err)
+    return
+  end
+  require("ui.kit").confirm({
+    question = err,
+    choices = { "Yes, overwrite", "Cancel" },
+    on_answer = function(choice)
+      if choice == "Yes, overwrite" then
+        report(fn(dest, vim.tbl_extend("force", opts, { bang = true })))
+      end
+    end,
+  })
+end
+
+---@internal
 ---Current buffer's bare filename (`:t`), for pre-filling the rename prompt
 ---so the user edits the existing name instead of typing it from scratch.
 ---@return string|nil
@@ -533,10 +569,10 @@ local function dispatch(subcmd, fargs, bang, count)
       mutopts
     )
     if dest then
-      report(file.rename(dest, ropts))
+      run_with_overwrite_confirm(file.rename, dest, ropts)
     else
       prompt_dest("File rename: ", function(d)
-        report(file.rename(d, ropts))
+        run_with_overwrite_confirm(file.rename, d, ropts)
       end, cur_filename())
     end
   elseif subcmd == "move" then
@@ -547,30 +583,30 @@ local function dispatch(subcmd, fargs, bang, count)
       mutopts
     )
     if dest then
-      report(file.move(dest, mopts))
+      run_with_overwrite_confirm(file.move, dest, mopts)
     else
       prompt_dest("File move: ", function(d)
-        report(file.move(d, mopts))
+        run_with_overwrite_confirm(file.move, d, mopts)
       end)
     end
   elseif subcmd == "duplicate" then
     local dest = resolve_dest(fargs)
     local dopts = vim.tbl_extend("force", { bang = bang, refresh_explorers = refresh }, mutopts)
     if dest then
-      report(file.duplicate(dest, dopts))
+      run_with_overwrite_confirm(file.duplicate, dest, dopts)
     else
       prompt_dest("File duplicate: ", function(d)
-        report(file.duplicate(d, dopts))
+        run_with_overwrite_confirm(file.duplicate, d, dopts)
       end)
     end
   elseif subcmd == "copy" then
     local dest = resolve_dest(fargs)
     local copts = vim.tbl_extend("force", { bang = bang, refresh_explorers = refresh }, mutopts)
     if dest then
-      report(file.copy(dest, copts))
+      run_with_overwrite_confirm(file.copy, dest, copts)
     else
       prompt_dest("File copy: ", function(d)
-        report(file.copy(d, copts))
+        run_with_overwrite_confirm(file.copy, d, copts)
       end)
     end
   elseif subcmd == "delete" then
@@ -582,22 +618,7 @@ local function dispatch(subcmd, fargs, bang, count)
       on_before_delete = dcfg.on_before_delete,
       refresh_explorers = refresh,
     }, mutopts)
-
-    -- The cascade-delete-assets scan needs the file to still exist, so it
-    -- runs BEFORE delete_current — same prefetch-before-mutation ordering
-    -- filetree.nvim's own refs engine uses. A no-op (immediate cb(nil)) when
-    -- filetree.nvim isn't installed or its feature is off, so the ordinary
-    -- case pays no cost beyond one pcall(require).
-    filetree_assets.confirm(file.current_path(), function(approved_assets)
-      local ok = report(file.delete_current(dopts))
-      -- Only cascade once the primary file is actually gone: `delete_current`
-      -- can legitimately return false (unsaved buffer without `!`, an
-      -- `on_before_delete` veto, a filesystem error), and the assets were
-      -- only ever "orphaned" on the assumption that deletion went through.
-      if ok and approved_assets then
-        filetree_assets.delete(approved_assets, dopts)
-      end
-    end)
+    delete_confirm.run(dopts)
   elseif subcmd == "cd" then
     local cfg = config.get()
     local arg = fargs[1] and CD_SCOPE_MAP[fargs[1]:lower()]

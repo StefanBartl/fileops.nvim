@@ -436,34 +436,40 @@ default (`session_compat.enable`, see |fileops-config|).
   Rename (or move) the current file on disk to `{dest}`. Updates the buffer
   name and reloads the buffer from disk afterwards (resets signs/
   diagnostics). Writes unsaved changes before renaming. Creates parent
-  directories. `!` allows overwriting an existing destination.
+  directories. An existing destination without `!` asks first
+  (ui.kit.confirm) instead of just failing; `!` overwrites directly, no
+  prompt.
 
   `%` is optional (current file is always the source): >
     :File rename newname.lua
     :File rename % newname.lua       → same
-    :File! rename ../other/file.lua  → overwrite if exists
+    :File! rename ../other/file.lua  → overwrite if exists, no prompt
 <
 
 :File[!] move [%] [dest]                                    *:File-move*
   Move the current file on disk to `{dest}` (possibly a different
   directory) and update the buffer name — same underlying rename as
   |:File-rename|, but the buffer is NOT reloaded: content and undo history
-  stay exactly as they were. Creates parent directories. `!` overwrites. >
+  stay exactly as they were. Creates parent directories. An existing
+  destination without `!` asks first instead of failing; `!` overwrites
+  directly. >
     :File move ../elsewhere/file.lua
     :File! move % ../elsewhere/file.lua
 <
 
 :File[!] duplicate [%] [dest]                             *:File-duplicate*
   Copy the current file to `{dest}` using libuv and open the copy. Creates
-  parent directories. `!` overwrites. >
+  parent directories. An existing destination without `!` asks first
+  instead of failing; `!` overwrites directly. >
     :File duplicate backup.lua
     :File! duplicate % backup.lua
 <
 
 :File[!] copy [%] [dest]                                       *:File-copy*
   Copy the current file to `{dest}` using libuv, like |:File-duplicate|, but
-  without opening the copy afterwards. Creates parent directories. `!`
-  overwrites. >
+  without opening the copy afterwards. Creates parent directories. An
+  existing destination without `!` asks first instead of failing; `!`
+  overwrites directly. >
     :File copy backup.lua
     :File! copy % backup.lua
 <
@@ -472,12 +478,14 @@ default (`session_compat.enable`, see |fileops-config|).
   Delete the current file from disk and close the buffer. Uses `uv.fs_unlink`
   by default (no shell command), or the OS trash/recycle bin when
   `delete.mode = "trash"` — see |fileops-config|. If the buffer has unsaved
-  changes, plain `:File delete` refuses (nothing is deleted); `!` deletes and
-  force-closes. If `delete.on_before_delete` is set, it runs first and can
-  abort the deletion by returning `false`. >
+  changes, plain `:File delete` asks first (ui.kit.confirm) instead of just
+  refusing — decline or leave it unanswered and nothing is deleted; `!`
+  skips the prompt and deletes + force-closes directly. If
+  `delete.on_before_delete` is set, it runs first and can abort the
+  deletion by returning `false`. >
     :File delete
     :File delete %     → identical
-    :File! delete      → delete + force-close a modified buffer
+    :File! delete      → delete + force-close a modified buffer, no prompt
 <
 
 :[count]File[!] next [target] [glob]                      *:File-next*
