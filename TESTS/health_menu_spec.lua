@@ -260,6 +260,15 @@ return function(H)
     eq(#sub.items, #menu.items(), "…wrapping exactly the same items")
     eq(menu.submenu("Custom").name, "Custom", "…and the label is overridable")
 
+    -- enabled(): what ui.nvim's ui.menu asks first.
+    local fcfg = require("fileops.config")
+    eq(menu.enabled(), true, "enabled() is true by default")
+    fcfg.setup({ integrations = { ui_menu = false } })
+    eq(menu.enabled(), false, "integrations.ui_menu = false -> enabled() false")
+    ok(#menu.items() > 0, "…while items() still serves other hosts")
+    fcfg.setup({})
+    eq(menu.enabled(), true, "and back on after a plain setup")
+
     restore()
     package.loaded["fileops.integrations.menu"] = nil
   end

@@ -42,6 +42,11 @@ require("fileops").setup({
     attempts   = 6,  -- total tries incl. the first; 1 on non-Windows (there the errors are real)
     backoff_ms = 60, -- doubles each round: 60/120/240/480/960 → ~1.9s worst case
   },
+  -- Which hosts may drive this plugin: `ui_menu = false` keeps ui.nvim's
+  -- right-click menu (ui.menu) from composing the File fly-out.
+  integrations = {
+    ui_menu = true,
+  },
   -- Resave the active `:mksession` session after rename/move
   session_compat = {
     enable = true, -- no-op when v:this_session is empty (no active session);

@@ -62,6 +62,10 @@ fileops.nvim has **no** dependency on `menu` and never opens a context menu
 itself — a host (typically your own `<RightMouse>` dispatcher) has to
 compose these entries into its own menu:
 
+`integrations = { ui_menu = false }` keeps ui.nvim's right-click menu (`ui.menu`)
+from showing the fly-out while `items()`/`submenu()` keep working for any other
+host; the module also answers `enabled()`, which is what `ui.menu` asks first.
+
 ```lua
 local items = require("fileops.integrations.menu").items()  -- current buffer
 local sub = require("fileops.integrations.menu").submenu()  -- { name = "  File", items = {…} } | nil

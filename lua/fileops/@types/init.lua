@@ -122,7 +122,11 @@
 --- these autocmds simply never fire without gitsuite.nvim installed.
 ---@field enable? boolean  Master switch for this feature. Default: true.
 
+---@class FileOps.IntegrationsConfig
+---@field ui_menu? boolean  Let ui.nvim's right-click menu (`ui.menu`) compose the File fly-out. Default: true.
+
 ---@class FileOps.Config
+---@field integrations?   FileOps.IntegrationsConfig   Which hosts may drive this plugin (`ui_menu`).
 ---@field cycle?          FileOps.CycleConfig          File-cycle options.
 ---@field cd?             FileOps.CdConfig             Change-directory options.
 ---@field explorer?       FileOps.ExplorerConfig       Tree-explorer refresh options.

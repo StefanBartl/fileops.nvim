@@ -45,6 +45,12 @@ return {
     attempts = is_windows and 6 or 1,
     backoff_ms = 60,
   },
+  -- Which hosts may drive this plugin. `ui_menu = false` keeps ui.nvim's
+  -- right-click menu (ui.menu) from composing the File fly-out; the entries
+  -- stay available to any other host through `items()`.
+  integrations = {
+    ui_menu = true,
+  },
   session_compat = {
     enable = true, -- after rename/move, resave the active `:mksession` session
     -- (v:this_session) so it doesn't point at a stale path;
