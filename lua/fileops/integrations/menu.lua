@@ -32,6 +32,15 @@ local function has_file(bufnr)
   return vim.api.nvim_buf_get_name(bufnr) ~= ""
 end
 
+---Whether a host that asks first (ui.nvim's `ui.menu`) may show this plugin's
+---fly-out: `integrations.ui_menu` is not false. `items()`/`submenu()` are not
+---affected, so other hosts keep working.
+---@return boolean
+function M.enabled()
+  local cfg = require("fileops.config").get()
+  return (cfg.integrations or {}).ui_menu ~= false
+end
+
 ---Build the fileops.nvim menu entries for `bufnr`.
 ---@param bufnr? integer defaults to the current buffer
 ---@return Ui.ContextMenu.Item[]

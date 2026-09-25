@@ -38,6 +38,7 @@ local SCHEMA = {
   git_aware = { enable = true, warn_only = true, git_cmd = true },
   retry = { attempts = true, backoff_ms = true },
   session_compat = { enable = true },
+  integrations = { ui_menu = true },
   keymaps = {
     cycle = true,
     delete = true,

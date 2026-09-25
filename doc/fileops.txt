@@ -103,6 +103,9 @@ packer.nvim / pckr.nvim: >lua
       warn_only = true,
       git_cmd   = "git",
     },
+    integrations = {
+      ui_menu = true,
+    },
     session_compat = {
       enable = true,
     },
@@ -248,6 +251,11 @@ retry.backoff_ms ~
   so the default budget spends at most ~1.9s before reporting the failure.
   Each attempt fires `User FileopsRetry` first, letting a plugin release its
   own handle on the path — see |fileops-autocmds|. Default: `60`.
+
+integrations.ui_menu ~
+  Let ui.nvim's right-click menu (`ui.menu`) compose the File fly-out. `false`
+  hides it there only; `integrations/menu.lua`'s `items()` still serves any
+  other host. Default: `true`.
 
 session_compat.enable ~
   After |:File-rename|/|:File-move|, resave the active `:mksession` session
