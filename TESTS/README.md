@@ -10,17 +10,25 @@ check, and the public Lua API.
 From the repo root:
 
 ```sh
-nvim --headless -u NONE -c "set rtp+=." -c "luafile TESTS/run.lua" -c "qa!"
+bash scripts/test.sh                 # every spec
+bash scripts/test.sh --file config   # only spec files whose name contains "config"
+bash scripts/test.sh --json ir.json  # also write the machine-readable result
 ```
 
-The runner prints one line per spec with the number of assertions it ran, a
-total at the end, and exits non-zero on the first failing spec
-(`FILEOPS_TESTS_OK` on success).
+The runner is [testing.nvim](https://github.com/StefanBartl/testing.nvim)
+(configured in `.testing.lua`, dialect `h` = the harness below). It prints one
+line per spec file, a summary, and exits non-zero when a spec fails or when
+nvim, testing.nvim or lib.nvim cannot be found. A skipped spec (see the
+explorer integration below) is reported as a skip, never as green; pass
+`--strict` to make a skip fail.
 
 ## Conventions
 
-A spec is a file `TESTS/<name>_spec.lua` returning `function(H) … end`, added
-to the `specs` list in `run.lua`. `H` is the shared harness:
+A spec is a file `TESTS/<name>_spec.lua` returning `function(H) … end`;
+testing.nvim discovers it by name. The run order is the `specs` list in
+`run.lua` (read, never executed): the suite shares one Neovim process, and
+`health_menu_spec.lua` relies on the `setup()` that `init_api_spec.lua` ran
+earlier, so a new spec is added to that list too. `H` is the shared harness:
 
 | Helper | What it does |
 | --- | --- |
@@ -56,8 +64,8 @@ sides of such a comparison in one spelling from the start.
 
 ## Doubles, and why
 
-`ui.nvim` is not on this suite's runtimepath and CI checks out only
-`lib.nvim`, so the prompt/dialog layer is always a double. The rest of the
+`ui.nvim` is not a dependency of this suite (`.testing.lua` lists only
+`lib.nvim`), so the prompt/dialog layer is always a double. The rest of the
 doubles exist to keep the suite off the OS.
 
 | Module | Replaced because | Used in |
@@ -77,7 +85,8 @@ another with respect to them.
 | File | Covers |
 | --- | --- |
 | `harness.lua` | The assertions and helpers above. |
-| `run.lua` | Resolves lib.nvim and this repo on `package.path`, runs every spec, counts assertions, sets the exit code. |
+| `run.lua` | Legacy runner, no longer executed; its `specs` list fixes the spec order for testing.nvim. |
+| `minimal_init.lua` | Puts this repo, testing.nvim and lib.nvim on the runtimepath for isolated child runs; fails loudly (all four searched places) when one is missing. |
 | `config_spec.lua` | `config/`: defaults, deep merge, the deliberately unset keymaps. |
 | `notify_spec.lua` | `util/notify.lua`: the prefix, the levels, and `report()`'s relay contract. |
 | `cycle_spec.lua` | `ops/cycle.lua`: listing, wrap, hidden files, patterns, recursion, case-insensitive order. |
@@ -234,21 +243,18 @@ same directory spelled without one (`bulk_edge_spec.lua`).
 ## lib.nvim
 
 The suite needs `lib.nvim` on the runtimepath, since `ops/file.lua` and
-`ops/cycle.lua` require it. `run.lua` resolves it in this order:
+`ops/cycle.lua` require it. `scripts/test.sh` resolves it (and testing.nvim) in
+this order, and exits 1 naming all four places when it is not found:
 
-1. `$LIB_NVIM_PATH`
-2. a sibling checkout (`../lib.nvim`)
-3. the plugin-manager copy (`stdpath("data")/lazy/lib.nvim`)
+1. `$LIB_NVIM_DIR` (`$TESTING_NVIM_DIR` for testing.nvim)
+2. `.deps/lib.nvim`
+3. a sibling checkout (`../lib.nvim`)
+4. the plugin-manager copy (`stdpath("data")/lazy/lib.nvim`)
 
-The sibling checkout deliberately wins over the plugin-manager copy: the
-bootstrap clone is often older than the working checkout, and testing against
-a stale lib.nvim produces misleading failures.
-
-`run.lua` also registers this repo's own `lua/` directory on `package.path` by
-absolute path. `set rtp+=.` is a *relative* runtimepath entry resolved at
-lookup time, so without that entry a spec that changes the working directory
-would break every `require("fileops.…")` not yet resolved — a failure that
-depends only on spec order.
+A set override decides alone; it is never skipped for another checkout. The
+sibling checkout wins over the plugin-manager copy: the bootstrap clone is
+often older than the working checkout, and testing against a stale lib.nvim
+produces misleading failures.
 
 ## Explorer integration (optional)
 
@@ -257,21 +263,21 @@ code path against real `neo-tree.nvim` and `nvim-tree.lua` instances instead
 of just the `package.loaded[...]`-guarded no-op every other spec exercises.
 Neither plugin is a runtime dependency of fileops.nvim, so the spec skips
 itself (prints `skip` and returns) unless both — plus neo-tree's own hard
-deps, `nui.nvim` and `plenary.nvim` — are found, resolved the same way
-`run.lua` resolves lib.nvim:
+deps, `nui.nvim` and `plenary.nvim` — are found, looked up by the spec itself in
+this order (plenary is only the neo-tree dependency here, not the test runner):
 
 1. `$NEO_TREE_NVIM_DIR` / `$NVIM_TREE_LUA_DIR` / `$NUI_NVIM_DIR` / `$PLENARY_NVIM_DIR`
 2. a sibling checkout (`../neo-tree.nvim`, `../nvim-tree.lua`, `../nui.nvim`, `../plenary.nvim`)
 
 CI runs it as its own `explorer-integration` job in `.github/workflows/ci.yml`,
-which checks the four repos out as siblings. A local run with nothing checked
-out just skips it — the main `test` job (and this local `nvim --headless …`
-command) never depend on it.
+which checks the four repos out as siblings and runs with `--strict`, so a skip
+there is red. A local run with nothing checked out just reports it as a skip —
+the main `test` job (and a plain `bash scripts/test.sh`) never depend on it.
 
 ## Adding a spec
 
-Create `<name>_spec.lua` returning `function(H) … end` and add its filename to
-the `specs` list in `run.lua`. Build fixtures with `H.tmpdir()` /
+Create `<name>_spec.lua` returning `function(H) … end` and add its filename
+to the `specs` list in `run.lua` (the run order). Build fixtures with `H.tmpdir()` /
 `H.write_file`, assert the *reported* error on a failure path (not just that
 something failed), and restore anything global the spec touches — the working
 directory, a stubbed module, an autocmd group, `vim.notify`.
