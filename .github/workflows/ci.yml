@@ -123,6 +123,16 @@ jobs:
           ref: ci-verified
       - name: Run TESTS suite (with explorer deps on rtp)
         working-directory: fileops.nvim
+        # Explicit locations: the spec's own sibling lookup resolves the repo
+        # root one directory too high (three `:h` on a path that already ends
+        # in `TESTS/`), so the checkouts next to this repo are never found
+        # that way and this job used to skip the spec silently. The env
+        # override is the lookup that works.
+        env:
+          NEO_TREE_NVIM_DIR: ${{ github.workspace }}/neo-tree.nvim
+          NVIM_TREE_LUA_DIR: ${{ github.workspace }}/nvim-tree.lua
+          NUI_NVIM_DIR: ${{ github.workspace }}/nui.nvim
+          PLENARY_NVIM_DIR: ${{ github.workspace }}/plenary.nvim
         run: |
           exec > >(tee -a "$RUNNER_TEMP/test-output.log") 2>&1
           # --strict: here a skip means the explorer checkouts were not found,
