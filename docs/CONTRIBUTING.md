@@ -68,14 +68,20 @@ Work in a scratch directory. Several subcommands delete files.
 
 ## Tests
 
-`TESTS/` is a headless spec suite with no test framework of its own: each
-`*_spec.lua` returns a function that receives the shared harness
-(`TESTS/harness.lua`), and `TESTS/run.lua` runs the specs listed in it. Run it
-from the repo root with
+`TESTS/` is a headless spec suite run by
+[testing.nvim](https://github.com/StefanBartl/testing.nvim): each `*_spec.lua`
+returns a function that receives the shared harness (`TESTS/harness.lua`), and
+the run order is the `specs` list in `TESTS/run.lua` (read by testing.nvim,
+never executed — new specs go there too). Run it from the repo root with
 
 ```sh
-nvim --headless -i NONE -u NONE -c "set rtp+=." -c "luafile TESTS/run.lua" -c "qa!"
+bash scripts/test.sh
 ```
+
+(`--file <substring>` runs only matching specs, `--json <path>` also writes the
+machine-readable result.) testing.nvim and lib.nvim are looked up in
+`$TESTING_NVIM_DIR` / `$LIB_NVIM_DIR`, `.deps/<name>`, `../<name>` and
+`stdpath('data')/lazy/<name>`; a missing one is a loud error naming all four.
 
 Every fixture lives under `vim.fn.tempname()` — the suite never operates on
 the repository. [GitHub Actions](../.github/workflows/ci.yml) runs it on every

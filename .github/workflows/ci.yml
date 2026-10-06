@@ -20,8 +20,8 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
     defaults:
       run:
-        # Windows runners default to PowerShell, where the quoting in the
-        # `nvim -c "..."` invocation below parses differently. One shell on
+        # Windows runners default to PowerShell, where scripts/test.sh (a bash
+        # script) would not even start. One shell on
         # all three keeps the run step itself from being the thing that
         # differs between platforms.
         shell: bash
@@ -29,10 +29,9 @@ jobs:
       - uses: actions/checkout@v5
         with:
           path: fileops.nvim
-      # TESTS/run.lua hard-fails without lib.nvim on the runtimepath
-      # (a real runtime dependency, not just optional) -- check it out as a
-      # sibling so the run.lua's own sibling-checkout lookup (../lib.nvim)
-      # finds it.
+      # scripts/test.sh hard-fails without lib.nvim (a real runtime
+      # dependency, not just optional) -- check it out as a sibling so the
+      # lookup (../lib.nvim) finds it.
       - uses: actions/checkout@v5
         with:
           repository: StefanBartl/lib.nvim
@@ -42,11 +41,25 @@ jobs:
         with:
           neovim: true
           version: stable
+      # Checked out from the branch that only moves once the dependency's own CI is green.
+      - uses: actions/checkout@v5
+        with:
+          repository: "StefanBartl/testing.nvim"
+          path: testing.nvim
+          ref: ci-verified
       - name: Run TESTS suite
         working-directory: fileops.nvim
         run: |
           exec > >(tee -a "$RUNNER_TEMP/test-output.log") 2>&1
-          nvim -n --headless -i NONE -u NONE -c "set rtp+=." -c "luafile TESTS/run.lua" -c "qa!"
+          bash scripts/test.sh --json "$RUNNER_TEMP/testing-ir.json"
+      # The IR is what a reporter or a person reads to find out WHICH case failed on WHICH platform.
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: testing-ir-${{ matrix.os }}
+          path: ${{ runner.temp }}/testing-ir.json
+          if-no-files-found: ignore
+          retention-days: 14
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
@@ -102,11 +115,27 @@ jobs:
         with:
           neovim: true
           version: stable
+      # Checked out from the branch that only moves once the dependency's own CI is green.
+      - uses: actions/checkout@v5
+        with:
+          repository: "StefanBartl/testing.nvim"
+          path: testing.nvim
+          ref: ci-verified
       - name: Run TESTS suite (with explorer deps on rtp)
         working-directory: fileops.nvim
         run: |
           exec > >(tee -a "$RUNNER_TEMP/test-output.log") 2>&1
-          nvim -n --headless -i NONE -u NONE -c "set rtp+=." -c "luafile TESTS/run.lua" -c "qa!"
+          # --strict: here a skip means the explorer checkouts were not found,
+          # which must be red, not a quiet pass of the one spec this job is for.
+          bash scripts/test.sh --strict --json "$RUNNER_TEMP/testing-ir.json"
+      # The IR is what a reporter or a person reads to find out WHICH case failed on WHICH platform.
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: testing-ir-explorer-integration
+          path: ${{ runner.temp }}/testing-ir.json
+          if-no-files-found: ignore
+          retention-days: 14
       - uses: actions/upload-artifact@v7
         if: failure()
         with:

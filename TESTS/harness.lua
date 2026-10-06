@@ -1,5 +1,5 @@
 -- TESTS/harness.lua — tiny assertion helper shared by the spec files.
--- Returned to each spec by TESTS/run.lua.
+-- Handed to each spec by testing.nvim (dialect "h", see .testing.lua).
 
 local H = {}
 
@@ -7,7 +7,7 @@ local H = {}
 ---
 --- Counted rather than read off the source: most specs assert inside loops or
 --- helper functions, so the number of `eq`/`ok` call *sites* says very little
---- about how much was actually checked. `run.lua` reports the per-spec delta
+--- about how much was actually checked. testing.nvim reports the per-spec result
 --- and the total.
 ---@type integer
 H.checks = 0
