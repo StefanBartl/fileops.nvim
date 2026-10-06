@@ -29,6 +29,11 @@ return {
   },
   -- What the specs may start on purpose.
   guard_allow = {
+    fs = {
+      -- neo-tree.nvim (explorer_integration_spec) appends its log to stdpath("data"), which under
+      -- isolated = "none" is the throwaway app dir of scripts/test.sh (NVIM_APPNAME=fileops-tests).
+      vim.fn.stdpath("data"),
+    },
     spawn = {
       -- The specs build tmp git repositories (init/commit/mv/rm/blame) to test the git-aware file ops.
       "git",
