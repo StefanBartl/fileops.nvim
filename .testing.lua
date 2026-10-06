@@ -34,6 +34,9 @@ return {
       "git",
       -- The Windows recycle-bin delete runs a PowerShell one-liner (Microsoft.VisualBasic DeleteFile).
       "powershell",
+      -- The Linux/macOS trash delete goes through `sh -lc "gio trash ..."` / `sh -lc "osascript ..."`
+      -- (lib.nvim fs.trash); file_spec and explorer_integration_spec delete a tmp file that way.
+      "sh",
       -- Deliberate negative probe: git_spec/autocmds_spec aim the git probe at a command that does not
       -- exist to prove the failure path stays silent.
       "fileops-no-such-git-executable",

@@ -137,7 +137,9 @@ jobs:
           exec > >(tee -a "$RUNNER_TEMP/test-output.log") 2>&1
           # --strict: here a skip means the explorer checkouts were not found,
           # which must be red, not a quiet pass of the one spec this job is for.
-          bash scripts/test.sh --strict --json "$RUNNER_TEMP/testing-ir.json"
+          # --guard state=off: --strict would turn the state guard's warnings (one
+          # shared editor, isolated = "none", see .testing.lua) into failures.
+          bash scripts/test.sh --strict --guard state=off --json "$RUNNER_TEMP/testing-ir.json"
       # The IR is what a reporter or a person reads to find out WHICH case failed on WHICH platform.
       - uses: actions/upload-artifact@v7
         if: failure()
