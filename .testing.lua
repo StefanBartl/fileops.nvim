@@ -14,4 +14,29 @@ return {
   -- "none" = all specs in one nvim, "file" = one nvim per spec file
   -- (nothing leaks from one file into the next).
   isolated = "none",
+  -- Guards (docs/GUARDS.md of testing.nvim). All but `state` are clean on this suite and therefore
+  -- "error": a new finding turns the run red.
+  guards = {
+    fs = "error",
+    prompt = "error",
+    scheduled_error = "error",
+    deprecation = "error",
+    process_net = "error",
+    -- "warn": the suite shares one editor (isolated = "none"), so every spec reports the modules, buffers
+    -- and window it leaves behind. Real defect behind not using isolated = "file": health_menu_spec.lua
+    -- only passes after init_api_spec.lua ran setup() earlier in the same editor (order dependence).
+    state = "warn",
+  },
+  -- What the specs may start on purpose.
+  guard_allow = {
+    spawn = {
+      -- The specs build tmp git repositories (init/commit/mv/rm/blame) to test the git-aware file ops.
+      "git",
+      -- The Windows recycle-bin delete runs a PowerShell one-liner (Microsoft.VisualBasic DeleteFile).
+      "powershell",
+      -- Deliberate negative probe: git_spec/autocmds_spec aim the git probe at a command that does not
+      -- exist to prove the failure path stays silent.
+      "fileops-no-such-git-executable",
+    },
+  },
 }
