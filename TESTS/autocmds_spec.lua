@@ -363,6 +363,9 @@ return function(H)
   -- `GitsuiteConflictsResolved` are just events, fired here directly via
   -- nvim_exec_autocmds exactly as gitsuite.nvim's own events.lua does.
   do
+    -- `enable = false` only declines to register; it does not remove a group an earlier setup()
+    -- (init_api_spec runs it) already created. Start from a clean slate.
+    drop_group("fileops_gitsuite_events")
     autocmds.attach_gitsuite_events({ enable = false })
     eq(#autocmds_of("fileops_gitsuite_events"), 0, "gitsuite_events = false registers nothing")
 
