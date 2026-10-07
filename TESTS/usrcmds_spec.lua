@@ -36,5 +36,16 @@ return function(H)
     "prompt_dest: the submitted name is used to create the file"
   )
 
+  -- Every `:File` route carries a description (composer option float, docs).
+  local bare = {}
+  for _, route in
+    ipairs(require("lib.nvim.bindings.usercmd.composer").registry().File:spec().routes)
+  do
+    if not route.desc or route.desc == "" then
+      bare[#bare + 1] = table.concat(route.path, " ")
+    end
+  end
+  eq(table.concat(bare, ", "), "", "every :File route has a description")
+
   package.loaded["ui.kit"] = nil
 end

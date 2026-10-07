@@ -689,6 +689,34 @@ local function fargs_of(ctx)
 end
 
 ---@internal
+---One line per sub-command, for the composer option float and the generated docs
+---(wording follows docs/BINDINGS.md).
+---@type table<string, string>
+local ROUTE_DESC = {
+  new = "Set the buffer name (creates parent dirs, no write)",
+  write = "Set the buffer name and write it to disk",
+  saveas = "Save as: the buffer name changes",
+  writeto = "Write a copy, the buffer name stays",
+  mkdir = "Create the parent dirs of the current buffer",
+  touch = "Create an empty file if it does not exist yet",
+  rename = "Rename the file on disk and update the buffer (reloads)",
+  move = "Move the file on disk and update the buffer (no reload)",
+  duplicate = "Copy the file to a new path and open the copy",
+  copy = "Copy the file to a new path without opening it",
+  delete = "Delete the file from disk and close the buffer",
+  cd = "Set the cwd to the buffer's directory and refresh the explorer",
+  next = "Next file in the directory (optionally filtered, e.g. *.lua)",
+  prev = "Previous file in the directory (optionally filtered)",
+  first = "Jump to the first file in the directory",
+  last = "Jump to the last file in the directory",
+  open = "Reopen the current file in a different window target",
+  path = "Copy the current file's path to the clipboard (abs/rel/name/dir)",
+  info = "Show size, mtime and permissions of the current file",
+  lockinfo = "Diagnose which process locks the file",
+  ["bulk rename"] = "Batch-rename files in the directory via a Lua pattern (preview + confirm)",
+  help = "Show the :File sub-commands",
+}
+
 ---Build a composer route table for `subcmd`, dispatching through `dispatch`.
 ---@param subcmd string
 ---@param args? table[]
@@ -696,6 +724,7 @@ end
 local function route(subcmd, args)
   return {
     path = { subcmd },
+    desc = ROUTE_DESC[subcmd],
     args = args,
     run = function(ctx)
       local count = (ctx.range.count and ctx.range.count > 0) and ctx.range.count or 1
@@ -759,6 +788,7 @@ function M.register()
       route("lockinfo", { { name = "path", type = "FILEOPS_PATH", optional = true } }),
       {
         path = { "bulk", "rename" },
+        desc = ROUTE_DESC["bulk rename"],
         args = {
           { name = "pattern", type = "STRING" },
           { name = "replacement", type = "STRING", optional = true },
