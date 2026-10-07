@@ -1,12 +1,11 @@
 -- TESTS/run.lua — legacy runner of fileops.nvim, superseded by testing.nvim
 -- (`bash scripts/test.sh`, see TESTS/README.md).
 --
--- KEPT ON PURPOSE as the spec ORDER for testing.nvim, which reads the `specs`
--- list below (it never executes this file). The order is load-bearing: the
--- suite shares one Neovim process and health_menu_spec.lua asserts the
--- `vim.g.loaded_fileops` guard that init_api_spec.lua's `setup()` sets, so
--- alphabetical order (health_menu before init_api) fails. Keep the list in
--- sync with the files on disk (a listed-but-missing spec is a failing case).
+-- KEPT as the spec LIST for testing.nvim, which reads the `specs`
+-- list below (it never executes this file). The order is NOT load-bearing any
+-- more: no spec depends on another one having run first (health_menu_spec.lua
+-- sets up what it asserts on itself). Keep the list in sync with the files on
+-- disk (a listed-but-missing spec is a failing case).
 --
 -- Historical usage, from the repo root:
 --   nvim -n -i NONE --headless -u NONE -c "set rtp+=." -c "luafile TESTS/run.lua" -c "qa!"

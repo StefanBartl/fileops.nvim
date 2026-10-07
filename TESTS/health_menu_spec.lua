@@ -43,9 +43,19 @@ return function(H)
     -- actually present would.
     local restore_ui_kit = H.stub("ui.kit", {})
 
+    -- A "complete install" is one where `setup()` ran: it sets the loaded guard reported as
+    -- "plugin loaded" and registers the `:File` verb that composer's route check looks for. Both
+    -- are reproduced here without calling `setup()` itself, which is once-per-process and owned
+    -- by init_api_spec (it asserts on the config its own call stores), so this spec neither
+    -- depends on running after it nor makes it fail by running before it.
+    local real_loaded_guard = vim.g.loaded_fileops
+    vim.g.loaded_fileops = 1
+    require("fileops.bindings.usrcmds").register()
+
     local health_ok, health_err = pcall(function()
       require("fileops.health").check()
     end)
+    vim.g.loaded_fileops = real_loaded_guard
     vim.health = real_health
     package.loaded[check_mod] = real_check
     restore_ui_kit()

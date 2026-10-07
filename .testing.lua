@@ -23,8 +23,7 @@ return {
     deprecation = "error",
     process_net = "error",
     -- "warn": the suite shares one editor (isolated = "none"), so every spec reports the modules, buffers
-    -- and window it leaves behind. Real defect behind not using isolated = "file": health_menu_spec.lua
-    -- only passes after init_api_spec.lua ran setup() earlier in the same editor (order dependence).
+    -- and window it leaves behind. The specs are order independent (checked with --shuffle).
     state = "warn",
   },
   -- What the specs may start on purpose.
