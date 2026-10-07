@@ -25,10 +25,10 @@ explorer integration below) is reported as a skip, never as green; pass
 ## Conventions
 
 A spec is a file `TESTS/<name>_spec.lua` returning `function(H) … end`;
-testing.nvim discovers it by name. The run order is the `specs` list in
-`run.lua` (read, never executed): the suite shares one Neovim process, and
-`health_menu_spec.lua` relies on the `setup()` that `init_api_spec.lua` ran
-earlier, so a new spec is added to that list too. `H` is the shared harness:
+testing.nvim discovers it by name. The `specs` list in `run.lua` (read, never
+executed) is kept in sync with the files, so a new spec is added to that list
+too. The suite shares one Neovim process but no spec may depend on the order
+(`--shuffle` must stay green): a spec sets up what it asserts on itself. `H` is the shared harness:
 
 | Helper | What it does |
 | --- | --- |
@@ -277,7 +277,7 @@ the main `test` job (and a plain `bash scripts/test.sh`) never depend on it.
 ## Adding a spec
 
 Create `<name>_spec.lua` returning `function(H) … end` and add its filename
-to the `specs` list in `run.lua` (the run order). Build fixtures with `H.tmpdir()` /
+to the `specs` list in `run.lua`. Build fixtures with `H.tmpdir()` /
 `H.write_file`, assert the *reported* error on a failure path (not just that
 something failed), and restore anything global the spec touches — the working
 directory, a stubbed module, an autocmd group, `vim.notify`.

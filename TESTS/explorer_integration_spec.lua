@@ -18,7 +18,9 @@ return function(H)
   -- exercises `:File cd`, which changes Neovim's cwd for the rest of the
   -- session, same reason run.lua itself resolves its `dir` this way.
   local this_dir = debug.getinfo(1, "S").source:sub(2):match("(.*[/\\])") or "./"
-  local repo_root = vim.fn.fnamemodify(this_dir, ":p:h:h:h")
+  -- `this_dir` is `<repo>/TESTS/`: `:p` keeps the trailing slash, the first `:h` only drops it
+  -- (leaving `<repo>/TESTS`), the second reaches `<repo>`.
+  local repo_root = vim.fn.fnamemodify(this_dir, ":p:h:h")
 
   ---@internal
   ---@param dirname string  e.g. "neo-tree.nvim".
