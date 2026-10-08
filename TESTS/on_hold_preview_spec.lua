@@ -48,12 +48,18 @@ return function(H)
     return api.nvim_buf_get_extmarks(buf, NS, 0, -1, { details = true })
   end
 
+  -- Upper bound for a preview that is supposed to appear. `vim.wait` returns the moment the
+  -- condition holds, so a generous bound costs nothing on a green run; it only has to outlast the
+  -- chain of real git subprocesses (rev-parse, blame, show) on a loaded Windows machine, where a
+  -- single git call takes ~0.5 s and a whole chain has been measured at 7 s.
+  local APPEAR_TIMEOUT_MS = 20000
+
   ---@param buf integer
   ---@param want integer
   ---@return table[]
   local function wait_for_extmarks(buf, want)
     local marks = {}
-    vim.wait(3000, function()
+    vim.wait(APPEAR_TIMEOUT_MS, function()
       marks = extmarks_of(buf)
       return #marks >= want
     end, 20)
@@ -280,7 +286,7 @@ return function(H)
     -- The route to gitsigns still goes through the same async `in_git_repo_async`
     -- git check as the fallback path, so it is no more synchronous than that.
     local win = api.nvim_get_current_win()
-    vim.wait(2000, function()
+    vim.wait(APPEAR_TIMEOUT_MS, function()
       return moved_to ~= nil
     end, 10)
     ok(moved_to ~= nil, "gitsigns.preview_hunk_inline is preferred and actually called")
