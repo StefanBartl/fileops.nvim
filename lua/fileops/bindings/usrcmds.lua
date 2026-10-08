@@ -203,7 +203,11 @@ local function complete_from_bufdir(arg_lead)
   return out
 end
 
+-- `desc` of the three types: the line lib.nvim's option float shows for an
+-- argument of that type without a text of its own. A route whose argument plays
+-- another role words its own (every FILEOPS_PATH below does -- see `route()`).
 composer.register_type("FILEOPS_DEST_FIRST", {
+  desc = "Destination, relative to this file's folder (% may come first)",
   validate = function(raw)
     return true, raw, nil
   end,
@@ -217,6 +221,7 @@ composer.register_type("FILEOPS_DEST_FIRST", {
 })
 
 composer.register_type("FILEOPS_PATH", {
+  desc = "Path of a file (completion starts in this file's folder)",
   validate = function(raw)
     return true, require("lib.nvim.cross.fs.expand_path")(raw), nil
   end,
@@ -228,6 +233,7 @@ composer.register_type("FILEOPS_PATH", {
 -- enum. Validation always passes; completion still offers the known target
 -- keywords as a prefix match.
 composer.register_type("FILEOPS_CYCLE_ARG", {
+  desc = "Open target (replace, split, tab, ...) or a glob such as *.lua",
   validate = function(raw)
     return true, raw, nil
   end,
@@ -717,6 +723,80 @@ local ROUTE_DESC = {
   help = "Show the :File sub-commands",
 }
 
+---@internal
+---What each open target does, for the `target` of `first`/`last`/`open` (the words are the keys of
+---`CYCLE_TARGET_MAP`; `next`/`prev` take them in a free slot, which has no per-value texts).
+---@type table<string, string>
+local TARGET_VALUES = {
+  ["%"] = "same as replace",
+  replace = "open here, the old buffer is removed",
+  stay = "open here, the old buffer stays",
+  current = "same as stay",
+  new = "same as split",
+  split = "horizontal split",
+  vsplit = "vertical split",
+  tab = "new tab page",
+  bg = "load into the buffer list, no window",
+  background = "same as bg",
+}
+
+---@internal
+---The single optional path argument of the commands that act on a file by its path.
+---@param desc string
+---@return table[]
+local function path_arg(desc)
+  return { { name = "path", type = "FILEOPS_PATH", optional = true, desc = desc } }
+end
+
+---@internal
+---The `[%] {dest}` pair of `rename`/`move`/`duplicate`/`copy`: the first word is the
+---destination (the type's own text) or `%`, which pushes the destination to the second.
+---@return table[]
+local function dest_args()
+  return {
+    { name = "a1", type = "FILEOPS_DEST_FIRST", optional = true },
+    {
+      name = "a2",
+      type = "FILEOPS_PATH",
+      optional = true,
+      desc = "Destination after %, relative to this file's folder",
+    },
+  }
+end
+
+---@internal
+---The optional `target` of `first`/`last`/`open`.
+---@param desc string
+---@return table[]
+local function target_arg(desc)
+  return {
+    {
+      name = "target",
+      type = "STRING",
+      optional = true,
+      enum = CYCLE_TARGETS,
+      desc = desc,
+      enum_desc = TARGET_VALUES,
+    },
+  }
+end
+
+---@internal
+---The `[target] [glob]` pair of `next`/`prev`: the first word is an open target or, when it is
+---none, the glob; the second is the glob after a target.
+---@return table[]
+local function cycle_args()
+  return {
+    { name = "a1", type = "FILEOPS_CYCLE_ARG", optional = true },
+    {
+      name = "a2",
+      type = "STRING",
+      optional = true,
+      desc = "Glob that narrows the listing, after a target (e.g. *.lua)",
+    },
+  }
+end
+
 ---Build a composer route table for `subcmd`, dispatching through `dispatch`.
 ---@param subcmd string
 ---@param args? table[]
@@ -739,59 +819,70 @@ function M.register()
     bang = true,
     count = 0,
     routes = {
-      route("new", { { name = "path", type = "FILEOPS_PATH", optional = true } }),
-      route("write", { { name = "path", type = "FILEOPS_PATH", optional = true } }),
-      route("saveas", { { name = "path", type = "FILEOPS_PATH", optional = true } }),
-      route("writeto", { { name = "path", type = "FILEOPS_PATH", optional = true } }),
+      -- The create commands resolve a relative path against the cwd, like `:write`; the
+      -- rename family below against the folder of the current file. Without a path they prompt.
+      route("new", path_arg("Buffer name to set, relative to the cwd (none: prompt)")),
+      route("write", path_arg("File to write the buffer to, relative to the cwd (none: prompt)")),
+      route("saveas", path_arg("File to save the buffer as, relative to the cwd (none: prompt)")),
+      route("writeto", path_arg("File to write a copy to, relative to the cwd (none: prompt)")),
       route("mkdir"),
-      route("touch", { { name = "path", type = "FILEOPS_PATH", optional = true } }),
-      route("rename", {
-        { name = "a1", type = "FILEOPS_DEST_FIRST", optional = true },
-        { name = "a2", type = "FILEOPS_PATH", optional = true },
-      }),
-      route("move", {
-        { name = "a1", type = "FILEOPS_DEST_FIRST", optional = true },
-        { name = "a2", type = "FILEOPS_PATH", optional = true },
-      }),
-      route("duplicate", {
-        { name = "a1", type = "FILEOPS_DEST_FIRST", optional = true },
-        { name = "a2", type = "FILEOPS_PATH", optional = true },
-      }),
-      route("copy", {
-        { name = "a1", type = "FILEOPS_DEST_FIRST", optional = true },
-        { name = "a2", type = "FILEOPS_PATH", optional = true },
-      }),
+      route("touch", path_arg("File to create, relative to the cwd (none: prompt)")),
+      route("rename", dest_args()),
+      route("move", dest_args()),
+      route("duplicate", dest_args()),
+      route("copy", dest_args()),
       route("delete"),
-      route("cd", { { name = "scope", type = "STRING", optional = true, enum = CD_SCOPES } }),
-      route("next", {
-        { name = "a1", type = "FILEOPS_CYCLE_ARG", optional = true },
-        { name = "a2", type = "STRING", optional = true },
+      route("cd", {
+        {
+          name = "scope",
+          type = "STRING",
+          optional = true,
+          enum = CD_SCOPES,
+          desc = "How far the new directory reaches (default: cd.scope)",
+          enum_desc = {
+            window = "this window only (:lcd)",
+            tab = "this tab page (:tcd)",
+            global = "everywhere (:cd)",
+          },
+        },
       }),
-      route("prev", {
-        { name = "a1", type = "FILEOPS_CYCLE_ARG", optional = true },
-        { name = "a2", type = "STRING", optional = true },
+      route("next", cycle_args()),
+      route("prev", cycle_args()),
+      route("first", target_arg("Where to open the file (default: cycle.open_target)")),
+      route("last", target_arg("Where to open the file (default: cycle.open_target)")),
+      route("open", target_arg("Where to reopen the file (default: cycle.open_target)")),
+      route("path", {
+        {
+          name = "mode",
+          type = "STRING",
+          optional = true,
+          enum = PATH_MODES,
+          desc = "Which form of the path to copy (default: abs)",
+          enum_desc = {
+            abs = "the absolute path",
+            rel = "relative to the cwd",
+            name = "the file name only",
+            dir = "the containing directory only",
+          },
+        },
       }),
-      route(
-        "first",
-        { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }
-      ),
-      route(
-        "last",
-        { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }
-      ),
-      route(
-        "open",
-        { { name = "target", type = "STRING", optional = true, enum = CYCLE_TARGETS } }
-      ),
-      route("path", { { name = "mode", type = "STRING", optional = true, enum = PATH_MODES } }),
       route("info"),
-      route("lockinfo", { { name = "path", type = "FILEOPS_PATH", optional = true } }),
+      route("lockinfo", path_arg("File to check (default: the current file)")),
       {
         path = { "bulk", "rename" },
         desc = ROUTE_DESC["bulk rename"],
         args = {
-          { name = "pattern", type = "STRING" },
-          { name = "replacement", type = "STRING", optional = true },
+          {
+            name = "pattern",
+            type = "STRING",
+            desc = "Lua pattern matched against each file name (not a glob)",
+          },
+          {
+            name = "replacement",
+            type = "STRING",
+            optional = true,
+            desc = "Replacement text; %1 inserts a capture (default: empty)",
+          },
         },
         run = function(ctx)
           dispatch("bulk_rename", fargs_of(ctx), ctx.bang, 1)

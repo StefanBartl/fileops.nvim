@@ -47,5 +47,53 @@ return function(H)
   end
   eq(table.concat(bare, ", "), "", "every :File route has a description")
 
+  -- Every positional argument says what it is in the option float: its own `desc`, else the
+  -- one of its type (`register_type`). A lib.nvim older than `help.undocumented` cannot answer
+  -- the question; that is a missing feature of the dependency, not a defect of this plugin.
+  local composer = require("lib.nvim.bindings.usercmd.composer")
+  if type(composer.help.undocumented) == "function" then
+    local missing = {}
+    for _, m in ipairs(composer.help.undocumented("File", { args = true })) do
+      missing[#missing + 1] = ("%s <%s>"):format(m.route, m.name)
+    end
+    eq(table.concat(missing, ", "), "", "every :File argument has a help text")
+  end
+
+  -- The float shows one line per argument: no line break, no closing full stop, nothing absurdly
+  -- long; an `enum_desc` only for values the argument really has.
+  local argtypes = require("lib.nvim.bindings.usercmd.composer.argtypes")
+  ---@param label string
+  ---@param text any
+  local function check_text(label, text)
+    ok(type(text) == "string" and text ~= "", label .. ": has a text")
+    if type(text) == "string" then
+      ok(not text:find("[\r\n]"), label .. ": the text is one line")
+      ok(not text:find("%.$"), label .. ": the text has no closing full stop")
+      ok(#text >= 12 and #text <= 80, label .. ": the text is 12 to 80 characters long")
+    end
+  end
+  local seen = 0
+  for _, r in ipairs(composer.registry().File:spec().routes) do
+    for _, arg in ipairs(r.args or {}) do
+      local label = ("%s <%s>"):format(table.concat(r.path, " "), arg.name)
+      check_text(label, arg.desc or argtypes.get(arg.type).desc)
+      seen = seen + 1
+      for value, text in pairs(arg.enum_desc or {}) do
+        ok(
+          vim.tbl_contains(arg.enum or arg.values or {}, value),
+          label .. ": enum_desc names '" .. value .. "', which is not one of its values"
+        )
+        ok(
+          not text:find("%.$") and not text:find("[\r\n]"),
+          label .. ": enum_desc '" .. value .. "' is one line"
+        )
+      end
+    end
+  end
+  ok(seen >= 20, "the route tree carries the arguments of all subcommands, saw " .. seen)
+  for _, name in ipairs({ "FILEOPS_PATH", "FILEOPS_DEST_FIRST", "FILEOPS_CYCLE_ARG" }) do
+    check_text("type " .. name, argtypes.get(name).desc)
+  end
+
   package.loaded["ui.kit"] = nil
 end
