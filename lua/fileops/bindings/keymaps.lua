@@ -192,7 +192,10 @@ local FAMILIES = {
 ---A copy: writing `false` into the live config would make the switch
 ---indistinguishable from a per-key opt-out on the next read.
 ---With `km.enable == false` (`keymaps = false`, REL-20) every action is
----forced to `false`: declared, bound to nothing.
+---forced to `false`: declared, bound to nothing. The registry's own
+---`enable = false` is passed on as well, because that is what keeps it from
+---handing the `<leader>n` / `<leader>p` group labels to which-key -- labels
+---for keys this plugin no longer owns.
 ---@param km table
 ---@param declared string[] every declared action
 ---@return table
@@ -202,6 +205,7 @@ local function resolve_user(km, declared)
     for _, name in ipairs(declared) do
       user[name] = false
     end
+    user.enable = false
     return user
   end
   for switch, names in pairs(FAMILIES) do

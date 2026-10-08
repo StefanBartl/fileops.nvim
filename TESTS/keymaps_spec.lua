@@ -383,5 +383,47 @@ return function(H)
     end
   end
 
+  -- ── keymaps = false: no which-key group labels either ───────────────────
+  -- The registry hands its which-key groups over once per plugin and skips
+  -- that only for `enable = false`, so the flag has to reach it. A user who
+  -- switched the preset off and claimed `<leader>n…` / `<leader>p…` for
+  -- themselves must not see them labelled "fileops: next file" / "prev file".
+  do
+    local registry_name = "lib.nvim.bindings.keymap.registry"
+    local saved_registry = package.loaded[registry_name]
+    local added = {}
+    local restore_wk = H.stub("which-key", {
+      add = function(entries)
+        added[#added + 1] = entries
+      end,
+    })
+
+    ---@param opts table|boolean
+    ---@return table[][] # every list of entries which-key was sent
+    local function labels_sent(opts)
+      added = {}
+      -- A fresh registry: it remembers which plugins already handed their
+      -- groups over, and the sections above have registered "fileops" already.
+      package.loaded[registry_name] = nil
+      keymaps.setup(config.setup({ keymaps = opts }))
+      return added
+    end
+
+    local on = labels_sent({})
+    eq(#on, 1, "control: the default preset labels its groups once")
+    local prefixes = {}
+    for _, entry in ipairs(on[1] or {}) do
+      prefixes[#prefixes + 1] = entry[1]
+    end
+    table.sort(prefixes)
+    eq(table.concat(prefixes, ","), "<leader>n,<leader>p", "…the next and the prev group")
+
+    eq(#labels_sent(false), 0, "keymaps = false sends no which-key labels")
+    eq(#labels_sent({ enable = false }), 0, "keymaps = { enable = false } sends none either")
+
+    package.loaded[registry_name] = saved_registry
+    restore_wk()
+  end
+
   config.setup({})
 end

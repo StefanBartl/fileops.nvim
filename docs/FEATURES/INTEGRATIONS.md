@@ -100,7 +100,7 @@ per call site — no dependency the other way):
 When [which-key.nvim](https://github.com/folke/which-key.nvim) is installed,
 the `<leader>n` and `<leader>p` prefixes get group labels
 ("fileops: next file" / "fileops: prev file"). Every individual key also
-carries its own `desc`.
+carries its own `desc`. `keymaps = false` registers no labels.
 
 - **Module:** the `which_key` field of the keymap spec in
   `bindings/keymaps.lua`, applied by lib.nvim's keymap registry

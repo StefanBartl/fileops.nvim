@@ -100,7 +100,7 @@ another with respect to them.
 | `git_async_spec.lua` | `util/git.lua`: the `_async` twins, driven to completion via `vim.wait`. |
 | `usrcmds_spec.lua` | `bindings/usrcmds.lua`: that `prompt_dest()` routes through `kit.input`. |
 | `usrcmds_dispatch_spec.lua` | `bindings/usrcmds.lua`: every `:File[!]` subcommand through the real Ex command, the `%` scope form, the prompts and their defaults, the config flags the dispatch folds in (`retry`, `git_aware`, `session_compat`, `delete.mode`), bulk rename end to end, and completion for every slot. |
-| `keymaps_spec.lua` | `bindings/keymaps.lua`: the declared action set, both family switches, per-key overrides, and what every action's `rhs` does. |
+| `keymaps_spec.lua` | `bindings/keymaps.lua`: the declared action set, both family switches, per-key overrides, `keymaps = false` (nothing bound, no which-key group labels), and what every action's `rhs` does. |
 | `autocmds_spec.lua` | `bindings/autocmds.lua` (auto-mkdir, remote skipping), `features/conflict_marks.lua`, `features/on_hold.lua`'s event mapping and guards, and `bindings/init.lua`'s wiring. |
 | `on_hold_preview_spec.lua` | `features/on_hold.lua`'s preview itself: the git blame/show fallback against a real temp repo, `truncate()`'s character-vs-byte handling, `only_tracked`, an uncommitted line, the `gitsigns.preview_hunk_inline()` branch (including its own failure), `restore_view`, and the cleanup autocmd. |
 | `init_api_spec.lua` | `init.lua`: `setup()` and its idempotence, plus every public API function. |
