@@ -17,7 +17,14 @@ return {
   -- Guards (docs/GUARDS.md of testing.nvim). All but `state` are clean on this suite and therefore
   -- "error": a new finding turns the run red.
   guards = {
-    fs = "error",
+    fs = {
+      mode = "error",
+      -- neo-tree.nvim (explorer_integration_spec) appends its log to stdpath("data"). Exactly that one file
+      -- is let through, as a pattern: no directory root (a root under stdpath("data") would also wave
+      -- through writes into the developer's real nvim-data, `lazy/` included, whenever the suite is not
+      -- started by scripts/test.sh with its throwaway NVIM_APPNAME), and no code evaluated in this file.
+      allow_patterns = { "/neo%-tree%.nvim%.log$" },
+    },
     prompt = "error",
     scheduled_error = "error",
     deprecation = "error",
@@ -28,11 +35,6 @@ return {
   },
   -- What the specs may start on purpose.
   guard_allow = {
-    fs = {
-      -- neo-tree.nvim (explorer_integration_spec) appends its log to stdpath("data"), which under
-      -- isolated = "none" is the throwaway app dir of scripts/test.sh (NVIM_APPNAME=fileops-tests).
-      vim.fn.stdpath("data"),
-    },
     spawn = {
       -- The specs build tmp git repositories (init/commit/mv/rm/blame) to test the git-aware file ops.
       "git",

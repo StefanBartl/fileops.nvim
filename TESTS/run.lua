@@ -111,6 +111,7 @@ local specs = {
   "filetree_assets_spec.lua",
   "explorer_integration_spec.lua",
   "install_spec_spec.lua",
+  "testing_config_spec.lua",
 }
 
 local failed = 0

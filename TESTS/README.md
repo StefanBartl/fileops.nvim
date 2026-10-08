@@ -107,6 +107,7 @@ another with respect to them.
 | `health_menu_spec.lua` | `health.lua` against a recorded `vim.health`, and `integrations/menu.lua`'s entries and what they run. |
 | `filetree_assets_spec.lua` | `integrations/filetree_assets.lua`: the cascade-delete-assets seam behind `:File delete`. |
 | `explorer_integration_spec.lua` | `ops/file.lua`'s explorer-refresh path against REAL neo-tree.nvim/nvim-tree.lua — optional, see below. |
+| `testing_config_spec.lua` | The project's `.testing.lua`: evaluable without the editor API, no directory allowed as a write root, only neo-tree's log file let through the fs guard. |
 
 `platform_spec.lua` is gone: `util/platform.lua` was removed in favour of
 `lib.nvim.cross.fs.mutate`, and that behaviour (`mkdir_p`, `copy_file`,
