@@ -729,7 +729,7 @@ local ROUTE_DESC = {
 ---@type table<string, string>
 local TARGET_VALUES = {
   ["%"] = "same as replace",
-  replace = "open here, the old buffer is removed",
+  replace = "open here, an unmodified old buffer is removed",
   stay = "open here, the old buffer stays",
   current = "same as stay",
   new = "same as split",
