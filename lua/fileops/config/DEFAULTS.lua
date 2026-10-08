@@ -59,6 +59,8 @@ return {
     -- `User FileopsChanged` autocmd instead (see explorer.*).
   },
   keymaps = {
+    -- `false` (or `keymaps = false`) binds no keymap at all; the actions stay declared.
+    enable = true,
     cycle = true,
     delete = true,
     -- Individual lhs overrides. Set any entry to `false` to disable just that

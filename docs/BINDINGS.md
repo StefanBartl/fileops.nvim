@@ -5,7 +5,8 @@ sync with `lua/fileops/bindings/`.
 
 ## Keymaps
 
-Registered by `require("fileops").setup()`, gated by
+Registered by `require("fileops").setup()`; `keymaps = false` (or
+`keymaps = { enable = false }`) binds none of them. Otherwise gated by
 `config.keymaps.cycle` / `config.keymaps.delete` (master switches) and
 `config.keymaps.lhs.*` (per-key, set to `false` to disable or a string to
 remap). See [`bindings/keymaps.lua`](../lua/fileops/bindings/keymaps.lua).

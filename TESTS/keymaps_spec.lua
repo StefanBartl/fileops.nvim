@@ -366,5 +366,22 @@ return function(H)
     eq(fn.filereadable(asset), 0, "…and cascade-deleted the orphaned asset it linked to")
   end
 
+  -- ── keymaps = false (REL-20, conformance K3) ────────────────────────────
+  do
+    for _, off in ipairs({ false, { enable = false, lhs = { path = "<leader>zp" } } }) do
+      local cfg = config.setup({ keymaps = off })
+      eq(cfg.keymaps.enable, false, "keymaps = false is normalized to { enable = false }")
+      local actions = by_name(keymaps.setup(cfg))
+      local bound = {}
+      for name, e in pairs(actions) do
+        if e.lhs ~= nil then
+          bound[#bound + 1] = name
+        end
+      end
+      eq(#bound, 0, "no action is bound with keymaps off: " .. table.concat(bound, ", "))
+      ok(actions.next_replace ~= nil, "the actions stay declared")
+    end
+  end
+
   config.setup({})
 end

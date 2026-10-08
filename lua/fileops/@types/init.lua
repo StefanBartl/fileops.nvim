@@ -74,6 +74,7 @@
 ---@field bulk_rename?     string|false  Bulk rename in this directory (prompts for pattern + replacement).
 
 ---@class FileOps.KeymapConfig
+---@field enable? boolean          Master switch for all keymaps; `false` (or `keymaps = false`) binds none.
 ---@field cycle?  boolean          Master switch: register cycle (next/prev) keymaps.
 ---@field delete? boolean          Master switch: register delete-current-file keymap.
 ---@field lhs?    FileOps.KeymapLhs  Per-key lhs overrides; `false` disables a single key.
@@ -134,7 +135,7 @@
 ---@field git_aware?      FileOps.GitAwareConfig       Git-tracked-file warnings/git mv/git rm (default: disabled; opt-in).
 ---@field session_compat? FileOps.SessionCompatConfig  Resave the active :mksession session after rename/move (default: enabled).
 ---@field retry?          FileOps.RetryConfig          Retry budget for transient Windows sharing violations on rename/move/copy/delete.
----@field keymaps?        FileOps.KeymapConfig         Keymap registration flags.
+---@field keymaps?        FileOps.KeymapConfig|boolean Keymap registration flags.
 ---@field commands?       boolean                      Register all user commands (default: true).
 ---@field auto_mkdir?     FileOps.AutoMkdirConfig      Auto-create parent dirs before writing (default: enabled).
 ---@field on_hold?        FileOps.OnHoldConfig         Ambient CursorHold line-diff preview (default: disabled; opt-in).

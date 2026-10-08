@@ -40,6 +40,7 @@ local SCHEMA = {
   session_compat = { enable = true },
   integrations = { ui_menu = true },
   keymaps = {
+    enable = true,
     cycle = true,
     delete = true,
     lhs = {
@@ -286,6 +287,12 @@ end
 function M.setup(user_opts)
   local issues = {}
   local opts = user_opts and vim.deepcopy(user_opts) or {}
+
+  -- REL-20: `keymaps = false` is the agreed spelling of `{ enable = false }`
+  -- (`true` -> `{}`); the shared helper owns the shape.
+  if type(opts.keymaps) == "boolean" then
+    opts.keymaps = require("lib.nvim.normalize").normalize_switch_group(opts.keymaps)
+  end
 
   drop_unknown(opts, SCHEMA, "", issues)
   validate_delete_mode(opts, issues)

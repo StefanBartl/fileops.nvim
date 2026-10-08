@@ -53,6 +53,7 @@ require("fileops").setup({
                     -- other session managers can hook `User FileopsChanged` instead
   },
   keymaps = {
+    enable = true,   -- false (or `keymaps = false`): bind no keymap at all
     cycle  = true,   -- master switch: <leader>nf/pf family
     delete = true,   -- master switch: <leader>dcf
     -- Per-key overrides: set an entry to `false` to disable just that one
