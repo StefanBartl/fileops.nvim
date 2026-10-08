@@ -89,6 +89,17 @@ return function(H)
     eq(fn.expand("%:t"), "c.lua", "replace: the new file is showing")
     ok(not vim.api.nvim_buf_is_valid(doomed), "replace: the previous buffer was wiped")
 
+    -- …but only an UNMODIFIED one: a modified old buffer stays (the non-forced delete fails and
+    -- is swallowed), which is why the `replace` text of the option float says "unmodified".
+    H.edit(dir .. "a.lua")
+    local kept = vim.api.nvim_get_current_buf()
+    vim.api.nvim_buf_set_lines(0, 0, -1, false, { "-- a, edited" })
+    ok(cycle.open_path(dir .. "b.lua", opts_with({ open_target = "replace" })), "replace, modified")
+    eq(fn.expand("%:t"), "b.lua", "replace, modified: the new file is showing")
+    ok(vim.api.nvim_buf_is_valid(kept), "replace, modified: the previous buffer survives")
+    ok(vim.bo[kept].modified, "replace, modified: …with its unsaved changes")
+    vim.cmd("bwipeout! " .. kept)
+
     -- split / vsplit, with and without keep_focus.
     vim.cmd("only")
     H.edit(dir .. "a.lua")

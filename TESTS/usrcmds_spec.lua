@@ -84,8 +84,8 @@ return function(H)
           label .. ": enum_desc names '" .. value .. "', which is not one of its values"
         )
         ok(
-          not text:find("%.$") and not text:find("[\r\n]"),
-          label .. ": enum_desc '" .. value .. "' is one line"
+          not text:find("%.$") and not text:find("[\r\n]") and #text <= 80,
+          label .. ": enum_desc '" .. value .. "' is one line of at most 80 characters"
         )
       end
     end
