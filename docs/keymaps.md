@@ -9,11 +9,12 @@ place so it cannot drift from this page.
 Keymaps are registered only when `setup()` is called, and only for keys whose
 `lhs` entry resolves to a string (see [Configuration](configuration.md)).
 
-## Two master switches
+## Master switches
 
 | Option | Default | Covers |
 |---|---|---|
 | `keymaps.cycle` | `true` | The eight `<leader>n…` / `<leader>p…` directory-cycling keys |
+| `keymaps.enable` | `true` | Everything: `false` (or `keymaps = false`) binds no keymap at all |
 | `keymaps.delete` | `true` | `<leader>dcf` — delete current file and close its buffer |
 
 All cycle keymaps respect `v:count1`, so `3<leader>nf` jumps three files

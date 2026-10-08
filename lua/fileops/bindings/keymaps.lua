@@ -191,10 +191,19 @@ local FAMILIES = {
 ---
 ---A copy: writing `false` into the live config would make the switch
 ---indistinguishable from a per-key opt-out on the next read.
+---With `km.enable == false` (`keymaps = false`, REL-20) every action is
+---forced to `false`: declared, bound to nothing.
 ---@param km table
+---@param declared string[] every declared action
 ---@return table
-local function resolve_user(km)
+local function resolve_user(km, declared)
   local user = vim.deepcopy(km.lhs or {})
+  if km.enable == false then
+    for _, name in ipairs(declared) do
+      user[name] = false
+    end
+    return user
+  end
   for switch, names in pairs(FAMILIES) do
     if km[switch] == false then
       for _, name in ipairs(names) do
@@ -315,7 +324,7 @@ function M.setup(cfg)
     },
   }
 
-  return keymap.register("fileops", spec, resolve_user(km))
+  return keymap.register("fileops", spec, resolve_user(km, spec.order))
 end
 
 return M
