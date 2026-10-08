@@ -48,4 +48,6 @@ require("fileops").setup({
 [which-key.nvim](https://github.com/folke/which-key.nvim) is an optional soft
 dependency. When installed, the `<leader>n` and `<leader>p` prefixes get group
 labels (see [BINDINGS.md](BINDINGS.md#which-key-groups)); every key also carries
-its own `desc` either way.
+its own `desc` either way. With `keymaps = false` (or `keymaps.enable = false`)
+no labels are registered either, so those prefixes stay free for your own
+mappings.
