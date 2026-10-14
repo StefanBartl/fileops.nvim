@@ -10,7 +10,7 @@ return {
   dialect = "h",
   -- Dependencies (directory names) put on the runtimepath: $<NAME>_DIR, .deps/<name>, ../<name>,
   -- stdpath('data')/lazy/<name>.
-  deps = { "lib.nvim" },
+  deps = { "lib.nvim", "ui.nvim" },
   -- "none" = all specs in one nvim, "file" = one nvim per spec file
   -- (nothing leaks from one file into the next).
   isolated = "none",
