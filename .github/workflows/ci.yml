@@ -55,6 +55,14 @@ jobs:
       - name: Conformance gate
         working-directory: fileops.nvim
         run: bash scripts/test.sh conformance
+      # Regression gate for the surface (docs/SURFACE.md of testing.nvim): a command, keymap or autocommand that the specs
+      # exercised when surface.baseline.json was written must still be exercised. Linux only: the baseline comes from
+      # the Linux run. To accept an intended change, rewrite the file from a green Linux run (`scripts/test.sh surface
+      # --from <ir> --write-baseline surface.baseline.json`, IR = the surface-ir artifact) and review the diff.
+      - name: Surface baseline gate
+        if: matrix.os == 'ubuntu-latest'
+        working-directory: fileops.nvim
+        run: bash scripts/test.sh surface --from "$RUNNER_TEMP/testing-ir.json" --baseline surface.baseline.json --require-signed-baseline
       # The IR of the Linux run carries the surface the specs exercised: the baseline (surface.baseline.json) is
       # written from exactly this artifact, so it matches what the runner measures.
       - uses: actions/upload-artifact@v7
