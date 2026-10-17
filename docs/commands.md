@@ -277,9 +277,12 @@ to the file name only (not the full path). Files the pattern doesn't match,
 or that `gsub` leaves unchanged, are left alone.
 
 Shows a preview of every `old → new` pair via `notify.info`, then asks for
-confirmation via `vim.ui.select` before touching disk. `!` allows
-overwriting existing destinations; without it, a conflicting destination is
-skipped and reported (other files in the batch still get renamed). Any open
+confirmation (`ui.kit.confirm`) before touching disk. When destinations
+exist already, the preview marks them `(exists)` and the dialog offers
+"Rename N, skip K existing" (the first choice: the existing files stay, the
+others are renamed), "Rename M, overwrite K existing" or Cancel, so nothing
+has to be retyped with `!`. `!` overwrites existing destinations without
+asking about them. Any open
 buffer pointing at a renamed file is re-pointed at the new path (no
 reload — same as `:File move`), and each successful rename fires the usual
 `notify_change`/`User FileopsChanged` (see [Autocommands](autocommands.md)).
