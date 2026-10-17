@@ -457,6 +457,63 @@ return function(H)
     ok(H.notified(bad, "invalid pattern"), "…and the error names the pattern")
   end
 
+  -- ── bulk rename onto existing destinations: asked, not refused (UI-05) ───
+  do
+    local cdir = H.tmpdir()
+    local function body(name)
+      return table.concat(fn.readfile(cdir .. name), "\n")
+    end
+    local function seed()
+      for _, n in ipairs({ "a_1.txt", "a_2.txt", "a_3.txt" }) do
+        H.write_file(cdir .. n, "new " .. n)
+      end
+      H.write_file(cdir .. "b_1.txt", "old b_1")
+      H.write_file(cdir .. "b_2.txt", "old b_2")
+      fn.delete(cdir .. "b_3.txt")
+    end
+    seed()
+    H.edit(cdir .. "a_1.txt")
+
+    reset()
+    answers.confirm = true -- the first choice: skip the existing ones
+    local skipped = H.notifications(function()
+      vim.cmd("File bulk rename ^a_ b_")
+    end)
+    local asked = calls[#calls]
+    ok(
+      asked.question:find("2 destination(s) exist already", 1, true),
+      "the clash is in the question"
+    )
+    eq(asked.choices[1], "Rename 1, skip 2 existing", "skipping is the first (harmless) choice")
+    eq(asked.choices[2], "Rename 3, overwrite 2 existing")
+    ok(H.notified(skipped, "a_1.txt → b_1.txt  (exists)"), "the preview marks the clash")
+    eq(body("b_1.txt"), "old b_1", "skip keeps an existing destination")
+    eq(fn.filereadable(cdir .. "a_1.txt"), 1, "…and its source")
+    eq(fn.filereadable(cdir .. "b_3.txt"), 1, "skip still renames the free one")
+    ok(H.notified(skipped, "1 file(s) renamed"), "…with no failure reported")
+
+    seed()
+    reset()
+    answers.confirm = "Rename 3, overwrite 2 existing"
+    vim.cmd("File bulk rename ^a_ b_")
+    eq(body("b_1.txt"), "new a_1.txt", "overwrite replaces the destination")
+    eq(fn.filereadable(cdir .. "a_2.txt"), 0, "…and renames every planned file")
+
+    seed()
+    reset()
+    answers.confirm = "Cancel"
+    vim.cmd("File bulk rename ^a_ b_")
+    eq(body("b_1.txt"), "old b_1", "cancel renames nothing")
+    eq(fn.filereadable(cdir .. "a_3.txt"), 1, "…not even the free one")
+
+    seed()
+    reset()
+    answers.confirm = true
+    vim.cmd("File! bulk rename ^a_ b_")
+    eq(calls[#calls].choices[1], "Rename 3 file(s)", "with ! there is nothing to ask about clashes")
+    eq(body("b_2.txt"), "new a_2.txt", "! overwrites")
+  end
+
   -- ── the config flags the dispatch folds into every mutation ──────────────
   -- `retry`, `git_aware` and `session_compat` are read from the config by the
   -- dispatch and handed to the ops layer. The ops layer's own handling of
