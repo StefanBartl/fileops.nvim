@@ -31,6 +31,10 @@ return function(H)
     end,
     confirm = function(o)
       calls[#calls + 1] = { kind = "confirm", question = o.question, choices = o.choices }
+      -- What happens on disk while the dialog is open (it is asynchronous).
+      if answers.while_open then
+        answers.while_open()
+      end
       if answers.confirm ~= nil then
         o.on_answer(answers.confirm == true and o.choices[1] or answers.confirm)
       end
@@ -40,6 +44,16 @@ return function(H)
   local function reset()
     answers = {}
     calls = {}
+  end
+
+  -- The suite runs headless, where `nvim_list_uis()` is empty and a dialog
+  -- nobody can answer is never opened (the bulk rename refuses instead). The
+  -- dialogs here are answered by the double above, so there is a UI as far
+  -- as the command can tell; the no-UI path is checked on its own below.
+  local real_list_uis = vim.api.nvim_list_uis
+  local ui_attached = true
+  vim.api.nvim_list_uis = function()
+    return ui_attached and { {} } or {}
   end
 
   config.setup({ delete = { mode = "permanent" } })
@@ -491,6 +505,10 @@ return function(H)
     eq(fn.filereadable(cdir .. "a_1.txt"), 1, "…and its source")
     eq(fn.filereadable(cdir .. "b_3.txt"), 1, "skip still renames the free one")
     ok(H.notified(skipped, "1 file(s) renamed"), "…with no failure reported")
+    ok(
+      H.notified(skipped, "kept a_1.txt: the destination exists already"),
+      "…naming what it kept"
+    )
 
     seed()
     reset()
@@ -506,12 +524,303 @@ return function(H)
     eq(body("b_1.txt"), "old b_1", "cancel renames nothing")
     eq(fn.filereadable(cdir .. "a_3.txt"), 1, "…not even the free one")
 
+    -- `!` only drops the skip choice: the dialog still starts on Cancel, the
+    -- answer that overwrites nothing.
     seed()
     reset()
     answers.confirm = true
     vim.cmd("File! bulk rename ^a_ b_")
-    eq(calls[#calls].choices[1], "Rename 3 file(s)", "with ! there is nothing to ask about clashes")
-    eq(body("b_2.txt"), "new a_2.txt", "! overwrites")
+    eq(calls[#calls].choices[1], "Cancel", "with ! the dialog starts on Cancel")
+    eq(calls[#calls].choices[2], "Rename 3, overwrite 2 existing", "…and offers no skip")
+    eq(body("b_2.txt"), "old b_2", "…so <CR> on it overwrites nothing")
+    reset()
+    answers.confirm = "Rename 3, overwrite 2 existing"
+    vim.cmd("File! bulk rename ^a_ b_")
+    eq(body("b_2.txt"), "new a_2.txt", "! overwrites once that is chosen")
+
+    -- b_1.txt was open (the buffer of a_1.txt, renamed onto it in the first
+    -- overwrite) and a_1.txt had no buffer of its own this time: the open
+    -- buffer stays and shows what was renamed there, not the old content.
+    local b1 = nil
+    for _, b in ipairs(vim.api.nvim_list_bufs()) do
+      local name = vim.api.nvim_buf_get_name(b)
+      if name ~= "" and vim.fs.normalize(name) == vim.fs.normalize(cdir .. "b_1.txt") then
+        b1 = b
+      end
+    end
+    ok(b1 ~= nil, "the overwritten destination's open buffer stays open")
+    eq(
+      vim.api.nvim_buf_get_lines(b1, 0, -1, false)[1],
+      "new a_1.txt",
+      "…reloaded with the content renamed onto it"
+    )
+
+    -- Every destination exists: nothing is left to skip into, so the dialog
+    -- starts on Cancel, not on overwrite.
+    for _, n in ipairs({ "a_1.txt", "a_2.txt" }) do
+      H.write_file(cdir .. n, "new " .. n)
+    end
+    H.write_file(cdir .. "b_1.txt", "old b_1")
+    H.write_file(cdir .. "b_2.txt", "old b_2")
+    fn.delete(cdir .. "a_3.txt")
+    fn.delete(cdir .. "b_3.txt")
+    reset()
+    answers.confirm = true
+    vim.cmd("File bulk rename ^a_ b_")
+    eq(calls[#calls].choices[1], "Cancel", "all destinations exist: the dialog starts on Cancel")
+    eq(#calls[#calls].choices, 2, "…with no skip choice that would rename nothing")
+    eq(body("b_1.txt"), "old b_1", "…so <CR> overwrites nothing")
+  end
+
+  -- ── bulk rename: a destination that is itself a source (chain) ──────────
+  -- Measured before the fix: a.txt="A", aa.txt="AA", `^a` -> `aa`. aa.txt
+  -- counted as "existing" although the batch moves it away; `!`/overwrite ran
+  -- a.txt -> aa.txt first and destroyed "AA"; skip kept a.txt for nothing.
+  do
+    local kdir = H.tmpdir()
+    local function body(name)
+      return table.concat(fn.readfile(kdir .. name), "\n")
+    end
+    local function seed()
+      for _, n in ipairs(fn.readdir(kdir)) do
+        fn.delete(kdir .. n)
+      end
+      H.write_file(kdir .. "a.txt", "A")
+      H.write_file(kdir .. "aa.txt", "AA")
+    end
+    seed()
+    H.edit(kdir .. "a.txt")
+
+    reset()
+    answers.confirm = true
+    local out = H.notifications(function()
+      vim.cmd("File bulk rename ^a aa")
+    end)
+    eq(calls[#calls].choices[1], "Rename 2 file(s)", "a destination the batch vacates is no clash")
+    ok(not H.notified(out, "(exists)"), "…and the preview does not mark it")
+    eq(body("aaa.txt"), "AA", "the dependent rename runs first: aa.txt -> aaa.txt")
+    eq(body("aa.txt"), "A", "…then a.txt -> aa.txt, with nothing lost")
+    eq(fn.filereadable(kdir .. "a.txt"), 0, "…and a.txt is gone")
+    ok(H.notified(out, "2 file(s) renamed"), "…both reported")
+
+    seed()
+    reset()
+    answers.confirm = true
+    vim.cmd("File! bulk rename ^a aa")
+    eq(body("aaa.txt"), "AA", "with ! the chain loses nothing either")
+    eq(body("aa.txt"), "A", "…a.txt landed on the vacated name")
+
+    -- Skip holds a clash back, and with it every rename whose destination is
+    -- the held-back source: za.txt stays, so zza.txt -> za.txt would land on it.
+    for _, n in ipairs(fn.readdir(kdir)) do
+      fn.delete(kdir .. n)
+    end
+    H.write_file(kdir .. "zza.txt", "ZZA")
+    H.write_file(kdir .. "za.txt", "ZA")
+    H.write_file(kdir .. "a.txt", "A")
+    reset()
+    answers.confirm = true
+    vim.cmd("File bulk rename ^z ")
+    eq(calls[#calls].choices[1], "Cancel", "skipping would hold the whole chain: no skip choice")
+    eq(calls[#calls].choices[2], "Rename 2, overwrite 1 existing")
+    eq(body("za.txt"), "ZA", "Cancel keeps the chain")
+    reset()
+    answers.confirm = "Rename 2, overwrite 1 existing"
+    vim.cmd("File bulk rename ^z ")
+    eq(body("a.txt"), "ZA", "overwrite: za.txt -> a.txt first")
+    eq(body("za.txt"), "ZZA", "…then zza.txt -> za.txt")
+  end
+
+  -- ── bulk rename: two files onto one destination ─────────────────────────
+  -- Measured before the fix: x1, y1, x2 with z2 existing, `^[xy]` -> `z`:
+  -- "overwrite 1 existing", then y1 -> z1 overwrote x1 -> z1 silently.
+  do
+    local ddir = H.tmpdir()
+    local function body(name)
+      return table.concat(fn.readfile(ddir .. name), "\n")
+    end
+    H.write_file(ddir .. "x1.txt", "X1")
+    H.write_file(ddir .. "y1.txt", "Y1")
+    H.write_file(ddir .. "x2.txt", "X2")
+    H.write_file(ddir .. "z2.txt", "Z2")
+    H.edit(ddir .. "x1.txt")
+
+    reset()
+    answers.confirm = true
+    local out = H.notifications(function()
+      vim.cmd("File bulk rename ^[xy] z")
+    end)
+    eq(#calls, 0, "a duplicate destination refuses the batch before any dialog")
+    ok(H.notified(out, "x1.txt, y1.txt → z1.txt"), "…naming the files that collide")
+    ok(H.notified(out, "nothing renamed"), "…and that nothing happened")
+    eq(body("x1.txt"), "X1", "x1.txt is untouched")
+    eq(body("y1.txt"), "Y1", "y1.txt is untouched")
+    eq(body("z2.txt"), "Z2", "the unrelated clash is untouched too")
+    eq(fn.filereadable(ddir .. "z1.txt"), 0, "nothing was renamed")
+
+    fn.delete(ddir .. "x2.txt")
+    fn.delete(ddir .. "z2.txt")
+    reset()
+    H.notifications(function()
+      vim.cmd("File! bulk rename ^[xy] z")
+    end)
+    eq(#calls, 0, "…with no real clash, and with !, just the same")
+    eq(body("x1.txt"), "X1", "…x1.txt still untouched")
+  end
+
+  -- ── bulk rename: a cycle (swap) ──────────────────────────────────────────
+  do
+    local sdir = H.tmpdir()
+    local function body(name)
+      return table.concat(fn.readfile(sdir .. name), "\n")
+    end
+    H.write_file(sdir .. "ab.txt", "AB")
+    H.write_file(sdir .. "ba.txt", "BA")
+    H.edit(sdir .. "ab.txt")
+    local buf = vim.api.nvim_get_current_buf()
+
+    reset()
+    answers.confirm = true
+    local out = H.notifications(function()
+      vim.cmd("File bulk rename ^(.)(.) %2%1")
+    end)
+    eq(calls[#calls].choices[1], "Rename 2 file(s)", "a swap is no clash")
+    eq(body("ab.txt"), "BA", "ba.txt -> ab.txt")
+    eq(body("ba.txt"), "AB", "ab.txt -> ba.txt, through a temporary name")
+    local listing = fn.readdir(sdir)
+    table.sort(listing)
+    eq(table.concat(listing, ","), "ab.txt,ba.txt", "…which is gone afterwards")
+    ok(H.notified(out, "2 file(s) renamed"), "…both reported")
+    eq(fn.fnamemodify(vim.api.nvim_buf_get_name(buf), ":t"), "ba.txt", "the open buffer follows")
+  end
+
+  -- ── bulk rename: a case-only rename ──────────────────────────────────────
+  -- On a case-folding filesystem (Windows, macOS) A_1.txt "exists" -- it is
+  -- a_1.txt itself. That is no clash: the rename is offered plainly and done.
+  do
+    local udir = H.tmpdir()
+    H.write_file(udir .. "a_1.txt", "a")
+    H.write_file(udir .. "b_1.txt", "b")
+    H.edit(udir .. "b_1.txt")
+    reset()
+    answers.confirm = true
+    local out = H.notifications(function()
+      vim.cmd("File bulk rename ^a_ A_")
+    end)
+    eq(calls[#calls].choices[1], "Rename 1 file(s)", "a case-only rename is no clash")
+    ok(not H.notified(out, "(exists)"), "…and not marked as one")
+    local listing = fn.readdir(udir)
+    table.sort(listing)
+    eq(table.concat(listing, ","), "A_1.txt,b_1.txt", "the name's case changed on disk")
+  end
+
+  -- ── bulk rename: a directory at the destination ─────────────────────────
+  do
+    local rdir = H.tmpdir()
+    H.write_file(rdir .. "a_1.txt", "a")
+    fn.mkdir(rdir .. "b_1.txt", "p")
+    H.edit(rdir .. "a_1.txt")
+    reset()
+    answers.confirm = true
+    local out = H.notifications(function()
+      vim.cmd("File! bulk rename ^a_ b_")
+    end)
+    ok(
+      H.notified(out, "a_1.txt → b_1.txt  (a directory: kept)"),
+      "the preview names the directory"
+    )
+    eq(#calls, 0, "nothing left to rename: no dialog")
+    ok(H.notified(out, "kept a_1.txt: the destination is a directory"), "…it says why")
+    eq(fn.isdirectory(rdir .. "b_1.txt"), 1, "the directory is untouched")
+    eq(fn.filereadable(rdir .. "a_1.txt"), 1, "…and so is the file")
+  end
+
+  -- ── bulk rename: destinations open in a buffer ──────────────────────────
+  -- Before the fix the overwrite left both buffers wrong (E95, swallowed):
+  -- a_1's buffer kept its vanished name, b_1's named content it never showed.
+  do
+    local odir = H.tmpdir()
+    local function body(name)
+      return table.concat(fn.readfile(odir .. name), "\n")
+    end
+    H.write_file(odir .. "a_1.txt", "new a_1")
+    H.write_file(odir .. "a_2.txt", "new a_2")
+    H.write_file(odir .. "b_1.txt", "old b_1")
+    H.write_file(odir .. "b_2.txt", "old b_2")
+    H.edit(odir .. "b_2.txt")
+    local dirty = vim.api.nvim_get_current_buf()
+    vim.api.nvim_buf_set_lines(dirty, 0, -1, false, { "unsaved b_2" })
+    H.edit(odir .. "b_1.txt")
+    local target = vim.api.nvim_get_current_buf()
+    H.edit(odir .. "a_1.txt")
+    local source = vim.api.nvim_get_current_buf()
+
+    reset()
+    answers.confirm = "Rename 1, overwrite 1 existing"
+    local out = H.notifications(function()
+      vim.cmd("File bulk rename ^a_ b_")
+    end)
+    ok(
+      H.notified(out, "a_2.txt → b_2.txt  (exists, open with unsaved changes: kept)"),
+      "the preview names the unsaved destination"
+    )
+    ok(H.notified(out, "a_1.txt → b_1.txt  (exists, open in a buffer)"), "…and the open one")
+    eq(body("b_1.txt"), "new a_1", "the open, unmodified destination is overwritten")
+    eq(vim.api.nvim_buf_is_valid(target), false, "…its buffer is closed")
+    ok(H.notified(out, "closed the buffer of the overwritten"), "…and that is said")
+    eq(
+      fn.fnamemodify(vim.api.nvim_buf_get_name(source), ":t"),
+      "b_1.txt",
+      "the renamed file's buffer follows (no E95)"
+    )
+    eq(body("b_2.txt"), "old b_2", "the destination with unsaved changes is never overwritten")
+    eq(fn.filereadable(odir .. "a_2.txt"), 1, "…its source stays")
+    ok(H.notified(out, "kept a_2.txt: the destination is open with unsaved changes"), "…said so")
+    vim.bo[dirty].modified = false
+  end
+
+  -- ── bulk rename: a destination taken while the dialog is open ───────────
+  -- Only what the dialog announced is overwritten: b_3.txt was free at the
+  -- preview, so a file created there meanwhile is refused, not overwritten.
+  do
+    local tdir = H.tmpdir()
+    local function body(name)
+      return table.concat(fn.readfile(tdir .. name), "\n")
+    end
+    H.write_file(tdir .. "a_1.txt", "new a_1")
+    H.write_file(tdir .. "a_3.txt", "new a_3")
+    H.write_file(tdir .. "b_1.txt", "old b_1")
+    H.edit(tdir .. "a_1.txt")
+    reset()
+    answers.while_open = function()
+      H.write_file(tdir .. "b_3.txt", "appeared")
+    end
+    answers.confirm = "Rename 2, overwrite 1 existing"
+    local out = H.notifications(function()
+      vim.cmd("File bulk rename ^a_ b_")
+    end)
+    eq(body("b_1.txt"), "new a_1", "the announced clash is overwritten")
+    eq(body("b_3.txt"), "appeared", "the unannounced one is not")
+    eq(fn.filereadable(tdir .. "a_3.txt"), 1, "…its source stays")
+    ok(H.notified(out, "1/2 renamed"), "…and the failure is reported")
+  end
+
+  -- ── bulk rename without a UI: never waits, never acts ───────────────────
+  do
+    local ndir = H.tmpdir()
+    H.write_file(ndir .. "a_1.txt", "a")
+    H.write_file(ndir .. "b_1.txt", "b")
+    H.edit(ndir .. "a_1.txt")
+    reset()
+    ui_attached = false
+    local out = H.notifications(function()
+      vim.cmd("File! bulk rename ^a_ b_")
+    end)
+    ui_attached = true
+    eq(#calls, 0, "no UI: no dialog is opened")
+    ok(H.notified(out, "no UI to confirm it; nothing renamed"), "…the rename is refused")
+    ok(H.notified(out, "1 destination(s) exist already (use ! to overwrite)"), "…with the clash")
+    eq(fn.readfile(ndir .. "b_1.txt")[1], "b", "…and nothing is overwritten")
   end
 
   -- ── the config flags the dispatch folds into every mutation ──────────────
@@ -736,5 +1045,6 @@ return function(H)
   end
 
   restore_kit()
+  vim.api.nvim_list_uis = real_list_uis
   config.setup({})
 end

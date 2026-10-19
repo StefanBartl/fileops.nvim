@@ -458,8 +458,10 @@ end
 
 ---@internal
 ---Build a bulk-rename plan for the buffer's directory, preview it, and
----(on confirmation via `kit.confirm`) execute it. `!` overwrites existing
----destinations without asking; without it the dialog offers skip or overwrite.
+---(on confirmation via `kit.confirm`) execute it. Destinations that exist
+---already are found against the state after the batch (`bulk.analyze`) and
+---the dialog offers to skip or overwrite them; `!` drops the skip choice.
+---Two files onto one destination refuse the batch before any dialog.
 ---@param pattern string|nil
 ---@param replacement string|nil
 ---@param bang boolean
@@ -486,64 +488,137 @@ local function do_bulk_rename(pattern, replacement, bang)
     return
   end
 
+  local tail = function(p)
+    return vim.fn.fnamemodify(p, ":t")
+  end
+
+  -- Two files onto one destination: whichever ran second would overwrite the
+  -- first, a batch member, with no dialog ever saying so. Refused outright,
+  -- before any dialog: no answer to one could make that plan safe.
+  local analysis = bulk.analyze(plan)
+  if #analysis.duplicates > 0 then
+    local lines = {
+      ("bulk rename: refused, %d destination(s) would receive more than one file; nothing renamed"):format(
+        #analysis.duplicates
+      ),
+    }
+    for _, d in ipairs(analysis.duplicates) do
+      local olds = vim.tbl_map(tail, d.olds)
+      lines[#lines + 1] = ("  %s → %s"):format(table.concat(olds, ", "), tail(d.new))
+    end
+    notify.error(table.concat(lines, "\n"))
+    return
+  end
+
   -- Destinations that exist already are found here, before the dialog, so the
   -- dialog can offer to skip or overwrite them (UI-05) instead of the run
-  -- failing on them with "use ! to overwrite" and the user retyping it.
-  ---@type FileOps.BulkRenamePlanItem[]
-  local free = {}
+  -- failing on them with "use ! to overwrite" and the user retyping it. "Exist"
+  -- is judged after the batch: a destination this batch moves away first is
+  -- free (see `bulk.analyze`).
+  local mark = {
+    exists = "  (exists)",
+    directory = "  (a directory: kept)",
+    modified = "  (exists, open with unsaved changes: kept)",
+  }
   local preview = { ("bulk rename: %d file(s) in %s"):format(#plan, dir) }
-  for _, item in ipairs(plan) do
-    local exists = not bang and vim.fn.filereadable(item.new) == 1
-    if not exists then
-      free[#free + 1] = item
+  for i, item in ipairs(plan) do
+    local status = analysis.status[i]
+    local note = mark[status] or ""
+    if status == "exists" and analysis.target_buf[i] then
+      note = "  (exists, open in a buffer)"
     end
-    preview[#preview + 1] = ("  %s → %s%s"):format(
-      vim.fn.fnamemodify(item.old, ":t"),
-      vim.fn.fnamemodify(item.new, ":t"),
-      exists and "  (exists)" or ""
-    )
+    preview[#preview + 1] = ("  %s → %s%s"):format(tail(item.old), tail(item.new), note)
   end
   notify.info(table.concat(preview, "\n"))
 
-  ---@param items FileOps.BulkRenamePlanItem[]
-  ---@param overwrite boolean
-  local function run(items, overwrite)
-    local renamed, err =
-      bulk.execute(items, { bang = overwrite, refresh_explorers = refresh_flag() })
+  local skip_run, skip_held = bulk.select(plan, analysis, "skip")
+  local over_run, over_held = bulk.select(plan, analysis, "overwrite")
+  local clashes = 0
+  for _, item in ipairs(over_run) do
+    if item.overwrite then
+      clashes = clashes + 1
+    end
+  end
+
+  ---@param held { item: FileOps.BulkRenamePlanItem, reason: string }[]
+  ---@return string[]
+  local function kept_lines(held)
+    local out = {}
+    for _, h in ipairs(held) do
+      out[#out + 1] = ("  kept %s: %s"):format(tail(h.item.old), h.reason)
+    end
+    return out
+  end
+
+  ---@param items (FileOps.BulkRenamePlanItem|{ overwrite?: boolean })[]
+  ---@param held { item: FileOps.BulkRenamePlanItem, reason: string }[]
+  local function run(items, held)
+    -- No `bang`: each item carries its own `overwrite`, set only for the
+    -- destinations the dialog announced. One taken while the dialog was open
+    -- is refused, not overwritten.
+    local renamed, err, notes = bulk.execute(items, { refresh_explorers = refresh_flag() })
     if err then
       notify.error(("bulk rename: %d/%d renamed, first failure: %s"):format(renamed, #items, err))
     else
       notify.info(("bulk rename: %d file(s) renamed"):format(renamed))
     end
+    local lines = kept_lines(held)
+    for _, n in ipairs(notes or {}) do
+      lines[#lines + 1] = "  " .. n
+    end
+    if #lines > 0 then
+      notify.warn("bulk rename:\n" .. table.concat(lines, "\n"))
+    end
   end
 
-  local clashes = #plan - #free
+  if #over_run == 0 then
+    notify.warn("bulk rename: nothing renamed\n" .. table.concat(kept_lines(over_held), "\n"))
+    return
+  end
+
+  -- Nobody can answer a dialog without a UI (headless, a script): never wait
+  -- on one there and never act unasked. Refused, as before the dialog existed.
+  if #vim.api.nvim_list_uis() == 0 then
+    local why = clashes > 0
+        and (", %d destination(s) exist already (use ! to overwrite)"):format(clashes)
+      or ""
+    notify.warn(("bulk rename: no UI to confirm it; nothing renamed%s"):format(why))
+    return
+  end
+
+  local kit = require("ui.kit")
   if clashes == 0 then
-    local confirm_choice = ("Rename %d file(s)"):format(#plan)
-    require("ui.kit").confirm({
+    local confirm_choice = ("Rename %d file(s)"):format(#over_run)
+    kit.confirm({
       question = "[fileops] Confirm bulk rename?",
       choices = { confirm_choice, "Cancel" },
       on_answer = function(choice)
         if choice == confirm_choice then
-          run(plan, bang)
+          run(over_run, over_held)
         end
       end,
     })
     return
   end
 
-  -- The harmless answer comes first: the dialog starts on it.
-  local skip = ("Rename %d, skip %d existing"):format(#free, clashes)
-  local overwrite = ("Rename %d, overwrite %d existing"):format(#plan, clashes)
-  local choices = #free > 0 and { skip, overwrite, "Cancel" } or { overwrite, "Cancel" }
-  require("ui.kit").confirm({
+  -- The harmless answer comes first: the dialog starts on it. That is "skip"
+  -- while skipping still renames something, "Cancel" otherwise -- never the
+  -- answer that overwrites.
+  local overwrite = ("Rename %d, overwrite %d existing"):format(#over_run, clashes)
+  local skip = nil
+  local choices = { "Cancel", overwrite }
+  if not bang and #skip_run > 0 then
+    skip = ("Rename %d, skip %d existing"):format(#skip_run, #plan - #skip_run)
+    choices = { skip, overwrite, "Cancel" }
+  end
+  kit.confirm({
     question = ("[fileops] Confirm bulk rename? %d destination(s) exist already"):format(clashes),
     choices = choices,
     on_answer = function(choice)
-      if choice == skip then
-        run(free, false)
+      if skip and choice == skip then
+        run(skip_run, skip_held)
       elseif choice == overwrite then
-        run(plan, true)
+        run(over_run, over_held)
       end
     end,
   })
