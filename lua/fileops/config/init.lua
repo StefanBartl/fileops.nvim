@@ -5,14 +5,6 @@ local M = {}
 ---@type FileOps.Config
 M.DEFAULTS = require("fileops.config.DEFAULTS")
 
----@type FileOps.Config
-local _active = vim.deepcopy(M.DEFAULTS)
-
----Issues found by the last `setup()` call (unknown keys, rejected values),
----for `:checkhealth`. Empty when the config was clean.
----@type string[]
-local _issues = {}
-
 -- Known keys per config section, kept in sync with `@types/init.lua`. Listed
 -- explicitly rather than derived from `pairs(DEFAULTS)` because a few fields
 -- (`delete.on_before_delete`, `on_hold.events_override`, ...) default to
@@ -252,71 +244,63 @@ local function validate_on_hold_ignore_buftypes(opts, issues)
   end
 end
 
----@internal
----Copy `src` into `dst` in place: a sub-table `dst` already has keeps its
----identity, only its contents change. `bindings.autocmds` hands sub-tables
----of this config straight to feature modules (`auto_mkdir`, `on_hold`,
----`conflict_marks`), which keep that reference alive in their autocmd
----closures for the rest of the session -- replacing the table wholesale on a
----second `setup()` would silently decouple those closures from the new
----values.
----@param dst table
----@param src table
-local function deep_assign(dst, src)
-  for k in pairs(dst) do
-    if src[k] == nil then
-      dst[k] = nil
-    end
-  end
-  for k, v in pairs(src) do
-    if type(v) == "table" and type(dst[k]) == "table" then
-      deep_assign(dst[k], v)
-    else
-      dst[k] = v
-    end
-  end
+--- To the schema that `lib.lua.config` infers from `DEFAULTS`, every option is open: the checks are
+--- `SCHEMA` above (hand-written because a few fields default to `nil`) and the validators, run
+--- before the merge. An unknown top-level key is caught there as well.
+local ANY = "boolean|number|string|table|function"
+---@type table<string, string>
+local LIB_SCHEMA = {}
+for key in pairs(SCHEMA) do
+  LIB_SCHEMA[key] = ANY
 end
 
----Merge user opts over defaults and store result. Unknown keys (typos in a
----nested option included), an invalid `delete.mode`, an invalid
----`retry.attempts`/`retry.backoff_ms`, an invalid `on_hold.modes`, and an
----invalid `on_hold.ignore_buftypes` are reported here, before the merge, and
----dropped rather than silently kept -- see `issues()`.
+local cfg = require("lib.lua.config").new(M.DEFAULTS, {
+  name = "fileops",
+  schema = LIB_SCHEMA,
+  -- `bindings.autocmds` hands sub-tables of this config straight to feature modules
+  -- (`auto_mkdir`, `on_hold`, `conflict_marks`), which keep that reference alive in their
+  -- autocmd closures for the rest of the session: a second `setup()` has to write into the same
+  -- tables, not replace them (ERR-53).
+  stable = true,
+  normalize = function(opts, issues)
+    -- REL-20: `keymaps = false` is the agreed spelling of `{ enable = false }`
+    -- (`true` -> `{}`); the shared helper owns the shape.
+    if type(opts.keymaps) == "boolean" then
+      opts.keymaps = require("lib.nvim.normalize").normalize_switch_group(opts.keymaps)
+    end
+
+    drop_unknown(opts, SCHEMA, "", issues)
+    validate_delete_mode(opts, issues)
+    validate_retry(opts, issues)
+    validate_on_hold_modes(opts, issues)
+    validate_on_hold_ignore_buftypes(opts, issues)
+  end,
+})
+
+---Set the options over the defaults and store the result. Every call starts from
+---`DEFAULTS`. Unknown keys (typos in a nested option included), an invalid `delete.mode`, an
+---invalid `retry.attempts`/`retry.backoff_ms`, an invalid `on_hold.modes`, and an invalid
+---`on_hold.ignore_buftypes` are reported here, before the merge, and dropped rather than
+---silently kept -- see `issues()`.
 ---@param user_opts FileOps.Config|nil
 ---@return FileOps.Config
 function M.setup(user_opts)
-  local issues = {}
-  local opts = user_opts and vim.deepcopy(user_opts) or {}
-
-  -- REL-20: `keymaps = false` is the agreed spelling of `{ enable = false }`
-  -- (`true` -> `{}`); the shared helper owns the shape.
-  if type(opts.keymaps) == "boolean" then
-    opts.keymaps = require("lib.nvim.normalize").normalize_switch_group(opts.keymaps)
-  end
-
-  drop_unknown(opts, SCHEMA, "", issues)
-  validate_delete_mode(opts, issues)
-  validate_retry(opts, issues)
-  validate_on_hold_modes(opts, issues)
-  validate_on_hold_ignore_buftypes(opts, issues)
-  _issues = issues
-
-  local merged = vim.tbl_deep_extend("force", vim.deepcopy(M.DEFAULTS), opts)
-  deep_assign(_active, merged)
-  return _active
+  cfg.setup(type(user_opts) == "table" and user_opts or nil)
+  return cfg.get()
 end
 
----Return the active config (read-only view).
+---Return the active config (read-only view): the same table, and the same sub-tables, after
+---every `setup()`.
 ---@return FileOps.Config
 function M.get()
-  return _active
+  return cfg.get()
 end
 
 ---Validation issues from the last `setup()` call (unknown keys, rejected
 ---values), for `:checkhealth`. Empty when the config was clean.
 ---@return string[]
 function M.issues()
-  return _issues
+  return cfg.issues()
 end
 
 return M
